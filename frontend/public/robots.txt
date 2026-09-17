@@ -1,0 +1,4 @@
+# RepairOS es una aplicación privada de gestión interna.
+# No hay contenido público que indexar.
+User-agent: *
+Disallow: /
