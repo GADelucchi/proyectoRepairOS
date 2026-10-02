@@ -22,9 +22,16 @@ export default tseslint.config(
       'prefer-const': 'error'
     }
   },
-  // Las migraciones, los seeders y la config de sequelize-cli son CommonJS.
+  // Las migraciones, los seeders, la config de sequelize-cli y los scripts de
+  // mantenimiento de la base son CommonJS.
   {
-    files: ['src/database/migrations/**/*.js', 'src/database/seeders/**/*.js', 'src/database/config/*.js'],
+    files: [
+      'src/database/migrations/**/*.js',
+      'src/database/seeders/**/*.js',
+      'src/database/config/*.js',
+      'src/database/demo/*.js',
+      'src/database/*.js'
+    ],
     languageOptions: {
       globals: globals.node,
       parserOptions: { ecmaVersion: 2022, sourceType: 'commonjs' }
