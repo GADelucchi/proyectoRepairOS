@@ -1,0 +1,232 @@
+/* ============================================================
+   RepairOS — Brand Identity System
+   Paleta, tipografía y overrides de Bootstrap para el tema oscuro.
+   ============================================================ */
+
+:root {
+  /* Base */
+  --repairos-cyan-core: #00c9ff;
+  --repairos-cyan-deep: #007baf;
+  --repairos-abyss: #0a0d12;
+  --repairos-surface: #141820;
+  --repairos-surface-alt: #1e2535;
+  --repairos-snow: #ebecf2;
+  --repairos-border: #262e3d;
+  --repairos-muted: #8b93a7;
+
+  /* Estados de orden */
+  --repairos-status-cyan: #00c9ff;
+  --repairos-status-amber: #ffb928;
+  --repairos-status-green: #00dc82;
+  --repairos-status-red: #ff5050;
+  --repairos-status-violet: #8b5cf6;
+  --repairos-status-violet-light: #c4b5fd;
+  --repairos-status-pink: #f472b6;
+
+  /* Overrides de variables de Bootstrap 5.3 */
+  --bs-primary: var(--repairos-cyan-core);
+  --bs-primary-rgb: 0, 201, 255;
+  --bs-link-color: var(--repairos-cyan-core);
+  --bs-link-hover-color: var(--repairos-cyan-deep);
+  --bs-link-color-rgb: 0, 201, 255;
+  --bs-link-hover-color-rgb: 0, 123, 175;
+  --bs-body-bg: var(--repairos-abyss);
+  --bs-body-color: var(--repairos-snow);
+  --bs-border-color: var(--repairos-border);
+  --bs-emphasis-color: var(--repairos-snow);
+  --bs-secondary-color: var(--repairos-muted);
+}
+
+body {
+  background-color: var(--repairos-abyss);
+  color: var(--repairos-snow);
+  font-family:
+    'Space Grotesk',
+    system-ui,
+    -apple-system,
+    sans-serif;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.navbar-brand {
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 700;
+}
+
+/* Identificadores técnicos: números de orden, modelos, series, códigos */
+.font-mono {
+  font-family: 'DM Mono', ui-monospace, monospace;
+  letter-spacing: 0.02em;
+}
+
+a {
+  color: var(--repairos-cyan-core);
+}
+a:hover {
+  color: var(--repairos-cyan-deep);
+}
+
+.text-muted {
+  color: var(--repairos-muted) !important;
+}
+
+/* ---------- Navbar ---------- */
+.navbar {
+  background-color: var(--repairos-surface) !important;
+  border-bottom: 1px solid var(--repairos-border);
+}
+.navbar .nav-link {
+  color: var(--repairos-snow) !important;
+  opacity: 0.75;
+}
+.navbar .nav-link.active,
+.navbar .nav-link:hover {
+  opacity: 1;
+  color: var(--repairos-cyan-core) !important;
+}
+
+/* ---------- Cards / Paneles ---------- */
+.card {
+  background-color: var(--repairos-surface);
+  border: 1px solid var(--repairos-border);
+  color: var(--repairos-snow);
+}
+.card-header {
+  background-color: var(--repairos-surface-alt);
+  border-bottom: 1px solid var(--repairos-border);
+}
+
+/* ---------- Tablas ---------- */
+.table {
+  --bs-table-bg: var(--repairos-surface);
+  --bs-table-color: var(--repairos-snow);
+  --bs-table-striped-bg: var(--repairos-surface-alt);
+  --bs-table-striped-color: var(--repairos-snow);
+  --bs-table-hover-bg: var(--repairos-surface-alt);
+  --bs-table-hover-color: var(--repairos-snow);
+  --bs-table-border-color: var(--repairos-border);
+}
+
+/* ---------- Modales ---------- */
+.modal-content {
+  background-color: var(--repairos-surface);
+  color: var(--repairos-snow);
+  border: 1px solid var(--repairos-border);
+}
+.modal-header,
+.modal-footer {
+  border-color: var(--repairos-border);
+}
+.btn-close {
+  filter: invert(1) grayscale(100%) brightness(200%);
+}
+
+/* ---------- Formularios ---------- */
+.form-control,
+.form-select {
+  background-color: var(--repairos-surface-alt);
+  border-color: var(--repairos-border);
+  color: var(--repairos-snow);
+}
+.form-control:focus,
+.form-select:focus {
+  background-color: var(--repairos-surface-alt);
+  border-color: var(--repairos-cyan-core);
+  color: var(--repairos-snow);
+  box-shadow: 0 0 0 0.2rem rgba(0, 201, 255, 0.25);
+}
+.form-control::placeholder {
+  color: var(--repairos-muted);
+}
+.form-control:disabled,
+.form-select:disabled {
+  background-color: var(--repairos-surface);
+  color: var(--repairos-muted);
+}
+.form-label {
+  color: var(--repairos-snow);
+}
+.form-check-input {
+  background-color: var(--repairos-surface-alt);
+  border-color: var(--repairos-border);
+}
+
+/* ---------- Botones ---------- */
+.btn-primary {
+  --bs-btn-color: #04121a;
+  --bs-btn-bg: var(--repairos-cyan-core);
+  --bs-btn-border-color: var(--repairos-cyan-core);
+  --bs-btn-hover-color: #fff;
+  --bs-btn-hover-bg: var(--repairos-cyan-deep);
+  --bs-btn-hover-border-color: var(--repairos-cyan-deep);
+  --bs-btn-active-color: #fff;
+  --bs-btn-active-bg: var(--repairos-cyan-deep);
+  --bs-btn-active-border-color: var(--repairos-cyan-deep);
+  font-weight: 500;
+}
+.btn-outline-light {
+  --bs-btn-color: var(--repairos-snow);
+  --bs-btn-border-color: var(--repairos-border);
+  --bs-btn-hover-bg: var(--repairos-surface-alt);
+  --bs-btn-hover-border-color: var(--repairos-border);
+}
+.btn-outline-secondary {
+  --bs-btn-color: var(--repairos-snow);
+  --bs-btn-border-color: var(--repairos-border);
+  --bs-btn-hover-bg: var(--repairos-surface-alt);
+  --bs-btn-hover-color: var(--repairos-snow);
+}
+
+/* ---------- Badges de estado ---------- */
+.badge {
+  font-family: 'DM Mono', ui-monospace, monospace;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-weight: 500;
+  font-size: 0.72em;
+}
+.badge-cyan {
+  background-color: var(--repairos-status-cyan) !important;
+  color: #04121a !important;
+}
+.badge-amber {
+  background-color: var(--repairos-status-amber) !important;
+  color: #241600 !important;
+}
+.badge-green {
+  background-color: var(--repairos-status-green) !important;
+  color: #012616 !important;
+}
+.badge-red {
+  background-color: var(--repairos-status-red) !important;
+  color: #2a0000 !important;
+}
+.badge-violet {
+  background-color: var(--repairos-status-violet) !important;
+  color: #fff !important;
+}
+.badge-violet-light {
+  background-color: var(--repairos-status-violet-light) !important;
+  color: #241246 !important;
+}
+.badge-pink {
+  background-color: var(--repairos-status-pink) !important;
+  color: #3a0620 !important;
+}
+
+/* ---------- Alerts ---------- */
+.alert {
+  border: 1px solid transparent;
+}
+
+/* ---------- Listas ---------- */
+.list-group-item {
+  background-color: var(--repairos-surface);
+  border-color: var(--repairos-border);
+  color: var(--repairos-snow);
+}
