@@ -1,0 +1,16 @@
+{
+  "name": "repairos",
+  "private": true,
+  "description": "RepairOS — gestión para talleres de reparación. Atajos para trabajar con backend y frontend desde la raíz.",
+  "scripts": {
+    "install:all": "npm --prefix backend install && npm --prefix frontend install",
+    "dev:backend": "npm --prefix backend run dev",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "check": "npm --prefix backend run check && npm --prefix frontend run check",
+    "build": "npm --prefix backend run build && npm --prefix frontend run build",
+    "format": "npm --prefix backend run format && npm --prefix frontend run format"
+  },
+  "engines": {
+    "node": ">=20.9.0"
+  }
+}

@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Política de Privacidad · RepairOS</title>
+    <meta name="description" content="Qué datos personales trata RepairOS, cómo los protege y cómo ejercer los derechos de acceso, rectificación y supresión." />
+    <link rel="canonical" href="https://repairos.app/privacidad.html" />
+    <meta name="robots" content="index, follow" />
+
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta name="theme-color" content="#0A0D12" />
+
+    <meta property="og:type" content="article" />
+    <meta property="og:site_name" content="RepairOS" />
+    <meta property="og:url" content="https://repairos.app/privacidad.html" />
+    <meta property="og:title" content="Política de Privacidad · RepairOS" />
+    <meta property="og:description" content="Qué datos personales trata RepairOS, cómo los protege y cómo ejercer los derechos de acceso, rectificación y supresión." />
+    <meta property="og:locale" content="es_AR" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/legal.css" />
+  </head>
+  <body>
+    <header>
+      <nav class="wrap nav" aria-label="Principal">
+        <a class="brand" href="/">
+          <svg width="30" height="30" viewBox="0 0 40 40" fill="none" aria-hidden="true">
+            <rect x="1.5" y="1.5" width="37" height="37" rx="10" fill="#141820" stroke="#00C9FF" stroke-width="1.5" />
+            <path
+              d="M13 28V12h6.5a4.5 4.5 0 0 1 0 9H16l6.5 7"
+              stroke="#00C9FF"
+              stroke-width="2.2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+            <path d="M26 15.5l2.8-2.8" stroke="#00C9FF" stroke-width="1.4" stroke-linecap="round" />
+            <circle cx="29.5" cy="11.8" r="1.7" fill="#00C9FF" />
+          </svg>
+          Repair<span>OS</span>
+        </a>
+        <a class="volver" href="/">← Volver al inicio</a>
+      </nav>
+    </header>
+
+    <main class="wrap">
+      <h1>Política de Privacidad</h1>
+      <p class="vigencia">Última actualización: [FECHA DE VIGENCIA]</p>
+
+      <h2>1. Quiénes somos</h2>
+      <p>
+        RepairOS es un servicio de software para la gestión de talleres de reparación, operado por
+        [RAZÓN SOCIAL], CUIT [CUIT], con domicilio en [DOMICILIO LEGAL], República Argentina. En adelante,
+        «RepairOS» o «nosotros».
+      </p>
+      <p>Para cualquier consulta sobre esta política: <strong>[EMAIL DE CONTACTO]</strong>.</p>
+
+      <h2>2. Dos relaciones distintas</h2>
+      <p>Esta política cubre dos situaciones que conviene no confundir.</p>
+      <p>
+        <strong>Si sos un taller que contrata RepairOS</strong>, nosotros tratamos tus datos como
+        responsables: tu nombre, tu email, tus datos de facturación y tu actividad en el sistema.
+      </p>
+      <p>
+        <strong>Si sos cliente de un taller que usa RepairOS</strong>, tus datos fueron cargados por ese
+        taller, no por nosotros. El taller es el responsable del tratamiento: decidió qué datos pedirte y
+        para qué. Nosotros actuamos como encargados, es decir, los procesamos por cuenta del taller y
+        siguiendo sus instrucciones. <strong>Para ejercer tus derechos sobre esos datos, dirigite al taller
+        donde dejaste tu equipo.</strong> Si no lográs contactarlo, escribinos y te ayudamos a encontrar el
+        canal.
+      </p>
+
+      <h2>3. Qué datos tratamos</h2>
+
+      <h3>3.1 Datos de los talleres (somos responsables)</h3>
+      <ul>
+        <li>Identificación y contacto: nombre, apellido, email, teléfono</li>
+        <li>Datos del taller: nombre comercial, domicilio de cada sucursal</li>
+        <li>
+          Credenciales de acceso: el email y la contraseña, almacenada como hash bcrypt. No guardamos la
+          contraseña en texto plano y no podemos recuperarla.
+        </li>
+        <li>
+          Datos de uso: fecha y hora de los accesos, dirección IP en operaciones sensibles, acciones
+          realizadas dentro del sistema
+        </li>
+        <li>Datos de facturación y plan contratado</li>
+      </ul>
+
+      <h3>3.2 Datos de los clientes de los talleres (somos encargados)</h3>
+      <p>Los talleres cargan en RepairOS, según lo que cada uno decida registrar:</p>
+      <ul>
+        <li>Identificación: nombre, apellido, DNI o CUIT, fecha de nacimiento</li>
+        <li>Contacto: teléfono, email, domicilio</li>
+        <li>Datos del equipo: marca, modelo, color, número de serie</li>
+        <li>
+          <strong>Clave de desbloqueo del equipo y credenciales de cuentas vinculadas</strong> (Apple ID,
+          cuenta de Google u otras), cuando el cliente las entrega para que se pueda reparar el equipo
+        </li>
+        <li>Firma del cliente, capturada al recibir el equipo</li>
+        <li>Fotografías del equipo al ingreso y durante la reparación</li>
+        <li>Movimientos de cuenta corriente, cuando el taller la habilita</li>
+      </ul>
+
+      <h2>4. Cómo protegemos los datos sensibles</h2>
+      <p>
+        Las claves de desbloqueo, las credenciales de cuentas vinculadas y la firma del cliente se almacenan
+        <strong>cifradas con AES-256-GCM</strong>. La clave de cifrado no se guarda junto con los datos.
+      </p>
+      <p>Además:</p>
+      <ul>
+        <li>
+          Cada acceso a una clave de desbloqueo o credencial queda <strong>auditado</strong>: se registra qué
+          usuario la consultó, de qué equipo, desde qué dirección IP y en qué momento.
+        </li>
+        <li>
+          El acceso al sistema requiere autenticación, y cada usuario ve únicamente los datos del taller al
+          que pertenece.
+        </li>
+        <li>Las contraseñas de los usuarios se almacenan con hash bcrypt.</li>
+        <li>Las comunicaciones viajan cifradas por HTTPS.</li>
+      </ul>
+      <p>
+        Ninguna medida de seguridad es infalible. Si detectamos un incidente que afecte datos personales,
+        notificaremos al taller responsable sin demora injustificada.
+      </p>
+
+      <h2>5. Para qué usamos los datos</h2>
+      <p>
+        Los datos de los <strong>talleres</strong> los usamos para prestar el servicio, facturarlo, dar
+        soporte, y comunicar cambios relevantes del sistema. No los vendemos ni los cedemos con fines
+        publicitarios.
+      </p>
+      <p>
+        Los datos de los <strong>clientes de los talleres</strong> los procesamos exclusivamente para
+        prestarle el servicio al taller. No los usamos para fines propios, no los analizamos con fines
+        comerciales y no los cedemos a terceros, salvo obligación legal.
+      </p>
+
+      <h2>6. Con quién los compartimos</h2>
+      <p>Utilizamos proveedores de infraestructura que procesan datos por nuestra cuenta:</p>
+      <ul>
+        <li><strong>Hosting de la aplicación y la base de datos:</strong> [PROVEEDOR / PAÍS]</li>
+        <li><strong>Almacenamiento de imágenes:</strong> [PROVEEDOR / PAÍS]</li>
+        <li><strong>Envío de correo transaccional:</strong> [PROVEEDOR / PAÍS]</li>
+      </ul>
+      <p>
+        Si alguno de estos proveedores está radicado fuera de la Argentina, la transferencia internacional se
+        realiza conforme al art. 12 de la Ley 25.326.
+      </p>
+      <p>No vendemos datos personales a terceros bajo ninguna circunstancia.</p>
+
+      <h2>7. Cuánto tiempo los conservamos</h2>
+      <p>
+        Los datos de un taller se conservan mientras su cuenta esté activa y durante los plazos que exija la
+        normativa fiscal y comercial una vez dada de baja.
+      </p>
+      <p>
+        Los datos de los clientes de un taller se conservan mientras el taller los mantenga en el sistema. El
+        taller puede <strong>anonimizar</strong> un cliente en cualquier momento: la operación sustituye de
+        forma irreversible los datos identificatorios y elimina las claves de desbloqueo, las credenciales y
+        la firma, conservando únicamente el historial de órdenes sin vínculo con una persona identificable.
+        Esto permite atender un pedido de supresión sin destruir los registros contables que la ley obliga a
+        conservar.
+      </p>
+
+      <h2>8. Tus derechos</h2>
+      <p>
+        Como titular de los datos tenés derecho a acceder a ellos, rectificarlos cuando sean inexactos,
+        actualizarlos y solicitar su supresión.
+      </p>
+      <p>Para ejercerlos:</p>
+      <ul>
+        <li>
+          <strong>Si sos un taller cliente de RepairOS</strong>, escribinos a [EMAIL DE CONTACTO].
+        </li>
+        <li>
+          <strong>Si sos cliente de un taller</strong>, dirigite al taller donde dejaste tu equipo. Es quien
+          tiene la facultad y la obligación de responderte.
+        </li>
+      </ul>
+      <blockquote>
+        <p>
+          El titular de los datos personales tiene la facultad de ejercer el derecho de acceso a los mismos
+          en forma gratuita a intervalos no inferiores a seis meses, salvo que se acredite un interés
+          legítimo al efecto, conforme lo establecido en el artículo 14, inciso 3 de la Ley Nº 25.326.
+        </p>
+        <p>
+          La AGENCIA DE ACCESO A LA INFORMACIÓN PÚBLICA, en su carácter de Órgano de Control de la Ley Nº
+          25.326, tiene la atribución de atender las denuncias y reclamos que interpongan quienes resulten
+          afectados en sus derechos por incumplimiento de las normas vigentes en materia de protección de
+          datos personales.
+        </p>
+      </blockquote>
+
+      <h2>9. Cookies y almacenamiento local</h2>
+      <p>RepairOS no utiliza cookies de seguimiento ni herramientas de analítica de terceros.</p>
+      <p>
+        La aplicación guarda en el navegador un token de sesión, necesario para mantenerte identificado
+        mientras usás el sistema. Es almacenamiento estrictamente necesario para la prestación del servicio:
+        sin él no podrías permanecer autenticado. Se elimina al cerrar sesión.
+      </p>
+      <p>
+        La aplicación se instala como PWA y almacena archivos en el navegador para funcionar sin conexión.
+        Son archivos de la propia aplicación, no datos de clientes: la información de las órdenes siempre se
+        solicita a la red.
+      </p>
+
+      <h2>10. Menores de edad</h2>
+      <p>
+        RepairOS está dirigido a talleres y profesionales. No recolectamos deliberadamente datos de menores
+        de edad.
+      </p>
+
+      <h2>11. Cambios en esta política</h2>
+      <p>
+        Si modificamos esta política, publicaremos la nueva versión en esta misma dirección y notificaremos a
+        los talleres con cuenta activa. La fecha de última actualización encabeza este documento.
+      </p>
+    </main>
+
+    <footer>
+      <div class="wrap foot">
+        <span>© <span id="anio">2026</span> RepairOS</span>
+        <nav aria-label="Pie">
+          <a href="/privacidad.html">Privacidad</a>
+          <a href="/terminos.html">Términos</a>
+          <a href="/tratamiento-de-datos.html">Tratamiento de datos</a>
+          <a href="https://app.repairos.app">Ingresar</a>
+        </nav>
+      </div>
+    </footer>
+
+    <script>
+      document.getElementById('anio').textContent = new Date().getFullYear();
+    </script>
+  </body>
+</html>

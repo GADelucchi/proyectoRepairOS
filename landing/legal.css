@@ -1,0 +1,214 @@
+/*
+ * Estilos de las páginas legales.
+ *
+ * El landing lleva todo su CSS embebido porque es una sola página. Acá son tres
+ * documentos que comparten exactamente la misma presentación, así que el CSS va
+ * en un archivo aparte en vez de triplicado.
+ *
+ * Los tokens replican los del landing para que no se vea como otro sitio.
+ */
+
+:root {
+  --cyan: #00c9ff;
+  --abyss: #0a0d12;
+  --surface: #141820;
+  --snow: #ebecf2;
+  --border: #262e3d;
+  --muted: #8b93a7;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--abyss);
+  color: var(--snow);
+  font-family: 'Space Grotesk', system-ui, -apple-system, sans-serif;
+  font-size: 17px;
+  line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+}
+
+.wrap {
+  width: min(760px, 92vw);
+  margin-inline: auto;
+}
+
+a {
+  color: var(--cyan);
+}
+
+/* ---------- Encabezado ---------- */
+header {
+  border-bottom: 1px solid var(--border);
+  padding: 1.1rem 0;
+}
+
+.nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-weight: 700;
+  font-size: 1.15rem;
+  color: var(--snow);
+  text-decoration: none;
+  letter-spacing: -0.02em;
+}
+
+.brand span {
+  color: var(--cyan);
+}
+
+.volver {
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+
+.volver:hover {
+  color: var(--cyan);
+}
+
+/* ---------- Documento ---------- */
+main {
+  padding: clamp(2.5rem, 6vw, 4.5rem) 0 clamp(3rem, 7vw, 5rem);
+}
+
+h1 {
+  font-size: clamp(1.9rem, 4.5vw, 2.7rem);
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  margin: 0 0 0.6rem;
+}
+
+h2 {
+  font-size: 1.35rem;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  margin: 2.8rem 0 0.9rem;
+  padding-top: 1.6rem;
+  border-top: 1px solid var(--border);
+}
+
+h3 {
+  font-size: 1.05rem;
+  margin: 1.8rem 0 0.6rem;
+}
+
+p {
+  margin: 0 0 1.1rem;
+}
+
+.vigencia {
+  font-family: 'DM Mono', ui-monospace, monospace;
+  font-size: 0.85rem;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  margin-bottom: 2.5rem;
+}
+
+ul,
+ol {
+  margin: 0 0 1.2rem;
+  padding-left: 1.3rem;
+}
+
+li {
+  margin-bottom: 0.5rem;
+}
+
+strong {
+  color: #fff;
+}
+
+/* Cita de la leyenda obligatoria de la Disposición 10/2008. */
+blockquote {
+  margin: 1.5rem 0;
+  padding: 1.1rem 1.4rem;
+  background: var(--surface);
+  border-left: 3px solid var(--cyan);
+  border-radius: 0 8px 8px 0;
+  color: var(--muted);
+  font-size: 0.93rem;
+  font-style: italic;
+}
+
+blockquote p:last-child {
+  margin-bottom: 0;
+}
+
+/* Las tablas de datos y subencargados deben poder scrollear en móvil. */
+.tabla-scroll {
+  overflow-x: auto;
+  margin: 0 0 1.4rem;
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.93rem;
+}
+
+th,
+td {
+  text-align: left;
+  padding: 0.6rem 0.9rem;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+
+th {
+  color: var(--muted);
+  font-weight: 500;
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+/* ---------- Pie ---------- */
+footer {
+  border-top: 1px solid var(--border);
+  padding: 2.5rem 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.foot {
+  display: flex;
+  justify-content: space-between;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.foot a {
+  color: var(--muted);
+  text-decoration: none;
+  margin-left: 1.5rem;
+}
+
+.foot a:hover {
+  color: var(--cyan);
+}
+
+.foot nav a:first-child {
+  margin-left: 0;
+}
+
+:focus-visible {
+  outline: 2px solid var(--cyan);
+  outline-offset: 3px;
+}

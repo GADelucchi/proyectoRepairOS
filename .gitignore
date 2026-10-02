@@ -42,21 +42,27 @@ yarn-error.log*
 # ---- Entorno / secretos ----
 .env
 .env.*
-.env.example
+# Las plantillas sí se versionan: documentan qué variables hacen falta.
+!.env.example
 *.pem
 *.key
 *.p12
 
 # ---- Datos subidos por usuarios ----
-*/uploads
+backend/uploads/*
+!backend/uploads/.gitkeep
 /docs
 
 # ---- Cobertura / tests ----
 coverage/
 .nyc_output/
 
-# ---- Temporales ----
+# ---- Temporales / respaldos locales ----
+_respaldo-*.tgz
+_work.tgz
 *.bak
 *.tmp
 *.orig
 .cache/
+
+.
