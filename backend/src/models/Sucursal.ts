@@ -1,4 +1,5 @@
-import { DataTypes, Model, Optional, Sequelize } from 'sequelize';
+import { DataTypes, Model, NonAttribute, Optional, Sequelize } from 'sequelize';
+import type { User } from './User';
 
 export interface SucursalAttributes {
   id: number;
@@ -20,14 +21,16 @@ export class Sucursal
   extends Model<SucursalAttributes, SucursalCreationAttributes>
   implements SucursalAttributes
 {
-  public id!: number;
-  public tallerId!: number;
-  public nombre!: string;
-  public direccion!: string | null;
-  public telefono!: string | null;
-  public activo!: boolean;
-  public readonly createdAt!: Date;
-  public readonly updatedAt!: Date;
+  declare id: number;
+  declare tallerId: number;
+  declare nombre: string;
+  declare direccion: string | null;
+  declare telefono: string | null;
+  declare activo: boolean;
+  declare readonly createdAt: Date;
+  declare readonly updatedAt: Date;
+
+  declare usuarios?: NonAttribute<User[]>;
 
   static initModel(sequelize: Sequelize): typeof Sucursal {
     Sucursal.init(

@@ -12,9 +12,9 @@ export class UsuarioSucursal
   extends Model<UsuarioSucursalAttributes, UsuarioSucursalCreationAttributes>
   implements UsuarioSucursalAttributes
 {
-  public id!: number;
-  public usuarioId!: number;
-  public sucursalId!: number;
+  declare id: number;
+  declare usuarioId: number;
+  declare sucursalId: number;
 
   static initModel(sequelize: Sequelize): typeof UsuarioSucursal {
     UsuarioSucursal.init(

@@ -1,4 +1,5 @@
-import { DataTypes, Model, Optional, Sequelize } from 'sequelize';
+import { DataTypes, Model, NonAttribute, Optional, Sequelize } from 'sequelize';
+import type { User } from './User';
 
 export interface OrdenHistorialEstadoAttributes {
   id: number;
@@ -19,13 +20,15 @@ export class OrdenHistorialEstado
   extends Model<OrdenHistorialEstadoAttributes, OrdenHistorialEstadoCreationAttributes>
   implements OrdenHistorialEstadoAttributes
 {
-  public id!: number;
-  public ordenId!: number;
-  public estadoAnterior!: string | null;
-  public estadoNuevo!: string;
-  public usuarioId!: number;
-  public comentario!: string | null;
-  public readonly createdAt!: Date;
+  declare id: number;
+  declare ordenId: number;
+  declare estadoAnterior: string | null;
+  declare estadoNuevo: string;
+  declare usuarioId: number;
+  declare comentario: string | null;
+  declare readonly createdAt: Date;
+
+  declare usuario?: NonAttribute<User>;
 
   static initModel(sequelize: Sequelize): typeof OrdenHistorialEstado {
     OrdenHistorialEstado.init(

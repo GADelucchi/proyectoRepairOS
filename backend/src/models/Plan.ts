@@ -35,17 +35,17 @@ export type PlanCreationAttributes = Optional<
 >;
 
 export class Plan extends Model<PlanAttributes, PlanCreationAttributes> implements PlanAttributes {
-  public id!: number;
-  public codigo!: string;
-  public nombre!: string;
-  public descripcion!: string | null;
-  public precioMensual!: number | null;
-  public maxSucursales!: number | null;
-  public maxUsuarios!: number | null;
-  public activo!: boolean;
-  public orden!: number;
-  public readonly createdAt!: Date;
-  public readonly updatedAt!: Date;
+  declare id: number;
+  declare codigo: string;
+  declare nombre: string;
+  declare descripcion: string | null;
+  declare precioMensual: number | null;
+  declare maxSucursales: number | null;
+  declare maxUsuarios: number | null;
+  declare activo: boolean;
+  declare orden: number;
+  declare readonly createdAt: Date;
+  declare readonly updatedAt: Date;
 
   static initModel(sequelize: Sequelize): typeof Plan {
     Plan.init(

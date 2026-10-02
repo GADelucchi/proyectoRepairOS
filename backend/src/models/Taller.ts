@@ -20,11 +20,11 @@ export type TallerCreationAttributes = Optional<
 >;
 
 export class Taller extends Model<TallerAttributes, TallerCreationAttributes> implements TallerAttributes {
-  public id!: number;
-  public nombre!: string;
-  public activo!: boolean;
-  public readonly createdAt!: Date;
-  public readonly updatedAt!: Date;
+  declare id: number;
+  declare nombre: string;
+  declare activo: boolean;
+  declare readonly createdAt: Date;
+  declare readonly updatedAt: Date;
 
   static initModel(sequelize: Sequelize): typeof Taller {
     Taller.init(

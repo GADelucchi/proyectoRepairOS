@@ -1,8 +1,13 @@
-import { DataTypes, Model, Optional, Sequelize } from 'sequelize';
+import { DataTypes, Model, NonAttribute, Optional, Sequelize } from 'sequelize';
+import type { Cliente } from './Cliente';
+import type { Orden } from './Orden';
 import { MedioPago } from './CuentaMovimiento';
 
-export type TipoSolicitud = 'fiado' | 'ajuste';
-export type EstadoSolicitud = 'pendiente' | 'aprobada' | 'rechazada' | 'cancelada';
+export const TIPOS_SOLICITUD = ['fiado', 'ajuste'] as const;
+export type TipoSolicitud = (typeof TIPOS_SOLICITUD)[number];
+
+export const ESTADOS_SOLICITUD = ['pendiente', 'aprobada', 'rechazada', 'cancelada'] as const;
+export type EstadoSolicitud = (typeof ESTADOS_SOLICITUD)[number];
 
 /** Lo que hace falta para ejecutar la entrega cuando se aprueba el fiado. */
 export interface DatosFiado {
@@ -63,31 +68,34 @@ export class Solicitud
   extends Model<SolicitudAttributes, SolicitudCreationAttributes>
   implements SolicitudAttributes
 {
-  public id!: number;
-  public tallerId!: number;
-  public tipo!: TipoSolicitud;
-  public estado!: EstadoSolicitud;
-  public clienteId!: number;
-  public ordenId!: number | null;
-  public sucursalId!: number | null;
-  public solicitanteId!: number;
-  public resueltoPorId!: number | null;
-  public monto!: string;
-  public datos!: DatosFiado | DatosAjuste | null;
-  public motivo!: string;
-  public respuesta!: string | null;
-  public resueltoEn!: Date | null;
-  public readonly createdAt!: Date;
-  public readonly updatedAt!: Date;
+  declare id: number;
+  declare tallerId: number;
+  declare tipo: TipoSolicitud;
+  declare estado: EstadoSolicitud;
+  declare clienteId: number;
+  declare ordenId: number | null;
+  declare sucursalId: number | null;
+  declare solicitanteId: number;
+  declare resueltoPorId: number | null;
+  declare monto: string;
+  declare datos: DatosFiado | DatosAjuste | null;
+  declare motivo: string;
+  declare respuesta: string | null;
+  declare resueltoEn: Date | null;
+  declare readonly createdAt: Date;
+  declare readonly updatedAt: Date;
+
+  declare cliente?: NonAttribute<Cliente>;
+  declare orden?: NonAttribute<Orden | null>;
 
   static initModel(sequelize: Sequelize): typeof Solicitud {
     Solicitud.init(
       {
         id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
         tallerId: { type: DataTypes.INTEGER, allowNull: false, field: 'taller_id' },
-        tipo: { type: DataTypes.ENUM('fiado', 'ajuste'), allowNull: false },
+        tipo: { type: DataTypes.ENUM(...TIPOS_SOLICITUD), allowNull: false },
         estado: {
-          type: DataTypes.ENUM('pendiente', 'aprobada', 'rechazada', 'cancelada'),
+          type: DataTypes.ENUM(...ESTADOS_SOLICITUD),
           allowNull: false,
           defaultValue: 'pendiente'
         },

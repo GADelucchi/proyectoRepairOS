@@ -16,7 +16,7 @@ export default tseslint.config(
     },
     rules: {
       '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
-      '@typescript-eslint/no-explicit-any': 'warn',
+      '@typescript-eslint/no-explicit-any': 'error',
       'no-console': 'off',
       eqeqeq: ['error', 'smart'],
       'prefer-const': 'error'
@@ -25,13 +25,7 @@ export default tseslint.config(
   // Las migraciones, los seeders, la config de sequelize-cli y los scripts de
   // mantenimiento de la base son CommonJS.
   {
-    files: [
-      'src/database/migrations/**/*.js',
-      'src/database/seeders/**/*.js',
-      'src/database/config/*.js',
-      'src/database/demo/*.js',
-      'src/database/*.js'
-    ],
+    files: ['src/database/**/*.js', '.sequelizerc'],
     languageOptions: {
       globals: globals.node,
       parserOptions: { ecmaVersion: 2022, sourceType: 'commonjs' }

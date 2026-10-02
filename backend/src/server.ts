@@ -1,7 +1,6 @@
 import { app } from './app';
 import { env } from './config/env';
 import { connectDatabase } from './config/database';
-import './models';
 
 async function start(): Promise<void> {
   await connectDatabase();

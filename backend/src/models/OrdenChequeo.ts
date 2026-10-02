@@ -34,14 +34,14 @@ export class OrdenChequeo
   extends Model<OrdenChequeoAttributes, OrdenChequeoCreationAttributes>
   implements OrdenChequeoAttributes
 {
-  public id!: number;
-  public ordenId!: number;
-  public item!: string;
-  public resultado!: string | null;
-  public opciones!: OpcionChequeo[];
-  public orden!: number;
-  public readonly createdAt!: Date;
-  public readonly updatedAt!: Date;
+  declare id: number;
+  declare ordenId: number;
+  declare item: string;
+  declare resultado: string | null;
+  declare opciones: OpcionChequeo[];
+  declare orden: number;
+  declare readonly createdAt: Date;
+  declare readonly updatedAt: Date;
 
   static initModel(sequelize: Sequelize): typeof OrdenChequeo {
     OrdenChequeo.init(

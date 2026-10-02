@@ -1,4 +1,5 @@
-import { DataTypes, Model, Optional, Sequelize } from 'sequelize';
+import { DataTypes, Model, NonAttribute, Optional, Sequelize } from 'sequelize';
+import type { Plan } from './Plan';
 
 export type EstadoSuscripcion = 'prueba' | 'activa' | 'vencida' | 'cancelada';
 
@@ -28,14 +29,16 @@ export class Suscripcion
   extends Model<SuscripcionAttributes, SuscripcionCreationAttributes>
   implements SuscripcionAttributes
 {
-  public id!: number;
-  public tallerId!: number;
-  public planId!: number | null;
-  public estado!: EstadoSuscripcion;
-  public graciaHasta!: string;
-  public periodoFin!: string | null;
-  public readonly createdAt!: Date;
-  public readonly updatedAt!: Date;
+  declare id: number;
+  declare tallerId: number;
+  declare planId: number | null;
+  declare estado: EstadoSuscripcion;
+  declare graciaHasta: string;
+  declare periodoFin: string | null;
+  declare readonly createdAt: Date;
+  declare readonly updatedAt: Date;
+
+  declare plan?: NonAttribute<Plan | null>;
 
   static initModel(sequelize: Sequelize): typeof Suscripcion {
     Suscripcion.init(

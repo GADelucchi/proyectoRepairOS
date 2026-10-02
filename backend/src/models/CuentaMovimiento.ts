@@ -10,10 +10,8 @@ import { DataTypes, Model, Optional, Sequelize } from 'sequelize';
  *   admin. No es plata que se movió, y por eso los informes de caja no la
  *   cuentan como cobro.
  */
-export type TipoMovimiento = 'cargo' | 'pago' | 'ajuste_debito' | 'ajuste_credito';
-
-/** Los que suman deuda, para armar el saldo y separar la plata real. */
-export const TIPOS_QUE_SUMAN: TipoMovimiento[] = ['cargo', 'ajuste_debito'];
+export const TIPOS_MOVIMIENTO = ['cargo', 'pago', 'ajuste_debito', 'ajuste_credito'] as const;
+export type TipoMovimiento = (typeof TIPOS_MOVIMIENTO)[number];
 
 /** Medios con los que puede entrar la plata. `otro` cubre lo que no encaje. */
 export const MEDIOS_PAGO = ['efectivo', 'transferencia', 'tarjeta', 'otro'] as const;
@@ -49,19 +47,19 @@ export class CuentaMovimiento
   extends Model<CuentaMovimientoAttributes, CuentaMovimientoCreationAttributes>
   implements CuentaMovimientoAttributes
 {
-  public id!: number;
-  public tallerId!: number;
-  public clienteId!: number;
-  public ordenId!: number | null;
-  public sucursalId!: number | null;
-  public usuarioId!: number;
-  public tipo!: TipoMovimiento;
+  declare id: number;
+  declare tallerId: number;
+  declare clienteId: number;
+  declare ordenId: number | null;
+  declare sucursalId: number | null;
+  declare usuarioId: number;
+  declare tipo: TipoMovimiento;
   // Sequelize devuelve DECIMAL como string para no perder precisión en el camino.
-  public monto!: string;
-  public medioPago!: MedioPago | null;
-  public nota!: string | null;
-  public readonly createdAt!: Date;
-  public readonly updatedAt!: Date;
+  declare monto: string;
+  declare medioPago: MedioPago | null;
+  declare nota: string | null;
+  declare readonly createdAt: Date;
+  declare readonly updatedAt: Date;
 
   static initModel(sequelize: Sequelize): typeof CuentaMovimiento {
     CuentaMovimiento.init(
@@ -73,7 +71,7 @@ export class CuentaMovimiento
         sucursalId: { type: DataTypes.INTEGER, allowNull: true, field: 'sucursal_id' },
         usuarioId: { type: DataTypes.INTEGER, allowNull: false, field: 'usuario_id' },
         tipo: {
-          type: DataTypes.ENUM('cargo', 'pago', 'ajuste_debito', 'ajuste_credito'),
+          type: DataTypes.ENUM(...TIPOS_MOVIMIENTO),
           allowNull: false
         },
         monto: { type: DataTypes.DECIMAL(12, 2), allowNull: false },

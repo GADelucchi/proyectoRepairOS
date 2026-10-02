@@ -25,13 +25,13 @@ export class TipoEquipoPersonalizado
   extends Model<TipoEquipoPersonalizadoAttributes, TipoEquipoPersonalizadoCreationAttributes>
   implements TipoEquipoPersonalizadoAttributes
 {
-  public id!: number;
-  public nombre!: string;
-  public usuarioId!: number | null;
-  public sucursalId!: number;
-  public activo!: boolean;
-  public readonly createdAt!: Date;
-  public readonly updatedAt!: Date;
+  declare id: number;
+  declare nombre: string;
+  declare usuarioId: number | null;
+  declare sucursalId: number;
+  declare activo: boolean;
+  declare readonly createdAt: Date;
+  declare readonly updatedAt: Date;
 
   static initModel(sequelize: Sequelize): typeof TipoEquipoPersonalizado {
     TipoEquipoPersonalizado.init(

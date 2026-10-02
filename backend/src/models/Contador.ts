@@ -14,10 +14,10 @@ export class Contador
   extends Model<ContadorAttributes, ContadorCreationAttributes>
   implements ContadorAttributes
 {
-  public clave!: string;
-  public valor!: number;
-  public readonly createdAt!: Date;
-  public readonly updatedAt!: Date;
+  declare clave: string;
+  declare valor: number;
+  declare readonly createdAt: Date;
+  declare readonly updatedAt: Date;
 
   static initModel(sequelize: Sequelize): typeof Contador {
     Contador.init(

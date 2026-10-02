@@ -19,13 +19,13 @@ export class OrdenImagen
   extends Model<OrdenImagenAttributes, OrdenImagenCreationAttributes>
   implements OrdenImagenAttributes
 {
-  public id!: number;
-  public ordenId!: number;
-  public url!: string;
-  public storageKey!: string;
-  public descripcion!: string | null;
-  public readonly createdAt!: Date;
-  public readonly updatedAt!: Date;
+  declare id: number;
+  declare ordenId: number;
+  declare url: string;
+  declare storageKey: string;
+  declare descripcion: string | null;
+  declare readonly createdAt: Date;
+  declare readonly updatedAt: Date;
 
   static initModel(sequelize: Sequelize): typeof OrdenImagen {
     OrdenImagen.init(

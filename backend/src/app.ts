@@ -4,15 +4,16 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import path from 'path';
 import { env } from './config/env';
-import routes from './routes';
-import { errorHandler, notFoundHandler } from './middlewares/errorHandler';
-import { limitadorGeneral } from './middlewares/rateLimit';
+import { apiRoutes } from './routes';
+import { errorHandler, notFoundHandler } from './shared/http/error-handler';
+import { limitadorGeneral } from './shared/middlewares/rate-limit.middleware';
+import './models';
 
 export const app = express();
 
 // Detrás de un proxy (Nginx, Railway, Render) hace falta para que req.ip sea la
 // IP real del cliente y no la del proxy: sin esto el rate limiting es inútil.
-if (env.nodeEnv === 'production') {
+if (env.esProduccion) {
   app.set('trust proxy', 1);
 }
 
@@ -34,7 +35,7 @@ app.use(
       }
     },
     crossOriginResourcePolicy: { policy: 'cross-origin' },
-    hsts: env.nodeEnv === 'production' ? { maxAge: 31536000, includeSubDomains: true } : false
+    hsts: env.esProduccion ? { maxAge: 31536000, includeSubDomains: true } : false
   })
 );
 
@@ -44,7 +45,7 @@ app.use(
     credentials: true
   })
 );
-app.use(morgan(env.nodeEnv === 'production' ? 'combined' : 'dev'));
+app.use(morgan(env.esProduccion ? 'combined' : 'dev'));
 app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ extended: true, limit: '5mb' }));
 
@@ -54,7 +55,7 @@ if (env.storage.driver === 'local') {
   app.use('/uploads', express.static(path.resolve(process.cwd(), env.storage.local.uploadsDir)));
 }
 
-app.use('/api', limitadorGeneral, routes);
+app.use('/api', limitadorGeneral, apiRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

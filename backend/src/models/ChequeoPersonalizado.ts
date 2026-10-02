@@ -1,5 +1,6 @@
 import { DataTypes, Model, Optional, Sequelize } from 'sequelize';
 import { OpcionChequeo } from './TipoEquipoPersonalizado';
+import { OPCIONES_CHEQUEO_POR_DEFECTO } from './OrdenChequeo';
 
 export interface ChequeoPersonalizadoAttributes {
   id?: number;
@@ -20,13 +21,13 @@ export class ChequeoPersonalizado
   extends Model<ChequeoPersonalizadoAttributes, ChequeoPersonalizadoCreationAttributes>
   implements ChequeoPersonalizadoAttributes
 {
-  public id!: number;
-  public tipoEquipoPersonalizadoId!: number;
-  public texto!: string;
-  public opciones!: OpcionChequeo[];
-  public orden!: number;
-  public readonly createdAt!: Date;
-  public readonly updatedAt!: Date;
+  declare id: number;
+  declare tipoEquipoPersonalizadoId: number;
+  declare texto: string;
+  declare opciones: OpcionChequeo[];
+  declare orden: number;
+  declare readonly createdAt: Date;
+  declare readonly updatedAt: Date;
 
   static initModel(sequelize: Sequelize): typeof ChequeoPersonalizado {
     ChequeoPersonalizado.init(
@@ -41,7 +42,7 @@ export class ChequeoPersonalizado
         opciones: {
           type: DataTypes.JSON,
           allowNull: false,
-          defaultValue: [{ etiqueta: 'Sí' }, { etiqueta: 'No' }, { etiqueta: 'Sin revisar' }]
+          defaultValue: OPCIONES_CHEQUEO_POR_DEFECTO
         },
         orden: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 }
       },

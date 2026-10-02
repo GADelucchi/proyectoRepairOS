@@ -11,15 +11,19 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "format": "prettier --write \"src/**/*.{ts,js,json}\"",
-    "format:check": "prettier --check \"src/**/*.{ts,js,json}\"",
+    "format": "prettier --write \"src/**/*.{ts,js}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,js}\"",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "check": "npm run typecheck && npm run lint && npm test",
+    "db:init": "ts-node src/database/scripts/init-db.ts",
+    "db:init:seed": "ts-node src/database/scripts/init-db.ts --seed",
     "db:migrate": "sequelize-cli db:migrate",
     "db:migrate:undo": "sequelize-cli db:migrate:undo",
     "db:seed": "sequelize-cli db:seed:all",
     "db:seed:undo": "sequelize-cli db:seed:undo:all",
-    "db:init": "ts-node src/database/initDb.ts",
-    "db:init:seed": "ts-node src/database/initDb.ts --seed",
-    "keys:rotate": "ts-node src/database/rotateEncryptionKey.ts"
+    "demo:reset": "node src/database/scripts/reset-demo.js",
+    "keys:rotate": "ts-node src/database/scripts/rotate-encryption-key.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.600.0",
@@ -36,7 +40,6 @@
     "pdfkit": "^0.15.0",
     "resend": "^3.4.0",
     "sequelize": "^6.37.3",
-    "uuid": "^11.0.0",
     "zod": "^3.23.8"
   },
   "devDependencies": {
@@ -57,7 +60,8 @@
     "ts-node": "^10.9.2",
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.5.2",
-    "typescript-eslint": "^8.69.0"
+    "typescript-eslint": "^8.69.0",
+    "vitest": "^3.2.7"
   },
   "engines": {
     "node": ">=20.9.0"

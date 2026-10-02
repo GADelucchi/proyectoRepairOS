@@ -76,6 +76,9 @@ Cliente.hasMany(Equipo, { foreignKey: 'clienteId', as: 'equipos' });
 Equipo.belongsTo(Cliente, { foreignKey: 'clienteId', as: 'cliente' });
 
 // Orden
+Taller.hasMany(Orden, { foreignKey: 'tallerId', as: 'ordenes' });
+Orden.belongsTo(Taller, { foreignKey: 'tallerId', as: 'taller' });
+
 Cliente.hasMany(Orden, { foreignKey: 'clienteId', as: 'ordenes' });
 Orden.belongsTo(Cliente, { foreignKey: 'clienteId', as: 'cliente' });
 

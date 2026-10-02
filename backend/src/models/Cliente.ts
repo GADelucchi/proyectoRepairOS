@@ -13,6 +13,7 @@ export interface ClienteAttributes {
   esGremio?: boolean | null;
   nombreGremio?: string | null;
   cuentaCorrienteHabilitada: boolean;
+  anonimizadoEn?: Date | null;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -28,6 +29,7 @@ export type ClienteCreationAttributes = Optional<
   | 'esGremio'
   | 'nombreGremio'
   | 'cuentaCorrienteHabilitada'
+  | 'anonimizadoEn'
   | 'createdAt'
   | 'updatedAt'
 >;
@@ -36,20 +38,22 @@ export class Cliente
   extends Model<ClienteAttributes, ClienteCreationAttributes>
   implements ClienteAttributes
 {
-  public id!: number;
-  public tallerId!: number;
-  public nombre!: string;
-  public apellido!: string;
-  public dniCuit!: string | null;
-  public telefono!: string | null;
-  public email!: string | null;
-  public fechaNacimiento!: string | null;
-  public direccion!: string | null;
-  public esGremio!: boolean | null;
-  public nombreGremio!: string | null;
-  public cuentaCorrienteHabilitada!: boolean;
-  public readonly createdAt!: Date;
-  public readonly updatedAt!: Date;
+  declare id: number;
+  declare tallerId: number;
+  declare nombre: string;
+  declare apellido: string;
+  declare dniCuit: string | null;
+  declare telefono: string | null;
+  declare email: string | null;
+  declare fechaNacimiento: string | null;
+  declare direccion: string | null;
+  declare esGremio: boolean | null;
+  declare nombreGremio: string | null;
+  declare cuentaCorrienteHabilitada: boolean;
+  /** Fecha en que se ejerció el derecho de supresión. Null si el cliente está intacto. */
+  declare anonimizadoEn: Date | null;
+  declare readonly createdAt: Date;
+  declare readonly updatedAt: Date;
 
   static initModel(sequelize: Sequelize): typeof Cliente {
     Cliente.init(
@@ -70,7 +74,8 @@ export class Cliente
           allowNull: false,
           defaultValue: false,
           field: 'cuenta_corriente_habilitada'
-        }
+        },
+        anonimizadoEn: { type: DataTypes.DATE, allowNull: true, field: 'anonimizado_en' }
       },
       {
         sequelize,

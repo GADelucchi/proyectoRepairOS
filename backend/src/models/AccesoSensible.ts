@@ -19,12 +19,12 @@ export class AccesoSensible
   extends Model<AccesoSensibleAttributes, AccesoSensibleCreationAttributes>
   implements AccesoSensibleAttributes
 {
-  public id!: number;
-  public usuarioId!: number;
-  public equipoId!: number;
-  public sucursalId!: number | null;
-  public ip!: string | null;
-  public readonly createdAt!: Date;
+  declare id: number;
+  declare usuarioId: number;
+  declare equipoId: number;
+  declare sucursalId: number | null;
+  declare ip: string | null;
+  declare readonly createdAt: Date;
 
   static initModel(sequelize: Sequelize): typeof AccesoSensible {
     AccesoSensible.init(

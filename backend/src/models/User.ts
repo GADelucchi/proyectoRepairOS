@@ -1,6 +1,9 @@
-import { DataTypes, Model, Optional, Sequelize } from 'sequelize';
+import { DataTypes, Model, NonAttribute, Optional, Sequelize } from 'sequelize';
+import type { Taller } from './Taller';
+import type { Sucursal } from './Sucursal';
 
-export type RolUsuario = 'admin' | 'tecnico';
+export const ROLES_USUARIO = ['admin', 'tecnico'] as const;
+export type RolUsuario = (typeof ROLES_USUARIO)[number];
 
 export interface UserAttributes {
   id: number;
@@ -18,16 +21,19 @@ export interface UserAttributes {
 export type UserCreationAttributes = Optional<UserAttributes, 'id' | 'activo' | 'createdAt' | 'updatedAt'>;
 
 export class User extends Model<UserAttributes, UserCreationAttributes> implements UserAttributes {
-  public id!: number;
-  public tallerId!: number;
-  public nombre!: string;
-  public apellido!: string;
-  public email!: string;
-  public passwordHash!: string;
-  public rol!: RolUsuario;
-  public activo!: boolean;
-  public readonly createdAt!: Date;
-  public readonly updatedAt!: Date;
+  declare id: number;
+  declare tallerId: number;
+  declare nombre: string;
+  declare apellido: string;
+  declare email: string;
+  declare passwordHash: string;
+  declare rol: RolUsuario;
+  declare activo: boolean;
+  declare readonly createdAt: Date;
+  declare readonly updatedAt: Date;
+
+  declare taller?: NonAttribute<Taller>;
+  declare sucursales?: NonAttribute<Sucursal[]>;
 
   static initModel(sequelize: Sequelize): typeof User {
     User.init(
@@ -38,7 +44,7 @@ export class User extends Model<UserAttributes, UserCreationAttributes> implemen
         apellido: { type: DataTypes.STRING(100), allowNull: false },
         email: { type: DataTypes.STRING(150), allowNull: false, unique: true },
         passwordHash: { type: DataTypes.STRING(255), allowNull: false, field: 'password_hash' },
-        rol: { type: DataTypes.ENUM('admin', 'tecnico'), allowNull: false, defaultValue: 'tecnico' },
+        rol: { type: DataTypes.ENUM(...ROLES_USUARIO), allowNull: false, defaultValue: 'tecnico' },
         activo: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true }
       },
       {

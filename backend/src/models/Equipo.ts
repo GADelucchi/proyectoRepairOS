@@ -1,6 +1,6 @@
-import { DataTypes, Model, Optional, Sequelize } from 'sequelize';
-
-export type TipoEquipo = string;
+import { DataTypes, Model, NonAttribute, Optional, Sequelize } from 'sequelize';
+import type { Cliente } from './Cliente';
+import type { TipoEquipoPersonalizado } from './TipoEquipoPersonalizado';
 
 export interface EquipoAttributes {
   id: number;
@@ -32,19 +32,22 @@ export type EquipoCreationAttributes = Optional<
 >;
 
 export class Equipo extends Model<EquipoAttributes, EquipoCreationAttributes> implements EquipoAttributes {
-  public id!: number;
-  public tallerId!: number;
-  public clienteId!: number;
-  public tipoEquipoPersonalizadoId!: number;
-  public marca!: string | null;
-  public modelo!: string | null;
-  public color!: string | null;
-  public numeroSerie!: string;
-  public claveDesbloqueoEnc!: string | null;
-  public cuentaUsuarioEnc!: string | null;
-  public cuentaPasswordEnc!: string | null;
-  public readonly createdAt!: Date;
-  public readonly updatedAt!: Date;
+  declare id: number;
+  declare tallerId: number;
+  declare clienteId: number;
+  declare tipoEquipoPersonalizadoId: number;
+  declare marca: string | null;
+  declare modelo: string | null;
+  declare color: string | null;
+  declare numeroSerie: string;
+  declare claveDesbloqueoEnc: string | null;
+  declare cuentaUsuarioEnc: string | null;
+  declare cuentaPasswordEnc: string | null;
+  declare readonly createdAt: Date;
+  declare readonly updatedAt: Date;
+
+  declare cliente?: NonAttribute<Cliente>;
+  declare tipoEquipo?: NonAttribute<TipoEquipoPersonalizado>;
 
   static initModel(sequelize: Sequelize): typeof Equipo {
     Equipo.init(
