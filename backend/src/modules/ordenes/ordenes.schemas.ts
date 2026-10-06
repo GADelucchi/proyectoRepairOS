@@ -1,7 +1,15 @@
 import { z } from 'zod';
 import { ESTADOS_ORDEN } from '../../models/Orden';
 import { MEDIOS_PAGO } from '../../models/CuentaMovimiento';
-import { fechaIsoOpcional, idPositivo, monto } from '../../shared/validation/campos';
+import {
+  busqueda,
+  fechaIsoOpcional,
+  idEnQuery,
+  idPositivo,
+  moneda,
+  monto,
+  textoOpcional
+} from '../../shared/validation/campos';
 import { clienteSchema } from '../clientes/clientes.schemas';
 import { datosEquipoSchema } from '../equipos/equipos.schemas';
 import { opcionChequeoSchema } from '../configuracion/configuracion.schemas';
@@ -31,6 +39,8 @@ const datosOrdenSchema = z.object({
  */
 export const crearOrdenSchema = datosOrdenSchema
   .extend({
+    /** Moneda del presupuesto y del cobro. Sin indicar, la local. */
+    moneda: moneda.optional(),
     clienteId: idPositivo.optional(),
     nuevoCliente: clienteSchema.optional(),
     equipoId: idPositivo.optional(),
@@ -49,12 +59,19 @@ export const crearOrdenSchema = datosOrdenSchema
 export const actualizarOrdenSchema = datosOrdenSchema.partial();
 
 export const listarOrdenesQuery = z.object({
-  estado: z.enum(ESTADOS_ORDEN).optional()
+  estado: z.enum(ESTADOS_ORDEN).optional(),
+  /** Número de orden, serie, modelo o color del equipo, o nombre, teléfono o DNI del cliente. */
+  search: busqueda,
+  equipoId: idEnQuery.optional()
 });
+
+/** Nota para el equipo del taller: queda en el historial pero no sale en el remito. */
+const notaInterna = textoOpcional(2000);
 
 export const cambiarEstadoSchema = z.object({
   estado: z.enum(ESTADOS_ORDEN),
   comentario: z.string().trim().max(255).optional().nullable(),
+  notaInterna,
   /**
    * Solo admin: saltea la validación de transiciones cuando la realidad del
    * taller no entra en el diagrama. Exige comentario para dejar el motivo.
@@ -64,6 +81,7 @@ export const cambiarEstadoSchema = z.object({
 
 export const presupuestoSchema = z.object({
   monto: monto.optional().nullable(),
+  moneda: moneda.optional(),
   aprobado: z.boolean().optional().nullable()
 });
 
@@ -77,6 +95,7 @@ export const entregaSchema = z
     montoAbonado: monto,
     medioPago: z.enum(MEDIOS_PAGO).optional().nullable(),
     comentario: z.string().trim().max(255).optional().nullable(),
+    notaInterna,
     /** Solo admin: entregar desde un estado fuera del circuito. */
     forzar: z.boolean().optional()
   })

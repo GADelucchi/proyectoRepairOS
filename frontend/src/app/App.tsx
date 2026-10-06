@@ -26,6 +26,11 @@ const OrdenDetallePage = diferida(
 );
 const ClientesPage = diferida(() => import('@/features/clientes/pages/ClientesPage'), 'ClientesPage');
 const EquiposPage = diferida(() => import('@/features/equipos/pages/EquiposPage'), 'EquiposPage');
+const EquipoDetallePage = diferida(
+  () => import('@/features/equipos/pages/EquipoDetallePage'),
+  'EquipoDetallePage'
+);
+const EscanearQrPage = diferida(() => import('@/features/equipos/pages/EscanearQrPage'), 'EscanearQrPage');
 const CuentasPage = diferida(() => import('@/features/cuentas/pages/CuentasPage'), 'CuentasPage');
 const CajaPage = diferida(() => import('@/features/caja/pages/CajaPage'), 'CajaPage');
 const SolicitudesPage = diferida(
@@ -62,6 +67,9 @@ export function App() {
               <Route path="/ordenes/:id" element={<OrdenDetallePage />} />
               <Route path="/clientes" element={<ClientesPage />} />
               <Route path="/equipos" element={<EquiposPage />} />
+              {/* Adonde lleva el QR de la etiqueta del equipo. */}
+              <Route path="/equipos/:id" element={<EquipoDetallePage />} />
+              <Route path="/escanear" element={<EscanearQrPage />} />
               <Route path="/cuentas" element={<CuentasPage />} />
               <Route path="/caja" element={<CajaPage />} />
               <Route path="/autorizaciones" element={<SolicitudesPage />} />

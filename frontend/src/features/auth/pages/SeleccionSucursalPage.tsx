@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Alert, Button, Card, Col, Container, Row, Spinner } from 'react-bootstrap';
-import { useNavigate, useSearchParams } from 'react-router';
+import { useLocation, useNavigate, useSearchParams } from 'react-router';
 import { getApiErrorMessage } from '@/shared/api/client';
 import { useAuth } from '../useAuth';
 
@@ -12,6 +12,8 @@ export function SeleccionSucursalPage() {
   const { usuario, seleccionarSucursal, cargando, logout } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  // Si se llegó acá desde un link (por ejemplo, el QR de un equipo), se vuelve a él.
+  const destino = (useLocation().state as { from?: string } | null)?.from ?? '/ordenes';
   const [error, setError] = useState<string | null>(null);
   const [seleccionando, setSeleccionando] = useState<number | null>(null);
 
@@ -20,16 +22,16 @@ export function SeleccionSucursalPage() {
   // Si ya hay una sucursal válida elegida (y no se vino a cambiarla), no hay nada que hacer acá.
   useEffect(() => {
     if (!cargando && usuario?.sucursalActualId && !cambiandoSucursal) {
-      navigate('/ordenes', { replace: true });
+      navigate(destino, { replace: true });
     }
-  }, [cargando, usuario, cambiandoSucursal, navigate]);
+  }, [cargando, usuario, cambiandoSucursal, navigate, destino]);
 
   async function handleSeleccionar(sucursalId: number) {
     setError(null);
     setSeleccionando(sucursalId);
     try {
       await seleccionarSucursal(sucursalId);
-      navigate('/ordenes', { replace: true });
+      navigate(destino, { replace: true });
     } catch (err) {
       setError(getApiErrorMessage(err, 'No se pudo seleccionar la sucursal'));
     } finally {

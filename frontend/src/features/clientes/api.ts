@@ -10,6 +10,7 @@ export interface ClienteInput {
   email: string | null;
   fechaNacimiento: string | null;
   direccion: string | null;
+  ciudad: string | null;
   esGremio: boolean;
   nombreGremio: string | null;
   cuentaCorrienteHabilitada: boolean;

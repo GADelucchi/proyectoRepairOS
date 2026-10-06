@@ -1,13 +1,27 @@
 import { FormEvent, useState } from 'react';
-import { Alert, Badge, Button, Card, Col, Form, Modal, Row, Spinner, Table } from 'react-bootstrap';
+import {
+  Alert,
+  Badge,
+  Button,
+  Card,
+  Col,
+  Form,
+  InputGroup,
+  Modal,
+  Row,
+  Spinner,
+  Table
+} from 'react-bootstrap';
 import { Link } from 'react-router';
 import { useAuth } from '@/features/auth/useAuth';
 import { AlertaError } from '@/shared/components/AlertaError';
 import { Cargando } from '@/shared/components/Cargando';
+import { SelectorMoneda } from '@/shared/components/SelectorMoneda';
+import { MONEDA_POR_DEFECTO } from '@/shared/constants/monedas';
 import { esDebito, ETIQUETA_MEDIO_PAGO, ETIQUETA_MOVIMIENTO, MEDIOS_PAGO } from '@/shared/constants/pagos';
 import { useAccion } from '@/shared/hooks/useAccion';
 import { useConsulta } from '@/shared/hooks/useConsulta';
-import type { MedioPago } from '@/shared/types';
+import type { MedioPago, Moneda, SaldoEnMoneda } from '@/shared/types';
 import { aNumero, formatearMonto } from '@/shared/utils/dinero';
 import { formatearFechaHora } from '@/shared/utils/fechas';
 import { nombreCompleto } from '@/shared/utils/texto';
@@ -17,12 +31,19 @@ import { FormularioAjuste } from './FormularioAjuste';
 export interface DetalleCuentaModalProps {
   clienteId: number;
   onCerrar: () => void;
-  onCobrado: (nombre: string, monto: number, saldo: number) => void;
+  onCobrado: (nombre: string, monto: number, saldo: number, moneda: Moneda) => void;
   /** Un ajuste aplicado cambia el saldo, así que el listado de atrás se recarga. */
   onAjusteAplicado: () => void;
 }
 
-/** Historial de la cuenta de un cliente y el formulario para descontarle un pago. */
+/** Lo que debe en esa moneda (0 si no debe nada). */
+const deudaEn = (saldos: SaldoEnMoneda[], moneda: Moneda) =>
+  Math.max(0, saldos.find((s) => s.moneda === moneda)?.saldo ?? 0);
+
+/**
+ * Historial de la cuenta de un cliente y el formulario para descontarle un pago.
+ * Cada moneda tiene su saldo: el cobro descuenta la deuda de la moneda elegida.
+ */
 export function DetalleCuentaModal({
   clienteId,
   onCerrar,
@@ -32,6 +53,7 @@ export function DetalleCuentaModal({
   const { esAdmin } = useAuth();
   const [mensajeAjuste, setMensajeAjuste] = useState<string | null>(null);
   const [monto, setMonto] = useState('');
+  const [moneda, setMoneda] = useState<Moneda>(MONEDA_POR_DEFECTO);
   const [medioPago, setMedioPago] = useState<MedioPago>('efectivo');
   const [nota, setNota] = useState('');
 
@@ -44,8 +66,10 @@ export function DetalleCuentaModal({
   } = useConsulta(
     async () => {
       const data = await cuentasApi.obtenerCuenta(clienteId);
-      // Se propone saldar la cuenta entera, que es lo más frecuente.
-      setMonto(data.saldo > 0 ? String(data.saldo) : '');
+      // Se propone saldar la deuda entera de la primera moneda que debe, que es lo más frecuente.
+      const deudora = data.saldos.find((s) => s.saldo > 0);
+      setMoneda(deudora?.moneda ?? MONEDA_POR_DEFECTO);
+      setMonto(deudora ? String(deudora.saldo) : '');
       return data;
     },
     [clienteId],
@@ -53,9 +77,16 @@ export function DetalleCuentaModal({
   );
   const { enCurso: cobrando, ejecutar } = useAccion(setError);
 
-  const saldo = detalle?.saldo ?? 0;
+  const saldos = detalle?.saldos ?? [];
+  const monedasConDeuda = saldos.filter((s) => s.saldo > 0).map((s) => s.moneda);
+  const deuda = deudaEn(saldos, moneda);
   const montoNumero = aNumero(monto);
-  const montoValido = montoNumero > 0 && montoNumero <= saldo;
+  const montoValido = montoNumero > 0 && montoNumero <= deuda;
+
+  function elegirMoneda(nueva: Moneda) {
+    setMoneda(nueva);
+    setMonto(String(deudaEn(saldos, nueva)));
+  }
 
   async function handleCobrar(e: FormEvent) {
     e.preventDefault();
@@ -64,12 +95,13 @@ export function DetalleCuentaModal({
     const ok = await ejecutar(async () => {
       const resultado = await cuentasApi.registrarCobro(clienteId, {
         monto: montoNumero,
+        moneda,
         medioPago,
         nota: nota.trim() || null
       });
       saldoNuevo = resultado.saldo;
     }, 'No se pudo registrar el cobro');
-    if (ok) onCobrado(nombreCompleto(detalle.cliente), montoNumero, saldoNuevo);
+    if (ok) onCobrado(nombreCompleto(detalle.cliente), montoNumero, saldoNuevo, moneda);
   }
 
   return (
@@ -86,12 +118,20 @@ export function DetalleCuentaModal({
           <>
             <div className="d-flex justify-content-between align-items-center mb-3">
               <div>
-                <div className="text-muted small">{saldo < 0 ? 'Saldo a favor del cliente' : 'Saldo'}</div>
-                <div
-                  className={`fs-4 fw-semibold ${saldo > 0 ? 'text-danger' : saldo < 0 ? 'text-success' : ''}`}
-                >
-                  {formatearMonto(Math.abs(saldo))}
-                </div>
+                <div className="text-muted small">Saldo</div>
+                {saldos.length === 0 ? (
+                  <div className="fs-4 fw-semibold">{formatearMonto(0)}</div>
+                ) : (
+                  saldos.map((s) => (
+                    <div
+                      key={s.moneda}
+                      className={`fs-4 fw-semibold ${s.saldo > 0 ? 'text-danger' : 'text-success'}`}
+                    >
+                      {formatearMonto(Math.abs(s.saldo), s.moneda)}
+                      {s.saldo < 0 && <span className="fs-6 fw-normal"> a favor</span>}
+                    </div>
+                  ))
+                )}
               </div>
               {!detalle.cliente.cuentaCorrienteHabilitada && (
                 <Badge bg="warning" text="dark">
@@ -100,7 +140,7 @@ export function DetalleCuentaModal({
               )}
             </div>
 
-            {saldo > 0 ? (
+            {monedasConDeuda.length > 0 ? (
               <Card className="mb-3">
                 <Card.Header>Registrar cobro</Card.Header>
                 <Card.Body>
@@ -109,19 +149,28 @@ export function DetalleCuentaModal({
                       <Col sm={4}>
                         <Form.Group controlId="cobro-monto">
                           <Form.Label>Monto</Form.Label>
-                          <Form.Control
-                            type="number"
-                            min={0}
-                            step="0.01"
-                            value={monto}
-                            onChange={(e) => setMonto(e.target.value)}
-                            disabled={cobrando}
-                            isInvalid={monto !== '' && !montoValido}
-                            autoFocus
-                          />
-                          <Form.Control.Feedback type="invalid">
-                            Tiene que ser mayor a cero y no superar el saldo.
-                          </Form.Control.Feedback>
+                          <InputGroup hasValidation>
+                            <SelectorMoneda
+                              value={moneda}
+                              onChange={elegirMoneda}
+                              opciones={monedasConDeuda}
+                              disabled={cobrando}
+                            />
+                            <Form.Control
+                              type="number"
+                              inputMode="decimal"
+                              min={0}
+                              step="0.01"
+                              value={monto}
+                              onChange={(e) => setMonto(e.target.value)}
+                              disabled={cobrando}
+                              isInvalid={monto !== '' && !montoValido}
+                              autoFocus
+                            />
+                            <Form.Control.Feedback type="invalid">
+                              Tiene que ser mayor a cero y no superar lo que debe en {moneda}.
+                            </Form.Control.Feedback>
+                          </InputGroup>
                         </Form.Group>
                       </Col>
                       <Col sm={4}>
@@ -160,8 +209,8 @@ export function DetalleCuentaModal({
               </Card>
             ) : (
               <Alert variant="success">
-                {saldo < 0
-                  ? `El cliente tiene ${formatearMonto(Math.abs(saldo))} a favor.`
+                {saldos.length > 0
+                  ? 'El cliente no debe nada: solo tiene saldo a favor.'
                   : 'El cliente está al día.'}
               </Alert>
             )}
@@ -169,6 +218,7 @@ export function DetalleCuentaModal({
             <FormularioAjuste
               clienteId={clienteId}
               esAdmin={esAdmin}
+              monedaInicial={saldos[0]?.moneda ?? MONEDA_POR_DEFECTO}
               onListo={(aplicada) => {
                 // Un ajuste aplicado agrega un movimiento: se recarga la cuenta entera, no solo el saldo.
                 if (aplicada) {
@@ -219,9 +269,11 @@ export function DetalleCuentaModal({
                           </div>
                         )}
                       </td>
-                      <td className="text-end">{esDebito(m.tipo) ? formatearMonto(m.monto) : ''}</td>
+                      <td className="text-end">
+                        {esDebito(m.tipo) ? formatearMonto(m.monto, m.moneda) : ''}
+                      </td>
                       <td className="text-end text-success">
-                        {esDebito(m.tipo) ? '' : formatearMonto(m.monto)}
+                        {esDebito(m.tipo) ? '' : formatearMonto(m.monto, m.moneda)}
                       </td>
                     </tr>
                   ))}

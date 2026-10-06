@@ -6,6 +6,7 @@ import type { User } from './User';
 import type { OrdenChequeo } from './OrdenChequeo';
 import type { OrdenImagen } from './OrdenImagen';
 import type { OrdenHistorialEstado } from './OrdenHistorialEstado';
+import { MONEDA_POR_DEFECTO, Moneda } from '../shared/utils/dinero';
 
 export const ESTADOS_ORDEN = [
   'recibido',
@@ -36,6 +37,7 @@ export interface OrdenAttributes {
   notasInternas?: string | null;
   presupuestoMonto?: number | null;
   presupuestoAprobado?: boolean | null;
+  moneda: Moneda;
   firmaClienteUrl?: string | null;
   firmaClienteEnc?: string | null;
   firmaClienteAt?: Date | null;
@@ -58,6 +60,7 @@ export type OrdenCreationAttributes = Optional<
   | 'notasInternas'
   | 'presupuestoMonto'
   | 'presupuestoAprobado'
+  | 'moneda'
   | 'firmaClienteUrl'
   | 'firmaClienteEnc'
   | 'firmaClienteAt'
@@ -85,6 +88,8 @@ export class Orden extends Model<OrdenAttributes, OrdenCreationAttributes> imple
   declare notasInternas: string | null;
   declare presupuestoMonto: number | null;
   declare presupuestoAprobado: boolean | null;
+  /** Moneda del presupuesto y del cobro. Los movimientos que genera la orden la heredan. */
+  declare moneda: Moneda;
   /** URL pública del PNG. Solo para firmas anteriores al cifrado. */
   declare firmaClienteUrl: string | null;
   /** PNG de la firma cifrado con AES-256-GCM. Excluido del scope por defecto. */
@@ -142,6 +147,7 @@ export class Orden extends Model<OrdenAttributes, OrdenCreationAttributes> imple
           defaultValue: null,
           field: 'presupuesto_aprobado'
         },
+        moneda: { type: DataTypes.STRING(3), allowNull: false, defaultValue: MONEDA_POR_DEFECTO },
         firmaClienteUrl: { type: DataTypes.STRING(500), allowNull: true, field: 'firma_cliente_url' },
         firmaClienteEnc: { type: DataTypes.TEXT('medium'), allowNull: true, field: 'firma_cliente_enc' },
         firmaClienteAt: { type: DataTypes.DATE, allowNull: true, field: 'firma_cliente_at' },

@@ -111,6 +111,7 @@ export async function generarOrdenPdf(orden: Orden): Promise<Buffer> {
   if (cliente.telefono) dato('Teléfono', cliente.telefono);
   if (cliente.email) dato('Email', cliente.email);
   if (cliente.direccion) dato('Dirección', cliente.direccion);
+  if (cliente.ciudad) dato('Ciudad', cliente.ciudad);
   if (cliente.esGremio && cliente.nombreGremio) dato('Gremio / local', cliente.nombreGremio);
 
   // ---------- Equipo ----------
@@ -145,7 +146,7 @@ export async function generarOrdenPdf(orden: Orden): Promise<Buffer> {
   // ---------- Presupuesto ----------
   if (orden.presupuestoMonto != null) {
     seccion('Presupuesto');
-    dato('Monto', formatearMonto(orden.presupuestoMonto));
+    dato('Monto', formatearMonto(orden.presupuestoMonto, orden.moneda));
     dato(
       'Respuesta del cliente',
       orden.presupuestoAprobado === true
@@ -167,17 +168,18 @@ export async function generarOrdenPdf(orden: Orden): Promise<Buffer> {
 
     seccion('Entrega y cobro');
     if (orden.fechaEntrega) dato('Fecha de entrega', formatearFechaHora(orden.fechaEntrega));
-    dato('Total', formatearMonto(total));
-    dato('Abonado', formatearMonto(abonado));
+    dato('Total', formatearMonto(total, orden.moneda));
+    dato('Abonado', formatearMonto(abonado, orden.moneda));
     if (credito > 0) {
-      dato('Saldo a favor aplicado', formatearMonto(credito));
+      dato('Saldo a favor aplicado', formatearMonto(credito, orden.moneda));
     }
     if (adeudado > 0) {
-      dato('Saldo en cuenta corriente', formatearMonto(adeudado));
+      dato('Saldo en cuenta corriente', formatearMonto(adeudado, orden.moneda));
     }
   }
 
   // ---------- Historial ----------
+  // Solo el comentario: la nota interna de cada cambio es del taller y no se imprime.
   if (historial && historial.length > 0) {
     seccion('Historial de estados');
     historial.forEach((h) => {

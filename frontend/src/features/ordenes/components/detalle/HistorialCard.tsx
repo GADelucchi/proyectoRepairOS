@@ -24,6 +24,12 @@ export function HistorialCard({ historial }: { historial: OrdenHistorialEstado[]
                   <span className="text-muted small">{formatearFechaHora(h.createdAt)}</span>
                 </div>
                 {h.comentario && <div className="text-muted small">{h.comentario}</div>}
+                {h.notaInterna && (
+                  <div className="small mt-1 p-2 rounded bg-body-tertiary" style={{ whiteSpace: 'pre-wrap' }}>
+                    <span className="fw-semibold">Nota interna: </span>
+                    {h.notaInterna}
+                  </div>
+                )}
               </ListGroup.Item>
             ))}
           </ListGroup>

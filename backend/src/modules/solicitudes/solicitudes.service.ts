@@ -2,6 +2,7 @@ import { Transaction } from 'sequelize';
 import { sequelize, Cliente, Solicitud } from '../../models';
 import { DatosAjuste, DatosFiado, EstadoSolicitud } from '../../models/Solicitud';
 import { errores } from '../../shared/http/http-error';
+import { Moneda, montoConMoneda } from '../../shared/utils/dinero';
 import { nombreCompleto } from '../../shared/utils/texto';
 import { avisarAdmins } from '../notificaciones/notificaciones.service';
 import { bloquearCliente, registrarAjuste, saldoDeCliente } from '../cuentas/cuenta-corriente.service';
@@ -24,6 +25,8 @@ interface ContextoPedido {
   sucursalId: number | null;
   cliente: Cliente;
   motivo: string;
+  /** Moneda de la deuda o del ajuste: la de la orden, en un fiado. */
+  moneda: Moneda;
 }
 
 interface PedidoFiado extends ContextoPedido {
@@ -68,6 +71,7 @@ function datosDeSolicitud(pedido: ContextoPedido) {
     clienteId: pedido.cliente.id,
     sucursalId: pedido.sucursalId,
     solicitanteId: pedido.solicitanteId,
+    moneda: pedido.moneda,
     motivo: pedido.motivo
   };
 }
@@ -92,7 +96,7 @@ export async function pedirFiado(pedido: PedidoFiado): Promise<Solicitud> {
   });
 
   await avisarAdmins(pedido.tallerId, 'Piden autorización para entregar un equipo fiado', [
-    `Piden entregar un equipo dejando ${pedido.pendiente.toFixed(2)} en cuenta corriente.`,
+    `Piden entregar un equipo dejando ${montoConMoneda(pedido.pendiente, pedido.moneda)} en cuenta corriente.`,
     `Cliente: ${nombreCompleto(pedido.cliente)}`,
     `Motivo: ${pedido.motivo}`
   ]);
@@ -117,6 +121,7 @@ export async function fiarComoAdmin(
     montoTotal: pedido.datos.montoTotal,
     montoAbonado: pedido.datos.montoAbonado,
     medioPago: pedido.datos.medioPago,
+    monedaEsperada: pedido.moneda,
     puedeForzar: false,
     autorizadoPor,
     enLaMismaTransaccion: async (transaction) => {
@@ -161,6 +166,7 @@ async function aprobarFiado(
     montoTotal: datos.montoTotal,
     montoAbonado: datos.montoAbonado,
     medioPago: datos.medioPago,
+    monedaEsperada: solicitud.moneda,
     puedeForzar: false,
     autorizadoPor: aprobadorNombre,
     enLaMismaTransaccion: async (transaction) => {
@@ -182,6 +188,7 @@ function aplicarAjuste(solicitud: Solicitud, aprobadorId: number, transaction: T
     usuarioId: aprobadorId,
     sucursalId: solicitud.sucursalId,
     monto: Number(solicitud.monto),
+    moneda: solicitud.moneda,
     nota: `Ajuste autorizado — ${solicitud.motivo}`,
     transaction
   });
@@ -203,7 +210,7 @@ export async function pedirAjuste(
     const solicitud = await Solicitud.create(base);
     const accion = pedido.direccion === 'debito' ? 'sumar' : 'descontar';
     await avisarAdmins(pedido.tallerId, 'Piden autorización para ajustar una cuenta corriente', [
-      `Piden ${accion} ${pedido.monto.toFixed(2)} en la cuenta del cliente.`,
+      `Piden ${accion} ${montoConMoneda(pedido.monto, pedido.moneda)} en la cuenta del cliente.`,
       `Cliente: ${nombreCompleto(pedido.cliente)}`,
       `Motivo: ${pedido.motivo}`
     ]);
@@ -226,7 +233,7 @@ export async function pedirAjuste(
     return creada;
   });
 
-  return { solicitud, saldo: await saldoDeCliente(pedido.tallerId, pedido.cliente.id) };
+  return { solicitud, saldo: await saldoDeCliente(pedido.tallerId, pedido.cliente.id, pedido.moneda) };
 }
 
 // ---------------------------------------------------------------------------
@@ -236,6 +243,7 @@ export async function pedirAjuste(
 /**
  * Aprueba la solicitud y ejecuta lo que pedía, en la misma operación: aprobar
  * sin ejecutar dejaría al mostrador esperando un segundo paso que nadie le avisa.
+ * Devuelve el saldo del cliente en la moneda de la solicitud.
  */
 export async function aprobar(
   solicitud: Solicitud,
@@ -255,7 +263,7 @@ export async function aprobar(
     });
   }
 
-  return saldoDeCliente(solicitud.tallerId, solicitud.clienteId);
+  return saldoDeCliente(solicitud.tallerId, solicitud.clienteId, solicitud.moneda);
 }
 
 export async function rechazarOCancelar(

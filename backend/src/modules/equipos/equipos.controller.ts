@@ -91,6 +91,8 @@ export async function crearEquipo(req: Request, res: Response): Promise<void> {
     tallerId,
     ...cifrarCredenciales({ claveDesbloqueo, cuentaUsuario, cuentaPassword })
   });
+  // Con dueño y tipo: la pantalla ofrece imprimir la etiqueta QR del equipo recién creado.
+  await equipo.reload({ include: INCLUDES });
   res.status(201).json(serializarEquipo(equipo, false));
 }
 

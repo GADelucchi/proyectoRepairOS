@@ -3,10 +3,16 @@ import { QueryTypes } from 'sequelize';
 import { sequelize, Cliente, CuentaMovimiento, Orden, User } from '../../models';
 import { errores } from '../../shared/http/http-error';
 import { paramId, sucursalIdDe, tallerIdDe, usuarioDe, esAdmin } from '../../shared/http/request-context';
-import { redondearMonto } from '../../shared/utils/dinero';
+import { MONEDA_POR_DEFECTO, Moneda, montoConMoneda, redondearMonto } from '../../shared/utils/dinero';
 import { solicitarAjusteSchema } from '../solicitudes/solicitudes.schemas';
 import { pedirAjuste } from '../solicitudes/solicitudes.service';
-import { bloquearCliente, registrarPago, saldoDeCliente, sumaSaldo } from './cuenta-corriente.service';
+import {
+  bloquearCliente,
+  registrarPago,
+  saldoDeCliente,
+  saldosDeCliente,
+  sumaSaldo
+} from './cuenta-corriente.service';
 import { listarCuentasQuery, registrarCobroSchema } from './cuentas.schemas';
 
 const LIMITE_LISTADO = 200;
@@ -26,6 +32,7 @@ interface FilaCuenta {
   apellido: string;
   telefono: string | null;
   cuenta_corriente_habilitada: number;
+  moneda: Moneda;
   saldo: string | null;
   ultimo_movimiento: string | null;
 }
@@ -37,6 +44,9 @@ interface FilaCuenta {
  *
  * El saldo se agrupa en la base: un cliente con años de historia son cientos
  * de movimientos por renglón.
+ *
+ * Hay un renglón por cliente y moneda: quien debe pesos y dólares aparece dos
+ * veces, y el total adeudado se informa por separado en cada moneda.
  */
 export async function listarCuentas(req: Request, res: Response): Promise<void> {
   const tallerId = tallerIdDe(req);
@@ -49,16 +59,21 @@ export async function listarCuentas(req: Request, res: Response): Promise<void> 
 
   const filas = await sequelize.query<FilaCuenta>(
     `SELECT c.id, c.nombre, c.apellido, c.telefono, c.cuenta_corriente_habilitada,
+            COALESCE(m.moneda, :monedaPorDefecto) AS moneda,
             COALESCE(${sumaSaldo('m')}, 0) AS saldo,
             MAX(m.created_at) AS ultimo_movimiento
        FROM clientes c
        LEFT JOIN cuenta_movimientos m ON m.cliente_id = c.id AND m.taller_id = :tallerId
       WHERE c.taller_id = :tallerId ${filtroBusqueda}
-      GROUP BY c.id, c.nombre, c.apellido, c.telefono, c.cuenta_corriente_habilitada
+      GROUP BY c.id, c.nombre, c.apellido, c.telefono, c.cuenta_corriente_habilitada,
+               COALESCE(m.moneda, :monedaPorDefecto)
      HAVING ${todos ? '(saldo <> 0 OR c.cuenta_corriente_habilitada = 1)' : 'saldo <> 0'}
       ORDER BY saldo DESC, c.apellido ASC, c.nombre ASC
       LIMIT ${LIMITE_LISTADO}`,
-    { replacements: { tallerId, busqueda: `%${search ?? ''}%` }, type: QueryTypes.SELECT }
+    {
+      replacements: { tallerId, busqueda: `%${search ?? ''}%`, monedaPorDefecto: MONEDA_POR_DEFECTO },
+      type: QueryTypes.SELECT
+    }
   );
 
   const cuentas = filas.map((f) => ({
@@ -67,15 +82,20 @@ export async function listarCuentas(req: Request, res: Response): Promise<void> 
     apellido: f.apellido,
     telefono: f.telefono,
     cuentaCorrienteHabilitada: Boolean(f.cuenta_corriente_habilitada),
+    moneda: f.moneda,
     saldo: redondearMonto(Number(f.saldo ?? 0)),
     ultimoMovimiento: f.ultimo_movimiento
   }));
 
-  const totalAdeudado = redondearMonto(cuentas.reduce((total, c) => total + Math.max(c.saldo, 0), 0));
-  res.json({ cuentas, totalAdeudado });
+  const totales = new Map<Moneda, number>();
+  for (const c of cuentas) {
+    if (c.saldo > 0) totales.set(c.moneda, redondearMonto((totales.get(c.moneda) ?? 0) + c.saldo));
+  }
+  const totalesAdeudados = [...totales].map(([moneda, total]) => ({ moneda, total }));
+  res.json({ cuentas, totalesAdeudados });
 }
 
-/** Cuenta de un cliente con sus movimientos, del más nuevo al más viejo. */
+/** Cuenta de un cliente con sus saldos por moneda y sus movimientos, del más nuevo al más viejo. */
 export async function detalleCuenta(req: Request, res: Response): Promise<void> {
   const cliente = await clienteDelTaller(req);
 
@@ -101,7 +121,7 @@ export async function detalleCuenta(req: Request, res: Response): Promise<void> 
       email: cliente.email,
       cuentaCorrienteHabilitada: cliente.cuentaCorrienteHabilitada
     },
-    saldo: await saldoDeCliente(cliente.tallerId, cliente.id),
+    saldos: await saldosDeCliente(cliente.tallerId, cliente.id),
     movimientos
   });
 }
@@ -115,15 +135,17 @@ export async function detalleCuenta(req: Request, res: Response): Promise<void> 
  */
 export async function registrarCobro(req: Request, res: Response): Promise<void> {
   const cliente = await clienteDelTaller(req);
-  const { monto, medioPago, nota } = registrarCobroSchema.parse(req.body);
+  const { monto, moneda, medioPago, nota } = registrarCobroSchema.parse(req.body);
 
   const movimiento = await sequelize.transaction(async (transaction) => {
     await bloquearCliente(cliente.id, transaction);
-    const saldo = await saldoDeCliente(cliente.tallerId, cliente.id, transaction);
+    const saldo = await saldoDeCliente(cliente.tallerId, cliente.id, moneda, transaction);
 
-    if (saldo <= 0) throw errores.conflicto('El cliente no tiene saldo pendiente');
+    if (saldo <= 0) throw errores.conflicto(`El cliente no tiene saldo pendiente en ${moneda}`);
     if (redondearMonto(monto) > saldo) {
-      throw errores.conflicto(`El cobro supera lo que debe el cliente (saldo actual: ${saldo.toFixed(2)}).`);
+      throw errores.conflicto(
+        `El cobro supera lo que debe el cliente (saldo actual: ${montoConMoneda(saldo, moneda)}).`
+      );
     }
 
     return registrarPago({
@@ -132,13 +154,14 @@ export async function registrarCobro(req: Request, res: Response): Promise<void>
       usuarioId: usuarioDe(req).userId,
       sucursalId: sucursalIdDe(req),
       monto,
+      moneda,
       medioPago: medioPago ?? null,
       nota: nota ?? null,
       transaction
     });
   });
 
-  res.status(201).json({ movimiento, saldo: await saldoDeCliente(cliente.tallerId, cliente.id) });
+  res.status(201).json({ movimiento, saldo: await saldoDeCliente(cliente.tallerId, cliente.id, moneda) });
 }
 
 /**
@@ -148,7 +171,7 @@ export async function registrarCobro(req: Request, res: Response): Promise<void>
  */
 export async function solicitarAjuste(req: Request, res: Response): Promise<void> {
   const cliente = await clienteDelTaller(req);
-  const { monto, direccion, motivo } = solicitarAjusteSchema.parse(req.body);
+  const { monto, moneda, direccion, motivo } = solicitarAjusteSchema.parse(req.body);
 
   const { solicitud, saldo } = await pedirAjuste(
     {
@@ -157,6 +180,7 @@ export async function solicitarAjuste(req: Request, res: Response): Promise<void
       sucursalId: sucursalIdDe(req),
       cliente,
       monto,
+      moneda,
       direccion,
       motivo
     },

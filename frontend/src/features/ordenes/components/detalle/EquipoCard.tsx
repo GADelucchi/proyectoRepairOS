@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Badge, Button, Card } from 'react-bootstrap';
+import { Link } from 'react-router';
 import * as equiposApi from '@/features/equipos/api';
 import { useAccion } from '@/shared/hooks/useAccion';
 import type { Equipo, Orden } from '@/shared/types';
@@ -28,7 +29,12 @@ export function EquipoCard({ orden, onError }: EquipoCardProps) {
 
   return (
     <Card className="h-100">
-      <Card.Header>Equipo</Card.Header>
+      <Card.Header className="d-flex justify-content-between align-items-center">
+        Equipo
+        <Link to={`/equipos/${orden.equipoId}`} className="small">
+          Ficha y etiqueta QR
+        </Link>
+      </Card.Header>
       <Card.Body>
         {equipo && (
           <>

@@ -2,6 +2,7 @@ import { apiClient } from '@/shared/api/client';
 import type {
   EstadoOrden,
   MedioPago,
+  Moneda,
   OpcionChequeo,
   Orden,
   OrdenChequeo,
@@ -41,11 +42,20 @@ export interface NuevaOrdenInput {
   notasInternas?: string | null;
   fechaPactada?: string | null;
   presupuestoMonto?: number | null;
+  moneda?: Moneda;
   chequeos?: ChequeoInput[];
 }
 
-export async function listarOrdenes(estado?: EstadoOrden): Promise<Orden[]> {
-  const { data } = await apiClient.get<Orden[]>('/ordenes', { params: estado ? { estado } : undefined });
+export interface FiltroOrdenes {
+  estado?: EstadoOrden;
+  /** Número de orden, serie, modelo o color del equipo, o nombre, teléfono o DNI del cliente. */
+  search?: string;
+  equipoId?: number;
+}
+
+export async function listarOrdenes(filtro: FiltroOrdenes = {}): Promise<Orden[]> {
+  const params = Object.fromEntries(Object.entries(filtro).filter(([, valor]) => valor !== undefined));
+  const { data } = await apiClient.get<Orden[]>('/ordenes', { params });
   return data;
 }
 
@@ -59,17 +69,20 @@ export async function crearOrden(input: NuevaOrdenInput): Promise<Orden> {
   return data;
 }
 
+export interface CambioEstadoInput {
+  estado: EstadoOrden;
+  /** Sale impreso en el remito. */
+  comentario?: string;
+  /** Solo para el taller: queda en el historial pero no se imprime. */
+  notaInterna?: string;
+  forzar?: boolean;
+}
+
 export async function cambiarEstadoOrden(
   id: number,
-  estado: EstadoOrden,
-  comentario?: string,
-  forzar?: boolean
+  input: CambioEstadoInput
 ): Promise<OrdenConNotificacion> {
-  const { data } = await apiClient.put<OrdenConNotificacion>(`/ordenes/${id}/estado`, {
-    estado,
-    comentario,
-    forzar
-  });
+  const { data } = await apiClient.put<OrdenConNotificacion>(`/ordenes/${id}/estado`, input);
   return data;
 }
 
@@ -78,6 +91,7 @@ export interface EntregaInput {
   montoAbonado: number;
   medioPago?: MedioPago | null;
   comentario?: string | null;
+  notaInterna?: string | null;
   forzar?: boolean;
 }
 
@@ -124,7 +138,7 @@ export async function solicitarFiado(
 
 export async function actualizarPresupuesto(
   id: number,
-  payload: { monto?: number | null; aprobado?: boolean | null }
+  payload: { monto?: number | null; moneda?: Moneda; aprobado?: boolean | null }
 ): Promise<OrdenConNotificacion> {
   const { data } = await apiClient.put<OrdenConNotificacion>(`/ordenes/${id}/presupuesto`, payload);
   return data;

@@ -31,6 +31,7 @@ import {
   crearOrden as crearOrdenConDatos,
   exigirEditable,
   filasDeChequeo,
+  filtroDeOrdenes,
   registrarCambioDeEstado
 } from './ordenes.service';
 
@@ -51,9 +52,8 @@ async function avisarSiCambio(orden: Orden, estadoAnterior: string): Promise<Res
 }
 
 export async function listarOrdenes(req: Request, res: Response): Promise<void> {
-  const { estado } = listarOrdenesQuery.parse(req.query);
   const ordenes = await Orden.findAll({
-    where: { sucursalId: sucursalIdDe(req), ...(estado ? { estado } : {}) },
+    where: filtroDeOrdenes(sucursalIdDe(req), listarOrdenesQuery.parse(req.query)),
     include: INCLUDES_LISTADO,
     order: [['createdAt', 'DESC']],
     limit: LIMITE_LISTADO
@@ -61,13 +61,13 @@ export async function listarOrdenes(req: Request, res: Response): Promise<void> 
   res.json(ordenes);
 }
 
+/** Saldo del cliente en la moneda de la orden: es el único que la entrega puede usar. */
+const saldoEnMonedaDe = (orden: Orden) => saldoDeCliente(orden.tallerId, orden.clienteId, orden.moneda);
+
 /** Va con el saldo del cliente, para que la entrega pueda ofrecer aplicar el saldo a favor. */
 export async function obtenerOrden(req: Request, res: Response): Promise<void> {
   const orden = await ordenDe(req, { include: INCLUDES_DETALLE });
-  res.json({
-    ...orden.get({ plain: true }),
-    saldoCliente: await saldoDeCliente(orden.tallerId, orden.clienteId)
-  });
+  res.json({ ...orden.get({ plain: true }), saldoCliente: await saldoEnMonedaDe(orden) });
 }
 
 export async function crearOrden(req: Request, res: Response): Promise<void> {
@@ -90,7 +90,7 @@ export async function actualizarOrden(req: Request, res: Response): Promise<void
 
 export async function cambiarEstadoOrden(req: Request, res: Response): Promise<void> {
   const orden = await ordenDe(req, CON_CLIENTE);
-  const { estado: nuevoEstado, comentario, forzar } = cambiarEstadoSchema.parse(req.body);
+  const { estado: nuevoEstado, comentario, notaInterna, forzar } = cambiarEstadoSchema.parse(req.body);
   const estadoAnterior = orden.estado;
 
   // La entrega mueve plata y tiene su propio endpoint: por acá el equipo
@@ -129,7 +129,8 @@ export async function cambiarEstadoOrden(req: Request, res: Response): Promise<v
         estadoAnterior,
         estadoNuevo: nuevoEstado,
         usuarioId: usuarioDe(req).userId,
-        comentario: forzado ? `[Forzado] ${comentario}` : comentario
+        comentario: forzado ? `[Forzado] ${comentario}` : comentario,
+        notaInterna
       },
       transaction
     );
@@ -157,7 +158,7 @@ export async function entregarOrden(req: Request, res: Response): Promise<void> 
     notificacion: entrega.notificacion,
     pendiente: entrega.pendiente,
     creditoAplicado: entrega.creditoAplicado,
-    saldoCliente: await saldoDeCliente(orden.tallerId, orden.clienteId)
+    saldoCliente: await saldoEnMonedaDe(orden)
   });
 }
 
@@ -182,11 +183,7 @@ export async function solicitarFiado(req: Request, res: Response): Promise<void>
   }
 
   // Con el saldo a favor descontado puede no quedar deuda: no hay nada que autorizar.
-  const { pendiente } = repartirEntrega(
-    await saldoDeCliente(orden.tallerId, cliente.id),
-    montoTotal,
-    montoAbonado
-  );
+  const { pendiente } = repartirEntrega(await saldoEnMonedaDe(orden), montoTotal, montoAbonado);
   if (pendiente <= 0) throw errores.solicitudInvalida('No hace falta autorización: la orden queda cubierta');
 
   const usuario = usuarioDe(req);
@@ -197,6 +194,7 @@ export async function solicitarFiado(req: Request, res: Response): Promise<void>
     cliente,
     ordenId: orden.id,
     pendiente,
+    moneda: orden.moneda,
     motivo,
     datos: { montoTotal, montoAbonado, medioPago: medioPago ?? null }
   };
@@ -214,7 +212,7 @@ export async function solicitarFiado(req: Request, res: Response): Promise<void>
     autorizada: true,
     notificacion: entrega.notificacion,
     creditoAplicado: entrega.creditoAplicado,
-    saldoCliente: await saldoDeCliente(orden.tallerId, cliente.id)
+    saldoCliente: await saldoEnMonedaDe(orden)
   });
 }
 
@@ -223,14 +221,26 @@ export async function solicitarFiado(req: Request, res: Response): Promise<void>
  *
  * Cargar el monto es, en la práctica, presupuestar: si el circuito lo permite
  * la orden avanza sola a "presupuestado", así el mostrador no lo hace aparte.
+ *
+ * La moneda se elige junto con el monto. Una vez entregada la orden no se
+ * cambia: lo cobrado ya quedó asentado en la cuenta en esa moneda.
  */
 export async function actualizarPresupuesto(req: Request, res: Response): Promise<void> {
   const orden = await ordenDe(req, CON_CLIENTE);
   exigirEditable(orden, esAdmin(req));
-  const { monto, aprobado } = presupuestoSchema.parse(req.body);
+  const { monto, moneda, aprobado } = presupuestoSchema.parse(req.body);
   const estadoAnterior = orden.estado;
 
-  const cambios: Partial<Pick<Orden, 'presupuestoMonto' | 'presupuestoAprobado' | 'estado'>> = {};
+  const cambios: Partial<Pick<Orden, 'presupuestoMonto' | 'presupuestoAprobado' | 'estado' | 'moneda'>> = {};
+
+  if (moneda !== undefined && moneda !== orden.moneda) {
+    if (orden.montoTotal != null) {
+      throw errores.conflicto(
+        `La orden ya se cobró en ${orden.moneda}: la moneda no se puede cambiar después de la entrega.`
+      );
+    }
+    cambios.moneda = moneda;
+  }
 
   if (monto !== undefined) {
     cambios.presupuestoMonto = monto;

@@ -4,7 +4,7 @@ import { sequelize, Cliente, Equipo, Orden } from '../../models';
 import { ClienteAttributes } from '../../models/Cliente';
 import { errores } from '../../shared/http/http-error';
 import { esAdmin, paramId, tallerIdDe } from '../../shared/http/request-context';
-import { saldoDeCliente, saldosDeClientes } from '../cuentas/cuenta-corriente.service';
+import { saldosDeCliente, saldosDeClientes } from '../cuentas/cuenta-corriente.service';
 import { actualizarClienteSchema, clienteSchema, listarClientesQuery } from './clientes.schemas';
 
 const LIMITE_LISTADO = 100;
@@ -42,7 +42,7 @@ export async function listarClientes(req: Request, res: Response): Promise<void>
   const where: WhereOptions<ClienteAttributes> = search
     ? {
         tallerId,
-        [Op.or]: ['nombre', 'apellido', 'dniCuit', 'telefono', 'email'].map((campo) => ({
+        [Op.or]: ['nombre', 'apellido', 'dniCuit', 'telefono', 'email', 'ciudad'].map((campo) => ({
           [campo]: { [Op.like]: `%${search}%` }
         }))
       }
@@ -61,12 +61,12 @@ export async function listarClientes(req: Request, res: Response): Promise<void>
     tallerId,
     clientes.map((c) => c.id)
   );
-  res.json(clientes.map((c) => ({ ...c.get({ plain: true }), saldo: saldos.get(c.id) ?? 0 })));
+  res.json(clientes.map((c) => ({ ...c.get({ plain: true }), saldos: saldos.get(c.id) ?? [] })));
 }
 
 export async function obtenerCliente(req: Request, res: Response): Promise<void> {
   const cliente = await buscarClienteDelTaller(req);
-  res.json({ ...cliente.get({ plain: true }), saldo: await saldoDeCliente(cliente.tallerId, cliente.id) });
+  res.json({ ...cliente.get({ plain: true }), saldos: await saldosDeCliente(cliente.tallerId, cliente.id) });
 }
 
 export async function crearCliente(req: Request, res: Response): Promise<void> {
@@ -127,6 +127,7 @@ export async function anonimizarCliente(req: Request, res: Response): Promise<vo
         telefono: null,
         email: null,
         direccion: null,
+        ciudad: null,
         fechaNacimiento: null,
         nombreGremio: null,
         anonimizadoEn

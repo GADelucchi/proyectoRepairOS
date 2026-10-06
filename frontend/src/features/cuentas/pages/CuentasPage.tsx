@@ -4,6 +4,7 @@ import { AlertaError } from '@/shared/components/AlertaError';
 import { Cargando } from '@/shared/components/Cargando';
 import { useConsulta } from '@/shared/hooks/useConsulta';
 import { useDebounce } from '@/shared/hooks/useDebounce';
+import type { Moneda } from '@/shared/types';
 import { formatearMonto } from '@/shared/utils/dinero';
 import { formatearFechaHora } from '@/shared/utils/fechas';
 import * as cuentasApi from '../api';
@@ -15,6 +16,8 @@ import { DetalleCuentaModal } from '../components/DetalleCuentaModal';
  * Por defecto solo lista a los que deben, que es la pregunta de todos los días.
  * El detalle de cada cuenta se abre en un modal con el historial completo y el
  * formulario de cobro, para no perder de vista el listado general.
+ *
+ * Los saldos van por moneda: quien debe pesos y dólares aparece en dos renglones.
  */
 export function CuentasPage() {
   const [busqueda, setBusqueda] = useState('');
@@ -29,14 +32,15 @@ export function CuentasPage() {
     'No se pudieron cargar las cuentas'
   );
   const cuentas = datos?.cuentas ?? [];
-  const totalAdeudado = datos?.totalAdeudado ?? 0;
+  const totalesAdeudados = datos?.totalesAdeudados ?? [];
 
-  function handleCobrado(nombre: string, monto: number, saldo: number) {
+  function handleCobrado(nombre: string, monto: number, saldo: number, moneda: Moneda) {
     setClienteAbierto(null);
+    const cobro = `Cobro de ${formatearMonto(monto, moneda)} registrado.`;
     setMensaje(
       saldo > 0
-        ? `Cobro de ${formatearMonto(monto)} registrado. ${nombre} queda debiendo ${formatearMonto(saldo)}.`
-        : `Cobro de ${formatearMonto(monto)} registrado. ${nombre} queda al día.`
+        ? `${cobro} ${nombre} queda debiendo ${formatearMonto(saldo, moneda)}.`
+        : `${cobro} ${nombre} queda al día en ${moneda}.`
     );
     recargar();
   }
@@ -50,7 +54,15 @@ export function CuentasPage() {
         <Col md="auto">
           <Card body className="py-2">
             <div className="text-muted small">Total adeudado</div>
-            <div className="fs-4 fw-semibold">{formatearMonto(totalAdeudado)}</div>
+            {totalesAdeudados.length === 0 ? (
+              <div className="fs-4 fw-semibold">{formatearMonto(0)}</div>
+            ) : (
+              totalesAdeudados.map((t) => (
+                <div key={t.moneda} className="fs-4 fw-semibold">
+                  {formatearMonto(t.total, t.moneda)}
+                </div>
+              ))
+            )}
           </Card>
         </Col>
       </Row>
@@ -105,7 +117,7 @@ export function CuentasPage() {
           </thead>
           <tbody>
             {cuentas.map((cuenta) => (
-              <tr key={cuenta.clienteId}>
+              <tr key={`${cuenta.clienteId}-${cuenta.moneda}`}>
                 <td>
                   {cuenta.apellido}, {cuenta.nombre}
                   {!cuenta.cuentaCorrienteHabilitada && cuenta.saldo > 0 && (
@@ -118,11 +130,11 @@ export function CuentasPage() {
                 <td className="text-end">
                   {cuenta.saldo < 0 ? (
                     <span className="text-success fw-semibold">
-                      {formatearMonto(Math.abs(cuenta.saldo))} a favor
+                      {formatearMonto(Math.abs(cuenta.saldo), cuenta.moneda)} a favor
                     </span>
                   ) : (
                     <span className={cuenta.saldo > 0 ? 'text-danger fw-semibold' : 'text-muted'}>
-                      {formatearMonto(cuenta.saldo)}
+                      {formatearMonto(cuenta.saldo, cuenta.moneda)}
                     </span>
                   )}
                 </td>

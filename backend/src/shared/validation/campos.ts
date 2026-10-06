@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { MONEDA_POR_DEFECTO, MONEDAS } from '../utils/dinero';
 import { esFechaIsoValida } from '../utils/fechas';
 
 /**
@@ -55,3 +56,8 @@ export const busqueda = z
 
 export const monto = z.number().nonnegative('El monto no puede ser negativo').max(999_999_999.99);
 export const montoPositivo = z.number().positive('El monto debe ser mayor a cero').max(999_999_999.99);
+
+export const moneda = z.enum(MONEDAS, { message: 'La moneda no es válida' });
+
+/** Moneda de un cobro o un ajuste: si no se indica, la moneda local. */
+export const monedaConDefecto = moneda.optional().default(MONEDA_POR_DEFECTO);

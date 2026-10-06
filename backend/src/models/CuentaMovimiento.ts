@@ -1,4 +1,5 @@
 import { DataTypes, Model, Optional, Sequelize } from 'sequelize';
+import { MONEDA_POR_DEFECTO, Moneda } from '../shared/utils/dinero';
 
 /**
  * Tipos de asiento. El monto siempre es positivo: la dirección la da el tipo,
@@ -32,6 +33,7 @@ export interface CuentaMovimientoAttributes {
   usuarioId: number;
   tipo: TipoMovimiento;
   monto: string;
+  moneda: Moneda;
   medioPago?: MedioPago | null;
   nota?: string | null;
   createdAt?: Date;
@@ -40,7 +42,7 @@ export interface CuentaMovimientoAttributes {
 
 export type CuentaMovimientoCreationAttributes = Optional<
   CuentaMovimientoAttributes,
-  'id' | 'ordenId' | 'sucursalId' | 'medioPago' | 'nota' | 'createdAt' | 'updatedAt'
+  'id' | 'ordenId' | 'sucursalId' | 'moneda' | 'medioPago' | 'nota' | 'createdAt' | 'updatedAt'
 >;
 
 export class CuentaMovimiento
@@ -56,6 +58,8 @@ export class CuentaMovimiento
   declare tipo: TipoMovimiento;
   // Sequelize devuelve DECIMAL como string para no perder precisión en el camino.
   declare monto: string;
+  /** El saldo se calcula por moneda: nunca se suman asientos de monedas distintas. */
+  declare moneda: Moneda;
   declare medioPago: MedioPago | null;
   declare nota: string | null;
   declare readonly createdAt: Date;
@@ -75,6 +79,7 @@ export class CuentaMovimiento
           allowNull: false
         },
         monto: { type: DataTypes.DECIMAL(12, 2), allowNull: false },
+        moneda: { type: DataTypes.STRING(3), allowNull: false, defaultValue: MONEDA_POR_DEFECTO },
         medioPago: { type: DataTypes.STRING(30), allowNull: true, field: 'medio_pago' },
         nota: { type: DataTypes.STRING(255), allowNull: true }
       },

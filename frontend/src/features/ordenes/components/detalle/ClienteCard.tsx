@@ -13,6 +13,9 @@ export function ClienteCard({ cliente }: { cliente?: Cliente }) {
             <div>DNI/CUIT: {cliente.dniCuit ?? '-'}</div>
             <div>Teléfono: {cliente.telefono ?? '-'}</div>
             <div>Email: {cliente.email ?? '-'}</div>
+            {(cliente.direccion || cliente.ciudad) && (
+              <div>Domicilio: {[cliente.direccion, cliente.ciudad].filter(Boolean).join(', ')}</div>
+            )}
             {cliente.esGremio && cliente.nombreGremio && <div>Gremio: {cliente.nombreGremio}</div>}
           </>
         ) : (

@@ -17,6 +17,9 @@ interface EstadoCardProps extends Omit<SeccionOrdenProps, 'puedeEditar'> {
  *
  * `entregado` no está en el desplegable: entregar mueve plata y va por su
  * propio flujo, que registra cuánto se cobró.
+ *
+ * El comentario sale impreso en el remito; la nota interna queda en el
+ * historial solo para el taller.
  */
 export function EstadoCard({
   orden,
@@ -28,6 +31,7 @@ export function EstadoCard({
 }: EstadoCardProps) {
   const [nuevoEstado, setNuevoEstado] = useState<EstadoOrden | ''>('');
   const [comentario, setComentario] = useState('');
+  const [notaInterna, setNotaInterna] = useState('');
   const [forzar, setForzar] = useState(false);
   const { enCurso, ejecutar } = useAccion(onError);
 
@@ -40,16 +44,17 @@ export function EstadoCard({
     if (!nuevoEstado) return;
     let actualizada: ordenesApi.OrdenConNotificacion | undefined;
     const ok = await ejecutar(async () => {
-      actualizada = await ordenesApi.cambiarEstadoOrden(
-        orden.id,
-        nuevoEstado,
-        comentario.trim() || undefined,
-        forzar || undefined
-      );
+      actualizada = await ordenesApi.cambiarEstadoOrden(orden.id, {
+        estado: nuevoEstado,
+        comentario: comentario.trim() || undefined,
+        notaInterna: notaInterna.trim() || undefined,
+        forzar: forzar || undefined
+      });
     }, 'No se pudo cambiar el estado');
     if (ok && actualizada) {
       setNuevoEstado('');
       setComentario('');
+      setNotaInterna('');
       setForzar(false);
       onActualizada(conAviso('Estado actualizado.', actualizada));
     }
@@ -91,9 +96,23 @@ export function EstadoCard({
             <Form.Control
               className="mb-2"
               aria-label="Comentario"
-              placeholder={forzar ? 'Motivo del cambio forzado (obligatorio)' : 'Comentario (opcional)'}
+              placeholder={
+                forzar
+                  ? 'Motivo del cambio forzado (obligatorio)'
+                  : 'Comentario (opcional, sale en el remito)'
+              }
               value={comentario}
               onChange={(e) => setComentario(e.target.value)}
+            />
+            <Form.Control
+              as="textarea"
+              rows={2}
+              className="mb-2"
+              aria-label="Notas internas"
+              placeholder="Notas internas (opcional, no las ve el cliente)"
+              value={notaInterna}
+              maxLength={2000}
+              onChange={(e) => setNotaInterna(e.target.value)}
             />
             {esAdmin && (
               <Form.Check

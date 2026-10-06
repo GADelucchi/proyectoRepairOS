@@ -10,6 +10,7 @@ export interface ClienteAttributes {
   email?: string | null;
   fechaNacimiento?: string | null;
   direccion?: string | null;
+  ciudad?: string | null;
   esGremio?: boolean | null;
   nombreGremio?: string | null;
   cuentaCorrienteHabilitada: boolean;
@@ -26,6 +27,7 @@ export type ClienteCreationAttributes = Optional<
   | 'email'
   | 'fechaNacimiento'
   | 'direccion'
+  | 'ciudad'
   | 'esGremio'
   | 'nombreGremio'
   | 'cuentaCorrienteHabilitada'
@@ -47,6 +49,7 @@ export class Cliente
   declare email: string | null;
   declare fechaNacimiento: string | null;
   declare direccion: string | null;
+  declare ciudad: string | null;
   declare esGremio: boolean | null;
   declare nombreGremio: string | null;
   declare cuentaCorrienteHabilitada: boolean;
@@ -67,6 +70,7 @@ export class Cliente
         email: { type: DataTypes.STRING(150), allowNull: true },
         fechaNacimiento: { type: DataTypes.DATEONLY, allowNull: true, field: 'fecha_nacimiento' },
         direccion: { type: DataTypes.STRING(255), allowNull: true },
+        ciudad: { type: DataTypes.STRING(100), allowNull: true },
         esGremio: { type: DataTypes.BOOLEAN, allowNull: true, defaultValue: false, field: 'es_gremio' },
         nombreGremio: { type: DataTypes.STRING(255), allowNull: true, field: 'nombre_gremio' },
         cuentaCorrienteHabilitada: {

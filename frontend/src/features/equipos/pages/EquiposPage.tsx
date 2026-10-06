@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Badge, Button, Form, Table } from 'react-bootstrap';
+import { Alert, Badge, Button, Form, Modal, Table } from 'react-bootstrap';
+import { Link } from 'react-router';
 import * as configuracionApi from '@/features/configuracion/api';
 import { AlertaError } from '@/shared/components/AlertaError';
 import { Cargando } from '@/shared/components/Cargando';
@@ -10,6 +11,7 @@ import type { Equipo } from '@/shared/types';
 import { nombreCompleto } from '@/shared/utils/texto';
 import * as equiposApi from '../api';
 import { EquipoModal } from '../components/EquipoModal';
+import { EtiquetaQr } from '../components/EtiquetaQr';
 import { describirEquipo } from '../equipo-form';
 
 export function EquiposPage() {
@@ -36,6 +38,8 @@ export function EquiposPage() {
   const [modalAbierto, setModalAbierto] = useState(false);
   const [editando, setEditando] = useState<Equipo | null>(null);
   const [revelados, setRevelados] = useState<Record<number, Equipo>>({});
+  // Equipo cuya etiqueta QR se muestra: se abre sola al crear uno nuevo.
+  const [conQr, setConQr] = useState<{ equipo: Equipo; recienCreado: boolean } | null>(null);
 
   function abrirNuevo() {
     setEditando(null);
@@ -69,9 +73,14 @@ export function EquiposPage() {
 
   return (
     <div>
-      <div className="d-flex justify-content-between align-items-center mb-3">
+      <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
         <h3>Equipos</h3>
-        <Button onClick={abrirNuevo}>+ Nuevo equipo</Button>
+        <div className="d-flex gap-2">
+          <Link className="btn btn-outline-secondary" to="/escanear">
+            Escanear QR
+          </Link>
+          <Button onClick={abrirNuevo}>+ Nuevo equipo</Button>
+        </div>
       </div>
 
       <Form.Control
@@ -128,6 +137,17 @@ export function EquiposPage() {
                     </Button>
                   </td>
                   <td className="text-nowrap">
+                    <Link className="btn btn-sm btn-outline-secondary me-2" to={`/equipos/${eq.id}`}>
+                      Ver
+                    </Link>
+                    <Button
+                      size="sm"
+                      variant="outline-secondary"
+                      className="me-2"
+                      onClick={() => setConQr({ equipo: eq, recienCreado: false })}
+                    >
+                      QR
+                    </Button>
                     <Button
                       size="sm"
                       variant="outline-primary"
@@ -159,12 +179,39 @@ export function EquiposPage() {
         equipo={editando}
         tiposEquipo={tiposEquipo}
         onCerrar={() => setModalAbierto(false)}
-        onGuardado={() => {
+        onGuardado={(guardado) => {
+          const eraNuevo = !editando;
           setModalAbierto(false);
           setRevelados({});
           recargar();
+          if (eraNuevo) setConQr({ equipo: guardado, recienCreado: true });
         }}
       />
+
+      <Modal show={conQr !== null} onHide={() => setConQr(null)} centered>
+        <Modal.Header closeButton>
+          <Modal.Title>Etiqueta QR</Modal.Title>
+        </Modal.Header>
+        {conQr && (
+          <Modal.Body>
+            {conQr.recienCreado && (
+              <Alert variant="success" className="py-2">
+                Equipo guardado. Imprimí la etiqueta y pegala atrás del equipo.
+              </Alert>
+            )}
+            <div className="text-center mb-3">
+              <div className="fw-semibold">{describirEquipo({ ...conQr.equipo, numeroSerie: null })}</div>
+              <div className="font-mono small">S/N {conQr.equipo.numeroSerie ?? '-'}</div>
+            </div>
+            <EtiquetaQr equipo={conQr.equipo} onError={setError} tamano={200} />
+          </Modal.Body>
+        )}
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setConQr(null)}>
+            Cerrar
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </div>
   );
 }

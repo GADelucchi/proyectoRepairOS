@@ -55,13 +55,14 @@ export interface Cliente {
   email?: string | null;
   fechaNacimiento?: string | null;
   direccion?: string | null;
+  ciudad?: string | null;
   esGremio?: boolean | null;
   nombreGremio?: string | null;
   cuentaCorrienteHabilitada?: boolean;
   /** Fecha en que se anonimizó por un pedido de supresión. */
   anonimizadoEn?: string | null;
-  /** Saldo de la cuenta corriente: positivo significa que el cliente debe. */
-  saldo?: number;
+  /** Saldos distintos de cero de la cuenta corriente, uno por moneda. */
+  saldos?: SaldoEnMoneda[];
   createdAt?: string;
 }
 
@@ -136,13 +137,25 @@ export interface OrdenHistorialEstado {
   id: number;
   estadoAnterior?: EstadoOrden | null;
   estadoNuevo: EstadoOrden;
+  /** Sale impreso en el remito. */
   comentario?: string | null;
+  /** Solo para el taller: no se imprime. */
+  notaInterna?: string | null;
   createdAt: string;
   usuario?: UsuarioResumen;
 }
 
 /** Los montos llegan como string: la API los guarda como DECIMAL. */
 export type Monto = string | number;
+
+/** Código ISO 4217. La lista con sus nombres está en `shared/constants/monedas`. */
+export type Moneda = 'ARS' | 'USD' | 'EUR' | 'CLP' | 'UYU' | 'BRL' | 'PYG' | 'BOB' | 'PEN' | 'MXN' | 'COP';
+
+/** Saldo de cuenta corriente en una moneda: positivo significa que el cliente debe. */
+export interface SaldoEnMoneda {
+  moneda: Moneda;
+  saldo: number;
+}
 
 export interface Orden {
   id: number;
@@ -159,6 +172,8 @@ export interface Orden {
   notasInternas?: string | null;
   presupuestoMonto?: Monto | null;
   presupuestoAprobado?: boolean | null;
+  /** Moneda del presupuesto y del cobro. */
+  moneda: Moneda;
   /** Solo para firmas anteriores al cifrado; las nuevas se piden a /ordenes/:id/firma. */
   firmaClienteUrl?: string | null;
   /** Cuándo firmó el cliente. Si viene, la orden tiene firma guardada. */
@@ -168,7 +183,7 @@ export interface Orden {
   /** Saldo a favor del cliente que se usó para cubrir esta orden. */
   creditoAplicado?: Monto | null;
   fechaEntrega?: string | null;
-  /** Saldo de la cuenta del cliente: negativo es plata a favor. */
+  /** Saldo de la cuenta del cliente en la moneda de la orden: negativo es plata a favor. */
   saldoCliente?: number;
   cliente?: Cliente;
   equipo?: Equipo;
@@ -197,6 +212,7 @@ export interface CuentaMovimiento {
   ordenId?: number | null;
   tipo: TipoMovimiento;
   monto: string;
+  moneda: Moneda;
   medioPago?: MedioPago | null;
   nota?: string | null;
   createdAt: string;
@@ -210,6 +226,8 @@ export interface CuentaResumen {
   apellido: string;
   telefono?: string | null;
   cuentaCorrienteHabilitada: boolean;
+  /** Hay un renglón por cliente y moneda. */
+  moneda: Moneda;
   saldo: number;
   ultimoMovimiento?: string | null;
 }
@@ -225,6 +243,7 @@ export interface Solicitud {
   clienteId: number;
   ordenId?: number | null;
   monto: string;
+  moneda: Moneda;
   datos?: { montoTotal?: number; montoAbonado?: number; direccion?: 'debito' | 'credito' } | null;
   motivo: string;
   respuesta?: string | null;
@@ -240,6 +259,7 @@ export interface Solicitud {
 export interface GrupoCaja {
   clave: string;
   etiqueta: string | null;
+  moneda: Moneda;
   total: number;
   cantidad: number;
 }
@@ -247,18 +267,25 @@ export interface GrupoCaja {
 export interface ResumenCaja {
   rango: { desde: string; hasta: string };
   alcance: 'sucursal' | 'taller';
-  cobrado: number;
-  facturado: number;
-  ajustes: { debito: number; credito: number };
+  /** Un renglón por moneda que tuvo movimientos en el período. */
+  totales: TotalesCaja[];
   porMedioDePago: GrupoCaja[];
   porUsuario: GrupoCaja[];
   porSucursal: GrupoCaja[];
+}
+
+export interface TotalesCaja {
+  moneda: Moneda;
+  cobrado: number;
+  facturado: number;
+  ajustes: { debito: number; credito: number };
 }
 
 export interface MovimientoCaja {
   id: number;
   tipo: TipoMovimiento;
   monto: string;
+  moneda: Moneda;
   medioPago: MedioPago | null;
   nota: string | null;
   createdAt: string;

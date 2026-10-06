@@ -13,6 +13,7 @@ export const clienteSchema = z.object({
   email: emailOpcional,
   fechaNacimiento: fechaIsoOpcional,
   direccion: textoOpcional(255),
+  ciudad: textoOpcional(100),
   esGremio: z.boolean().optional().default(false),
   nombreGremio: textoOpcional(255),
   /** Habilitar el fiado es decisión del admin; el controlador valida el rol. */

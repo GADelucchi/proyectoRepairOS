@@ -12,6 +12,7 @@ export interface ClienteFormData {
   email: string;
   fechaNacimiento: string;
   direccion: string;
+  ciudad: string;
   esGremio: boolean;
   nombreGremio: string;
   cuentaCorrienteHabilitada: boolean;
@@ -25,6 +26,7 @@ export const CLIENTE_FORM_VACIO: ClienteFormData = {
   email: '',
   fechaNacimiento: '',
   direccion: '',
+  ciudad: '',
   esGremio: false,
   nombreGremio: '',
   cuentaCorrienteHabilitada: false
@@ -40,6 +42,7 @@ export function clienteAFormulario(cliente: Cliente): ClienteFormData {
     email: cliente.email ?? '',
     fechaNacimiento: convertirDesdeBackend(cliente.fechaNacimiento),
     direccion: cliente.direccion ?? '',
+    ciudad: cliente.ciudad ?? '',
     esGremio: cliente.esGremio ?? false,
     nombreGremio: cliente.nombreGremio ?? '',
     cuentaCorrienteHabilitada: cliente.cuentaCorrienteHabilitada ?? false
@@ -59,6 +62,7 @@ export function formularioAClienteInput(form: ClienteFormData): ClienteInput {
     email: textoONull(form.email),
     fechaNacimiento: convertirAFormatoBackend(form.fechaNacimiento),
     direccion: textoONull(form.direccion),
+    ciudad: textoONull(form.ciudad),
     esGremio: form.esGremio,
     nombreGremio: form.esGremio ? textoONull(form.nombreGremio) : null,
     cuentaCorrienteHabilitada: form.cuentaCorrienteHabilitada

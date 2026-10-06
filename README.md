@@ -110,6 +110,9 @@ cambiar esas contraseñas apenas se crea la base.
 - **Cuenta corriente como libro de movimientos.** El saldo es la suma de
   `cuenta_movimientos` (`cargo`, `pago`, `ajuste_debito`, `ajuste_credito`), nunca una
   columna guardada. La caja solo suma `pago`.
+- **Multimoneda.** Cada orden se presupuesta y se cobra en una moneda (ARS, USD, EUR, CLP,
+  UYU…) y sus movimientos la heredan. Saldos, totales adeudados y caja van por moneda:
+  nunca se suman pesos con dólares.
 - **Fiar y ajustar saldos requieren autorización.** El mostrador pide, un admin aprueba;
   aprobar ejecuta la entrega o el ajuste en la misma transacción.
 - **Datos sensibles cifrados** (AES-256-GCM): credenciales de equipos y firma del cliente.

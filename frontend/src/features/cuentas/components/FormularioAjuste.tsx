@@ -1,13 +1,17 @@
 import { FormEvent, useState } from 'react';
-import { Button, Card, Col, Form, Row, Spinner } from 'react-bootstrap';
+import { Button, Card, Col, Form, InputGroup, Row, Spinner } from 'react-bootstrap';
 import { AlertaError } from '@/shared/components/AlertaError';
+import { SelectorMoneda } from '@/shared/components/SelectorMoneda';
 import { useAccion } from '@/shared/hooks/useAccion';
+import type { Moneda } from '@/shared/types';
 import { aNumero } from '@/shared/utils/dinero';
 import * as cuentasApi from '../api';
 
 interface FormularioAjusteProps {
   clienteId: number;
   esAdmin: boolean;
+  /** El ajuste corrige el saldo de una moneda; arranca en la que el cliente tiene saldo. */
+  monedaInicial: Moneda;
   onListo: (aplicada: boolean) => void;
 }
 
@@ -18,9 +22,10 @@ interface FormularioAjusteProps {
  * cliente debe. Por eso cualquiera lo puede pedir pero solo un admin lo aplica,
  * y el motivo es obligatorio porque es lo único que va a leer quien apruebe.
  */
-export function FormularioAjuste({ clienteId, esAdmin, onListo }: FormularioAjusteProps) {
+export function FormularioAjuste({ clienteId, esAdmin, monedaInicial, onListo }: FormularioAjusteProps) {
   const [abierto, setAbierto] = useState(false);
   const [monto, setMonto] = useState('');
+  const [moneda, setMoneda] = useState<Moneda>(monedaInicial);
   const [direccion, setDireccion] = useState<'debito' | 'credito'>('credito');
   const [motivo, setMotivo] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -35,6 +40,7 @@ export function FormularioAjuste({ clienteId, esAdmin, onListo }: FormularioAjus
     const ok = await ejecutar(async () => {
       ({ aplicada } = await cuentasApi.solicitarAjuste(clienteId, {
         monto: montoNumero,
+        moneda,
         direccion,
         motivo: motivo.trim()
       }));
@@ -49,7 +55,15 @@ export function FormularioAjuste({ clienteId, esAdmin, onListo }: FormularioAjus
 
   if (!abierto) {
     return (
-      <Button size="sm" variant="outline-secondary" className="mt-3" onClick={() => setAbierto(true)}>
+      <Button
+        size="sm"
+        variant="outline-secondary"
+        className="mt-3"
+        onClick={() => {
+          setMoneda(monedaInicial);
+          setAbierto(true);
+        }}
+      >
         {esAdmin ? 'Ajustar saldo' : 'Solicitar ajuste de saldo'}
       </Button>
     );
@@ -62,21 +76,25 @@ export function FormularioAjuste({ clienteId, esAdmin, onListo }: FormularioAjus
         <AlertaError error={error} />
         <Form onSubmit={handleEnviar}>
           <Row className="g-2">
-            <Col sm={4}>
+            <Col sm={5}>
               <Form.Group controlId="ajuste-monto">
                 <Form.Label>Monto</Form.Label>
-                <Form.Control
-                  type="number"
-                  min={0}
-                  step="0.01"
-                  value={monto}
-                  onChange={(e) => setMonto(e.target.value)}
-                  disabled={enviando}
-                  autoFocus
-                />
+                <InputGroup>
+                  <SelectorMoneda value={moneda} onChange={setMoneda} disabled={enviando} />
+                  <Form.Control
+                    type="number"
+                    inputMode="decimal"
+                    min={0}
+                    step="0.01"
+                    value={monto}
+                    onChange={(e) => setMonto(e.target.value)}
+                    disabled={enviando}
+                    autoFocus
+                  />
+                </InputGroup>
               </Form.Group>
             </Col>
-            <Col sm={8}>
+            <Col sm={7}>
               <Form.Group controlId="ajuste-direccion">
                 <Form.Label>Qué hace</Form.Label>
                 <Form.Select

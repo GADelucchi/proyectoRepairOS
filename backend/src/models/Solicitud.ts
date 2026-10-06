@@ -2,6 +2,7 @@ import { DataTypes, Model, NonAttribute, Optional, Sequelize } from 'sequelize';
 import type { Cliente } from './Cliente';
 import type { Orden } from './Orden';
 import { MedioPago } from './CuentaMovimiento';
+import { MONEDA_POR_DEFECTO, Moneda } from '../shared/utils/dinero';
 
 export const TIPOS_SOLICITUD = ['fiado', 'ajuste'] as const;
 export type TipoSolicitud = (typeof TIPOS_SOLICITUD)[number];
@@ -42,6 +43,7 @@ export interface SolicitudAttributes {
   solicitanteId: number;
   resueltoPorId?: number | null;
   monto: string;
+  moneda: Moneda;
   datos?: DatosFiado | DatosAjuste | null;
   motivo: string;
   respuesta?: string | null;
@@ -57,6 +59,7 @@ export type SolicitudCreationAttributes = Optional<
   | 'ordenId'
   | 'sucursalId'
   | 'resueltoPorId'
+  | 'moneda'
   | 'datos'
   | 'respuesta'
   | 'resueltoEn'
@@ -78,6 +81,7 @@ export class Solicitud
   declare solicitanteId: number;
   declare resueltoPorId: number | null;
   declare monto: string;
+  declare moneda: Moneda;
   declare datos: DatosFiado | DatosAjuste | null;
   declare motivo: string;
   declare respuesta: string | null;
@@ -105,6 +109,7 @@ export class Solicitud
         solicitanteId: { type: DataTypes.INTEGER, allowNull: false, field: 'solicitante_id' },
         resueltoPorId: { type: DataTypes.INTEGER, allowNull: true, field: 'resuelto_por_id' },
         monto: { type: DataTypes.DECIMAL(12, 2), allowNull: false },
+        moneda: { type: DataTypes.STRING(3), allowNull: false, defaultValue: MONEDA_POR_DEFECTO },
         datos: { type: DataTypes.JSON, allowNull: true },
         motivo: { type: DataTypes.STRING(500), allowNull: false },
         respuesta: { type: DataTypes.STRING(500), allowNull: true },

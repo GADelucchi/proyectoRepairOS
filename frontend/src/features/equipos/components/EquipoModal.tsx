@@ -17,7 +17,8 @@ interface EquipoModalProps {
   equipo: Equipo | null;
   tiposEquipo: TipoEquipoPersonalizado[];
   onCerrar: () => void;
-  onGuardado: () => void;
+  /** Recibe el equipo guardado (el nuevo, al crear: para ofrecer su etiqueta QR). */
+  onGuardado: (equipo: Equipo) => void;
 }
 
 export function EquipoModal({ show, equipo, tiposEquipo, onCerrar, onGuardado }: EquipoModalProps) {
@@ -58,11 +59,13 @@ export function EquipoModal({ show, equipo, tiposEquipo, onCerrar, onGuardado }:
       return setError('El número de serie es obligatorio: cargalo o tocá Generar.');
 
     const datos = { ...formularioAEquipo(form), clienteId };
-    const ok = await guardado.ejecutar(
-      () => (equipo ? equiposApi.actualizarEquipo(equipo.id, datos) : equiposApi.crearEquipo(datos)),
-      'No se pudo guardar el equipo'
-    );
-    if (ok) onGuardado();
+    let resultado: Equipo | undefined;
+    const ok = await guardado.ejecutar(async () => {
+      resultado = equipo
+        ? await equiposApi.actualizarEquipo(equipo.id, datos)
+        : await equiposApi.crearEquipo(datos);
+    }, 'No se pudo guardar el equipo');
+    if (ok && resultado) onGuardado(resultado);
   }
 
   return (

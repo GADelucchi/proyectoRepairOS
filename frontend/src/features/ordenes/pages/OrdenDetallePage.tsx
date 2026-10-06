@@ -6,6 +6,7 @@ import { AlertaError } from '@/shared/components/AlertaError';
 import { Cargando } from '@/shared/components/Cargando';
 import { useAccion } from '@/shared/hooks/useAccion';
 import { useConsulta } from '@/shared/hooks/useConsulta';
+import type { Moneda } from '@/shared/types';
 import { formatearMonto } from '@/shared/utils/dinero';
 import * as ordenesApi from '../api';
 import { ChequeosCard } from '../components/detalle/ChequeosCard';
@@ -26,15 +27,18 @@ function conAviso(base: string, orden: ordenesApi.OrdenConNotificacion): string 
   return orden.notificacion ? `${base} ${orden.notificacion.detalle}` : base;
 }
 
-function mensajeDeEntrega({ saldoCliente, creditoAplicado = 0, notificacion }: ResultadoEntrega): string {
+function mensajeDeEntrega(
+  { saldoCliente, creditoAplicado = 0, notificacion }: ResultadoEntrega,
+  moneda: Moneda
+): string {
+  const m = (valor: number) => formatearMonto(valor, moneda);
   const base =
     saldoCliente > 0
-      ? `Equipo entregado. El cliente queda debiendo ${formatearMonto(saldoCliente)}.`
+      ? `Equipo entregado. El cliente queda debiendo ${m(saldoCliente)}.`
       : saldoCliente < 0
-        ? `Equipo entregado. Le quedan ${formatearMonto(Math.abs(saldoCliente))} a favor.`
+        ? `Equipo entregado. Le quedan ${m(Math.abs(saldoCliente))} a favor.`
         : 'Equipo entregado y cobrado.';
-  const credito =
-    creditoAplicado > 0 ? ` Se aplicaron ${formatearMonto(creditoAplicado)} de saldo a favor.` : '';
+  const credito = creditoAplicado > 0 ? ` Se aplicaron ${m(creditoAplicado)} de saldo a favor.` : '';
   return `${base}${credito}${notificacion ? ` ${notificacion.detalle}` : ''}`;
 }
 
@@ -137,7 +141,11 @@ export function OrdenDetallePage() {
           <ChequeosCard {...seccion} />
         </Col>
         <Col md={6}>
-          <PresupuestoCard key={String(orden.presupuestoMonto)} {...seccion} conAviso={conAviso} />
+          <PresupuestoCard
+            key={`${orden.presupuestoMonto}-${orden.moneda}`}
+            {...seccion}
+            conAviso={conAviso}
+          />
         </Col>
         <Col md={6}>
           <EstadoCard
@@ -164,7 +172,7 @@ export function OrdenDetallePage() {
         onCerrar={() => setEntregando(false)}
         onEntregado={(resultado) => {
           setEntregando(false);
-          onActualizada(mensajeDeEntrega(resultado));
+          onActualizada(mensajeDeEntrega(resultado, orden.moneda));
         }}
         onAutorizacionPedida={() => {
           setEntregando(false);

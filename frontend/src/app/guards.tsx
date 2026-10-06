@@ -4,20 +4,27 @@ import { Cargando } from '@/shared/components/Cargando';
 
 /**
  * Guardas de ruta. Se anidan: protegida → (con sucursal | admin).
- * Al mandar al login se recuerda la ruta pedida para volver después.
+ * Al mandar al login o a elegir sucursal se recuerda la ruta pedida para volver
+ * después: es lo que hace que el QR de un equipo, escaneado sin sesión, termine
+ * igual en la ficha del equipo.
  */
 
 export function RutaProtegida() {
   const { usuario, cargando } = useAuth();
   const location = useLocation();
   if (cargando) return <Cargando pantallaCompleta />;
-  if (!usuario) return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+  if (!usuario) return <Navigate to="/login" replace state={{ from: location.pathname + location.search }} />;
   return <Outlet />;
 }
 
 export function RutaConSucursal() {
   const { usuario } = useAuth();
-  if (!usuario?.sucursalActualId) return <Navigate to="/seleccionar-sucursal" replace />;
+  const location = useLocation();
+  if (!usuario?.sucursalActualId) {
+    return (
+      <Navigate to="/seleccionar-sucursal" replace state={{ from: location.pathname + location.search }} />
+    );
+  }
   return <Outlet />;
 }
 

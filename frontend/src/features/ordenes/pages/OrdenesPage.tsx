@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Badge, Form, Table } from 'react-bootstrap';
+import { Badge, Col, Form, Row, Table } from 'react-bootstrap';
 import { Link } from 'react-router';
 import { AlertaError } from '@/shared/components/AlertaError';
 import { Cargando } from '@/shared/components/Cargando';
 import { useConsulta } from '@/shared/hooks/useConsulta';
+import { useDebounce } from '@/shared/hooks/useDebounce';
 import type { EstadoOrden } from '@/shared/types';
 import { convertirDesdeBackend, formatearFecha } from '@/shared/utils/fechas';
 import { nombreCompleto } from '@/shared/utils/texto';
@@ -11,18 +12,30 @@ import * as ordenesApi from '../api';
 import { EstadoBadge } from '../components/EstadoBadge';
 import { ESTADOS_ORDEN, ETIQUETA_ESTADO } from '../estado-orden';
 
-/** Órdenes de la sucursal activa, de la más nueva a la más vieja. */
+/**
+ * Órdenes de la sucursal activa, de la más nueva a la más vieja.
+ *
+ * El buscador pega contra el número de orden, la serie, el modelo y el color del
+ * equipo, y el nombre, el teléfono y el DNI del cliente.
+ */
 export function OrdenesPage() {
   const [estadoFiltro, setEstadoFiltro] = useState<EstadoOrden | ''>('');
+  const [busqueda, setBusqueda] = useState('');
+  const busquedaDebounced = useDebounce(busqueda.trim());
   const {
     datos: ordenes = [],
     cargando,
     error
   } = useConsulta(
-    () => ordenesApi.listarOrdenes(estadoFiltro || undefined),
-    [estadoFiltro],
+    () =>
+      ordenesApi.listarOrdenes({
+        estado: estadoFiltro || undefined,
+        search: busquedaDebounced || undefined
+      }),
+    [estadoFiltro, busquedaDebounced],
     'No se pudieron cargar las órdenes'
   );
+  const filtrando = Boolean(estadoFiltro || busquedaDebounced);
 
   return (
     <div>
@@ -33,20 +46,32 @@ export function OrdenesPage() {
         </Link>
       </div>
 
-      <Form.Select
-        className="mb-3"
-        style={{ maxWidth: 320 }}
-        aria-label="Filtrar por estado"
-        value={estadoFiltro}
-        onChange={(e) => setEstadoFiltro(e.target.value as EstadoOrden | '')}
-      >
-        <option value="">Todos los estados</option>
-        {ESTADOS_ORDEN.map((estado) => (
-          <option key={estado} value={estado}>
-            {ETIQUETA_ESTADO[estado]}
-          </option>
-        ))}
-      </Form.Select>
+      <Row className="g-2 mb-3">
+        <Col md>
+          <Form.Control
+            type="search"
+            placeholder="Buscar por Nº de orden, serie, modelo, color, cliente, teléfono o DNI..."
+            aria-label="Buscar órdenes"
+            value={busqueda}
+            onChange={(e) => setBusqueda(e.target.value)}
+          />
+        </Col>
+        <Col md="auto">
+          <Form.Select
+            style={{ minWidth: 220 }}
+            aria-label="Filtrar por estado"
+            value={estadoFiltro}
+            onChange={(e) => setEstadoFiltro(e.target.value as EstadoOrden | '')}
+          >
+            <option value="">Todos los estados</option>
+            {ESTADOS_ORDEN.map((estado) => (
+              <option key={estado} value={estado}>
+                {ETIQUETA_ESTADO[estado]}
+              </option>
+            ))}
+          </Form.Select>
+        </Col>
+      </Row>
 
       <AlertaError error={error} />
 
@@ -73,6 +98,9 @@ export function OrdenesPage() {
                 <td>{nombreCompleto(o.cliente) || '-'}</td>
                 <td className="font-mono">
                   {`${o.equipo?.marca ?? ''} ${o.equipo?.modelo ?? ''}`.trim() || '-'}
+                  {o.equipo?.numeroSerie && (
+                    <div className="text-muted small">S/N {o.equipo.numeroSerie}</div>
+                  )}
                 </td>
                 <td>
                   <Badge bg="secondary">{o.equipo?.tipoEquipo?.nombre ?? 'Sin especificar'}</Badge>
@@ -92,7 +120,7 @@ export function OrdenesPage() {
             {ordenes.length === 0 && (
               <tr>
                 <td colSpan={8} className="text-center text-muted">
-                  No hay órdenes en esta sucursal
+                  {filtrando ? 'Ninguna orden coincide con la búsqueda' : 'No hay órdenes en esta sucursal'}
                 </td>
               </tr>
             )}

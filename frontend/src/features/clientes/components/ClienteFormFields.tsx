@@ -67,6 +67,8 @@ export function ClienteFormFields({
         <Form.Group controlId={`${prefijoId}-dniCuit`}>
           <Form.Label>DNI / CUIT</Form.Label>
           <Form.Control
+            inputMode="numeric"
+            autoComplete="off"
             disabled={disabled}
             value={value.dniCuit}
             onChange={(e) => set('dniCuit', e.target.value)}
@@ -108,13 +110,24 @@ export function ClienteFormFields({
         />
       </Col>
 
-      <Col md={12}>
+      <Col md={anchoMitad}>
         <Form.Group controlId={`${prefijoId}-direccion`}>
           <Form.Label>Dirección</Form.Label>
           <Form.Control
             disabled={disabled}
             value={value.direccion}
             onChange={(e) => set('direccion', e.target.value)}
+          />
+        </Form.Group>
+      </Col>
+
+      <Col md={anchoMitad}>
+        <Form.Group controlId={`${prefijoId}-ciudad`}>
+          <Form.Label>Ciudad</Form.Label>
+          <Form.Control
+            disabled={disabled}
+            value={value.ciudad}
+            onChange={(e) => set('ciudad', e.target.value)}
           />
         </Form.Group>
       </Col>

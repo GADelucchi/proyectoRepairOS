@@ -1,10 +1,17 @@
 import { apiClient } from '@/shared/api/client';
-import type { CuentaMovimiento, CuentaResumen, MedioPago, Solicitud } from '@/shared/types';
+import type {
+  CuentaMovimiento,
+  CuentaResumen,
+  MedioPago,
+  Moneda,
+  SaldoEnMoneda,
+  Solicitud
+} from '@/shared/types';
 
 export interface CuentasResponse {
   cuentas: CuentaResumen[];
-  /** Suma de todos los saldos deudores del taller. */
-  totalAdeudado: number;
+  /** Suma de los saldos deudores del taller, una por moneda. */
+  totalesAdeudados: { moneda: Moneda; total: number }[];
 }
 
 export interface DetalleCuenta {
@@ -16,7 +23,8 @@ export interface DetalleCuenta {
     email?: string | null;
     cuentaCorrienteHabilitada: boolean;
   };
-  saldo: number;
+  /** Saldos distintos de cero, uno por moneda. Vacío si está al día. */
+  saldos: SaldoEnMoneda[];
   movimientos: CuentaMovimiento[];
 }
 
@@ -38,7 +46,7 @@ export async function obtenerCuenta(clienteId: number): Promise<DetalleCuenta> {
 
 export async function registrarCobro(
   clienteId: number,
-  payload: { monto: number; medioPago?: MedioPago | null; nota?: string | null }
+  payload: { monto: number; moneda: Moneda; medioPago?: MedioPago | null; nota?: string | null }
 ): Promise<{ movimiento: CuentaMovimiento; saldo: number }> {
   const { data } = await apiClient.post(`/cuentas/${clienteId}/pagos`, payload);
   return data;
@@ -46,6 +54,7 @@ export async function registrarCobro(
 
 export interface SolicitudAjusteInput {
   monto: number;
+  moneda: Moneda;
   /** `debito` suma deuda al cliente; `credito` se la descuenta. */
   direccion: 'debito' | 'credito';
   motivo: string;

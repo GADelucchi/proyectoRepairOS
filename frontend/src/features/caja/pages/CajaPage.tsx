@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import { ReactNode, useState } from 'react';
 import { Badge, Button, Card, Col, Form, Row, Table } from 'react-bootstrap';
 import { useAuth } from '@/features/auth/useAuth';
 import { AlertaError } from '@/shared/components/AlertaError';
 import { Cargando } from '@/shared/components/Cargando';
 import { ETIQUETA_MEDIO_PAGO } from '@/shared/constants/pagos';
 import { useConsulta } from '@/shared/hooks/useConsulta';
-import type { GrupoCaja, MedioPago } from '@/shared/types';
+import type { GrupoCaja, MedioPago, TotalesCaja } from '@/shared/types';
 import { formatearMonto } from '@/shared/utils/dinero';
 import { fechaLocalISO, formatearFechaHora, haceDias } from '@/shared/utils/fechas';
 import * as cajaApi from '../api';
@@ -15,6 +15,7 @@ import * as cajaApi from '../api';
  *
  * Solo cuenta los cobros, que es lo que tiene que coincidir con el cajón. Lo
  * facturado y los ajustes se muestran aparte y en gris: son contexto, no caja.
+ * Cada moneda tiene su propio total: los pesos y los dólares no se suman.
  */
 export function CajaPage() {
   const { esAdmin } = useAuth();
@@ -107,25 +108,40 @@ export function CajaPage() {
             <Col>
               <Card body className="h-100">
                 <div className="text-muted small">Cobrado</div>
-                <div className="fs-3 fw-semibold text-success">{formatearMonto(resumen.cobrado)}</div>
+                <PorMoneda
+                  totales={resumen.totales}
+                  render={(t) => (
+                    <div className="fs-3 fw-semibold text-success">{formatearMonto(t.cobrado, t.moneda)}</div>
+                  )}
+                />
                 <div className="text-muted small">Plata que entró en el período.</div>
               </Card>
             </Col>
             <Col>
               <Card body className="h-100">
                 <div className="text-muted small">Facturado</div>
-                <div className="fs-3 fw-semibold">{formatearMonto(resumen.facturado)}</div>
+                <PorMoneda
+                  totales={resumen.totales}
+                  render={(t) => (
+                    <div className="fs-3 fw-semibold">{formatearMonto(t.facturado, t.moneda)}</div>
+                  )}
+                />
                 <div className="text-muted small">Lo cargado a clientes, se haya cobrado o no.</div>
               </Card>
             </Col>
             <Col>
               <Card body className="h-100">
                 <div className="text-muted small">Ajustes</div>
-                <div className="fs-5">
-                  <span className="text-danger">+{formatearMonto(resumen.ajustes.debito)}</span>{' '}
-                  <span className="text-muted">/</span>{' '}
-                  <span className="text-success">-{formatearMonto(resumen.ajustes.credito)}</span>
-                </div>
+                <PorMoneda
+                  totales={resumen.totales}
+                  render={(t) => (
+                    <div className="fs-5">
+                      <span className="text-danger">+{formatearMonto(t.ajustes.debito, t.moneda)}</span>{' '}
+                      <span className="text-muted">/</span>{' '}
+                      <span className="text-success">-{formatearMonto(t.ajustes.credito, t.moneda)}</span>
+                    </div>
+                  )}
+                />
                 <div className="text-muted small">Correcciones de saldo. No son plata.</div>
               </Card>
             </Col>
@@ -190,7 +206,7 @@ export function CajaPage() {
                           {m.medioPago ? ETIQUETA_MEDIO_PAGO[m.medioPago] : 'Sin especificar'}
                         </td>
                         <td className="text-muted small">{m.usuario}</td>
-                        <td className="text-end fw-semibold">{formatearMonto(Number(m.monto))}</td>
+                        <td className="text-end fw-semibold">{formatearMonto(m.monto, m.moneda)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -201,6 +217,27 @@ export function CajaPage() {
         </>
       ) : null}
     </div>
+  );
+}
+
+/** Un renglón por moneda; sin movimientos, un cero en pesos. */
+function PorMoneda({
+  totales,
+  render
+}: {
+  totales: TotalesCaja[];
+  render: (totales: TotalesCaja) => ReactNode;
+}) {
+  const filas: TotalesCaja[] =
+    totales.length > 0
+      ? totales
+      : [{ moneda: 'ARS', cobrado: 0, facturado: 0, ajustes: { debito: 0, credito: 0 } }];
+  return (
+    <>
+      {filas.map((t) => (
+        <div key={t.moneda}>{render(t)}</div>
+      ))}
+    </>
   );
 }
 
@@ -218,10 +255,10 @@ function TablaGrupos({ grupos, etiquetar }: TablaGruposProps) {
     <Table size="sm" className="mb-0">
       <tbody>
         {grupos.map((g) => (
-          <tr key={g.clave}>
+          <tr key={`${g.clave}-${g.moneda}`}>
             <td>{g.etiqueta ?? etiquetar?.(g.clave) ?? g.clave}</td>
             <td className="text-muted small text-end">{g.cantidad}</td>
-            <td className="text-end fw-semibold">{formatearMonto(g.total)}</td>
+            <td className="text-end fw-semibold">{formatearMonto(g.total, g.moneda)}</td>
           </tr>
         ))}
       </tbody>

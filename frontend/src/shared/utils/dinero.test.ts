@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { aNumero, redondear } from './dinero';
+import { aNumero, formatearMonto, redondear } from './dinero';
 
 describe('dinero', () => {
   it('acepta coma decimal y strings DECIMAL', () => {
@@ -11,5 +11,12 @@ describe('dinero', () => {
 
   it('redondea a centavos', () => {
     expect(redondear(0.1 + 0.2)).toBe(0.3);
+  });
+
+  it('formatea en la moneda indicada, pesos por defecto', () => {
+    const sinEspacios = (texto: string) => texto.replace(/\s/g, ' ');
+    expect(sinEspacios(formatearMonto(1500))).toBe('$ 1.500');
+    expect(sinEspacios(formatearMonto('120.50', 'USD'))).toBe('US$ 120,50');
+    expect(formatearMonto(10, 'EUR')).toMatch(/EUR|€/);
   });
 });

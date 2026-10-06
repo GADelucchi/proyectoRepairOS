@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useState } from 'react';
-import { Alert, Button, Card, Col, Form, Row, Spinner } from 'react-bootstrap';
+import { Alert, Button, Card, Col, Form, InputGroup, Row, Spinner } from 'react-bootstrap';
 import { useNavigate } from 'react-router';
 import { useAuth } from '@/features/auth/useAuth';
 import { formularioAClienteInput } from '@/features/clientes/cliente-form';
@@ -8,8 +8,10 @@ import { formularioAEquipo } from '@/features/equipos/equipo-form';
 import { getApiErrorMessage } from '@/shared/api/client';
 import { AlertaError } from '@/shared/components/AlertaError';
 import { DateInput } from '@/shared/components/DateInput';
+import { SelectorMoneda } from '@/shared/components/SelectorMoneda';
+import { MONEDA_POR_DEFECTO } from '@/shared/constants/monedas';
 import { useConsulta } from '@/shared/hooks/useConsulta';
-import type { Cliente } from '@/shared/types';
+import type { Cliente, Moneda } from '@/shared/types';
 import { aNumero } from '@/shared/utils/dinero';
 import { convertirAFormatoBackend } from '@/shared/utils/fechas';
 import { nombreCompleto, textoONull } from '@/shared/utils/texto';
@@ -64,6 +66,7 @@ export function OrdenNuevaPage() {
   const [notasInternas, setNotasInternas] = useState('');
   const [fechaPactada, setFechaPactada] = useState('');
   const [presupuestoMonto, setPresupuestoMonto] = useState('');
+  const [moneda, setMoneda] = useState<Moneda>(MONEDA_POR_DEFECTO);
 
   // El checklist sale del tipo del equipo, sea uno existente o uno que se está cargando.
   const tipoId = equipo.existente?.tipoEquipoPersonalizadoId ?? equipo.nuevo?.tipoEquipoPersonalizadoId ?? 0;
@@ -137,6 +140,7 @@ export function OrdenNuevaPage() {
         notasInternas: textoONull(notasInternas),
         fechaPactada: convertirAFormatoBackend(fechaPactada),
         presupuestoMonto: presupuestoMonto.trim() ? aNumero(presupuestoMonto) : null,
+        moneda,
         chequeos
       });
     } catch (err) {
@@ -260,13 +264,20 @@ export function OrdenNuevaPage() {
                   <Col md={6}>
                     <Form.Group controlId="nueva-presupuesto">
                       <Form.Label>Monto de presupuesto (estimado)</Form.Label>
-                      <Form.Control
-                        type="number"
-                        min={0}
-                        step="0.01"
-                        value={presupuestoMonto}
-                        onChange={(e) => setPresupuestoMonto(e.target.value)}
-                      />
+                      <InputGroup>
+                        <SelectorMoneda value={moneda} onChange={setMoneda} />
+                        <Form.Control
+                          type="number"
+                          inputMode="decimal"
+                          min={0}
+                          step="0.01"
+                          value={presupuestoMonto}
+                          onChange={(e) => setPresupuestoMonto(e.target.value)}
+                        />
+                      </InputGroup>
+                      <Form.Text className="text-muted">
+                        El cobro al entregar se hace en esta moneda.
+                      </Form.Text>
                     </Form.Group>
                   </Col>
                 </Row>

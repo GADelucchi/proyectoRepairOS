@@ -42,6 +42,9 @@ export function Layout() {
               <Nav.Link as={NavLink} to="/equipos">
                 Equipos
               </Nav.Link>
+              <Nav.Link as={NavLink} to="/escanear">
+                Escanear QR
+              </Nav.Link>
               <Nav.Link as={NavLink} to="/cuentas">
                 Cuenta corriente
               </Nav.Link>

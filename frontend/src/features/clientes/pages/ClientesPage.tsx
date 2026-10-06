@@ -89,6 +89,7 @@ export function ClientesPage() {
               <th>Teléfono</th>
               <th>Email</th>
               <th>Dirección</th>
+              <th>Ciudad</th>
               <th>Gremio</th>
               <th className="text-end">Saldo</th>
               <th></th>
@@ -102,11 +103,16 @@ export function ClientesPage() {
                 <td>{c.telefono ?? '-'}</td>
                 <td>{c.email ?? '-'}</td>
                 <td>{c.direccion ?? '-'}</td>
+                <td>{c.ciudad ?? '-'}</td>
                 <td>{c.esGremio ? (c.nombreGremio ?? 'Sí') : '-'}</td>
                 <td className="text-end">
-                  {c.saldo && c.saldo > 0 ? (
+                  {c.saldos?.some((s) => s.saldo > 0) ? (
                     <Link to="/cuentas" className="text-danger fw-semibold text-decoration-none">
-                      {formatearMonto(c.saldo)}
+                      {c.saldos
+                        .filter((s) => s.saldo > 0)
+                        .map((s) => (
+                          <div key={s.moneda}>{formatearMonto(s.saldo, s.moneda)}</div>
+                        ))}
                     </Link>
                   ) : (
                     <span className="text-muted">{c.cuentaCorrienteHabilitada ? 'Al día' : '-'}</span>
@@ -147,7 +153,7 @@ export function ClientesPage() {
             ))}
             {clientes.length === 0 && (
               <tr>
-                <td colSpan={8} className="text-center text-muted">
+                <td colSpan={9} className="text-center text-muted">
                   {busqueda ? 'Ningún cliente coincide con la búsqueda' : 'No hay clientes cargados'}
                 </td>
               </tr>

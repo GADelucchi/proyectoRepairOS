@@ -36,10 +36,10 @@ const FILTROS: { valor: EstadoSolicitud | 'todas'; etiqueta: string }[] = [
 /** Qué se está pidiendo, en una línea. */
 function describir(s: Solicitud): string {
   if (s.tipo === 'fiado') {
-    return `Entregar la orden ${s.orden?.numeroOrden ?? ''} dejando ${formatearMonto(s.monto)} en cuenta corriente`;
+    return `Entregar la orden ${s.orden?.numeroOrden ?? ''} dejando ${formatearMonto(s.monto, s.moneda)} en cuenta corriente`;
   }
   const direccion = s.datos?.direccion === 'debito' ? 'Sumar' : 'Descontar';
-  return `${direccion} ${formatearMonto(s.monto)} en la cuenta del cliente`;
+  return `${direccion} ${formatearMonto(s.monto, s.moneda)} en la cuenta del cliente`;
 }
 
 /**
@@ -81,8 +81,8 @@ export function SolicitudesPage() {
     }
     const { saldoCliente } = await solicitudesApi.aprobarSolicitud(s.id, respuesta);
     return s.tipo === 'fiado'
-      ? `Entrega autorizada. El cliente queda debiendo ${formatearMonto(saldoCliente)}.`
-      : `Ajuste aplicado. El saldo del cliente quedó en ${formatearMonto(saldoCliente)}.`;
+      ? `Entrega autorizada. El cliente queda debiendo ${formatearMonto(saldoCliente, s.moneda)}.`
+      : `Ajuste aplicado. El saldo del cliente en ${s.moneda} quedó en ${formatearMonto(saldoCliente, s.moneda)}.`;
   }
 
   async function resolver(s: Solicitud, accion: 'aprobar' | 'rechazar' | 'cancelar') {

@@ -1,4 +1,4 @@
-import { Includeable, Transaction } from 'sequelize';
+import { Includeable, Op, Transaction, WhereOptions } from 'sequelize';
 import {
   sequelize,
   Cliente,
@@ -11,7 +11,7 @@ import {
   TipoEquipoPersonalizado,
   User
 } from '../../models';
-import { EstadoOrden } from '../../models/Orden';
+import { EstadoOrden, OrdenAttributes } from '../../models/Orden';
 import { OPCIONES_CHEQUEO_POR_DEFECTO } from '../../models/OrdenChequeo';
 import { errores } from '../../shared/http/http-error';
 import { exigirTipoDelTaller } from '../configuracion/tipos-equipo.service';
@@ -19,7 +19,8 @@ import { cifrarCredenciales } from '../equipos/equipos.service';
 import { generarNumeroSerieUnico } from '../equipos/numero-serie';
 import { esEstadoFinal, etiquetaEstado } from './estado-orden';
 import { generarNumeroOrden } from './numero-orden';
-import { ChequeoInput, crearOrdenSchema } from './ordenes.schemas';
+import { MONEDA_POR_DEFECTO } from '../../shared/utils/dinero';
+import { ChequeoInput, crearOrdenSchema, listarOrdenesQuery } from './ordenes.schemas';
 import type { z } from 'zod';
 
 const USUARIO_RESUMIDO = ['id', 'nombre', 'apellido'];
@@ -47,14 +48,55 @@ export const INCLUDES_DETALLE: Includeable[] = [
 
 /** Lo que muestra cada renglón del listado de órdenes. */
 export const INCLUDES_LISTADO: Includeable[] = [
-  { model: Cliente, as: 'cliente', attributes: ['id', 'nombre', 'apellido', 'telefono'] },
+  { model: Cliente, as: 'cliente', attributes: ['id', 'nombre', 'apellido', 'telefono', 'dniCuit'] },
   {
     model: Equipo,
     as: 'equipo',
-    attributes: ['id', 'tipoEquipoPersonalizadoId', 'marca', 'modelo'],
+    attributes: ['id', 'tipoEquipoPersonalizadoId', 'marca', 'modelo', 'color', 'numeroSerie'],
     include: [{ model: TipoEquipoPersonalizado, as: 'tipoEquipo', attributes: ['id', 'nombre'] }]
   }
 ];
+
+/** Columnas (de la orden y de sus includes) en las que busca el listado. */
+const COLUMNAS_BUSQUEDA = [
+  'Orden.numero_orden',
+  'equipo.numero_serie',
+  'equipo.modelo',
+  'equipo.color',
+  'cliente.telefono',
+  'cliente.dni_cuit'
+];
+
+/**
+ * Filtro del listado de órdenes de una sucursal.
+ *
+ * La búsqueda pega contra columnas de las tablas incluidas, así que solo sirve
+ * con `INCLUDES_LISTADO` (cliente y equipo unidos en la misma consulta). El
+ * nombre se busca completo en los dos órdenes, para que "Juan Pérez" y "Pérez
+ * Juan" encuentren lo mismo.
+ */
+export function filtroDeOrdenes(
+  sucursalId: number,
+  { estado, search, equipoId }: z.infer<typeof listarOrdenesQuery>
+): WhereOptions<OrdenAttributes> {
+  const where: WhereOptions<OrdenAttributes> = {
+    sucursalId,
+    ...(estado ? { estado } : {}),
+    ...(equipoId ? { equipoId } : {})
+  };
+  if (!search) return where;
+
+  const patron = { [Op.like]: `%${search}%` };
+  const col = (columna: string) => sequelize.col(columna);
+  return {
+    ...where,
+    [Op.or]: [
+      ...COLUMNAS_BUSQUEDA.map((columna) => sequelize.where(col(columna), patron)),
+      sequelize.where(sequelize.fn('CONCAT', col('cliente.nombre'), ' ', col('cliente.apellido')), patron),
+      sequelize.where(sequelize.fn('CONCAT', col('cliente.apellido'), ' ', col('cliente.nombre')), patron)
+    ]
+  };
+}
 
 /**
  * Busca una orden de la sucursal activa o corta con 404.
@@ -106,10 +148,14 @@ export async function registrarCambioDeEstado(
     estadoNuevo: EstadoOrden;
     usuarioId: number;
     comentario?: string | null;
+    notaInterna?: string | null;
   },
   transaction?: Transaction
 ): Promise<void> {
-  await OrdenHistorialEstado.create({ ...datos, comentario: datos.comentario ?? null }, { transaction });
+  await OrdenHistorialEstado.create(
+    { ...datos, comentario: datos.comentario ?? null, notaInterna: datos.notaInterna ?? null },
+    { transaction }
+  );
 }
 
 type NuevaOrden = z.infer<typeof crearOrdenSchema>;
@@ -199,7 +245,8 @@ export async function crearOrden(data: NuevaOrden, ctx: ContextoAlta): Promise<O
         reparacionSolicitada: data.reparacionSolicitada,
         notasInternas: data.notasInternas ?? null,
         fechaPactada: data.fechaPactada,
-        presupuestoMonto: data.presupuestoMonto ?? null
+        presupuestoMonto: data.presupuestoMonto ?? null,
+        moneda: data.moneda ?? MONEDA_POR_DEFECTO
       },
       { transaction }
     );

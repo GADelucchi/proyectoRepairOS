@@ -47,6 +47,7 @@ export function EntregaModal({
   const [montoAbonado, setMontoAbonado] = useState('');
   const [medioPago, setMedioPago] = useState<MedioPago>('efectivo');
   const [comentario, setComentario] = useState('');
+  const [notaInterna, setNotaInterna] = useState('');
   const [forzar, setForzar] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [guardando, setGuardando] = useState(false);
@@ -68,6 +69,7 @@ export function EntregaModal({
     setMontoAbonado(String(Math.max(0, presupuesto - Math.min(creditoDisponible, presupuesto))));
     setMedioPago('efectivo');
     setComentario('');
+    setNotaInterna('');
     setForzar(false);
     setError(null);
     setPidiendoAutorizacion(false);
@@ -100,6 +102,7 @@ export function EntregaModal({
         montoAbonado: abonado,
         medioPago: abonado > 0 ? medioPago : null,
         comentario: comentario.trim() || null,
+        notaInterna: notaInterna.trim() || null,
         forzar: forzar || undefined
       });
       onEntregado(resultado);
@@ -138,6 +141,9 @@ export function EntregaModal({
   }
 
   const nombreCliente = nombreCompleto(orden.cliente) || 'el cliente';
+  // Se cobra en la moneda del presupuesto, y el saldo a favor es el de esa moneda.
+  const moneda = orden.moneda;
+  const m = (valor: number) => formatearMonto(valor, moneda);
 
   return (
     <Modal show={show} onHide={onCerrar} centered>
@@ -155,9 +161,10 @@ export function EntregaModal({
           <Row className="g-2">
             <Col sm={6}>
               <Form.Group>
-                <Form.Label>Total a cobrar</Form.Label>
+                <Form.Label>Total a cobrar ({moneda})</Form.Label>
                 <Form.Control
                   type="number"
+                  inputMode="decimal"
                   min={0}
                   step="0.01"
                   value={montoTotal}
@@ -166,15 +173,16 @@ export function EntregaModal({
                   autoFocus
                 />
                 {presupuesto > 0 && (
-                  <Form.Text className="text-muted">Presupuesto: {formatearMonto(presupuesto)}</Form.Text>
+                  <Form.Text className="text-muted">Presupuesto: {m(presupuesto)}</Form.Text>
                 )}
               </Form.Group>
             </Col>
             <Col sm={6}>
               <Form.Group>
-                <Form.Label>Abona ahora</Form.Label>
+                <Form.Label>Abona ahora ({moneda})</Form.Label>
                 <Form.Control
                   type="number"
+                  inputMode="decimal"
                   min={0}
                   step="0.01"
                   value={montoAbonado}
@@ -227,15 +235,14 @@ export function EntregaModal({
 
           {creditoAplicado > 0 && (
             <Alert variant="success" className="mt-3 mb-0 py-2">
-              Se aplican <strong>{formatearMonto(creditoAplicado)}</strong> del saldo a favor de{' '}
-              {nombreCliente}.
-              {aFavorRestante > 0 && <> Le quedan {formatearMonto(aFavorRestante)} a favor.</>}
+              Se aplican <strong>{m(creditoAplicado)}</strong> del saldo a favor de {nombreCliente}.
+              {aFavorRestante > 0 && <> Le quedan {m(aFavorRestante)} a favor.</>}
             </Alert>
           )}
 
           {pendiente > 0 && !fiaSinCuenta && (
             <Alert variant="warning" className="mt-3 mb-0">
-              Quedan <strong>{formatearMonto(pendiente)}</strong> en la cuenta corriente de {nombreCliente}.
+              Quedan <strong>{m(pendiente)}</strong> en la cuenta corriente de {nombreCliente}.
             </Alert>
           )}
 
@@ -243,7 +250,7 @@ export function EntregaModal({
             <Alert variant="warning" className="mt-3 mb-0">
               <p className="mb-2">
                 {nombreCliente} no tiene cuenta corriente habilitada, así que no puede quedar debiendo{' '}
-                {formatearMonto(pendiente)}.
+                {m(pendiente)}.
               </p>
               {pidiendoAutorizacion ? (
                 <Form.Group>
@@ -281,7 +288,22 @@ export function EntregaModal({
             <Form.Control
               value={comentario}
               onChange={(e) => setComentario(e.target.value)}
-              placeholder={forzar ? 'Motivo de la entrega forzada (obligatorio)' : 'Opcional'}
+              placeholder={
+                forzar ? 'Motivo de la entrega forzada (obligatorio)' : 'Opcional, sale en el remito'
+              }
+              disabled={guardando}
+            />
+          </Form.Group>
+
+          <Form.Group className="mt-3">
+            <Form.Label>Notas internas</Form.Label>
+            <Form.Control
+              as="textarea"
+              rows={2}
+              value={notaInterna}
+              maxLength={2000}
+              onChange={(e) => setNotaInterna(e.target.value)}
+              placeholder="Opcional, no las ve el cliente"
               disabled={guardando}
             />
           </Form.Group>

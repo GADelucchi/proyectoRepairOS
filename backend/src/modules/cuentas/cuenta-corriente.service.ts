@@ -2,7 +2,7 @@ import { QueryTypes, Transaction } from 'sequelize';
 import { sequelize, Cliente, CuentaMovimiento } from '../../models';
 import { MedioPago, TipoMovimiento } from '../../models/CuentaMovimiento';
 import { HttpError, errores } from '../../shared/http/http-error';
-import { redondearMonto } from '../../shared/utils/dinero';
+import { Moneda, redondearMonto } from '../../shared/utils/dinero';
 import { nombreCompleto } from '../../shared/utils/texto';
 
 /**
@@ -12,7 +12,16 @@ import { nombreCompleto } from '../../shared/utils/texto';
  * de sumar los movimientos: un total en una columna aparte se desincroniza en
  * cuanto un cobro se cae a mitad de camino, y este número tiene que poder
  * justificarse asiento por asiento cuando el cliente lo discute.
+ *
+ * Cada asiento tiene moneda y el saldo se lleva por moneda: un cliente puede
+ * deber pesos y tener dólares a favor, y una cosa no compensa la otra.
  */
+
+/** Saldo de un cliente en una moneda. */
+export interface SaldoEnMoneda {
+  moneda: Moneda;
+  saldo: number;
+}
 
 /** Expresión SQL del saldo: cargos y ajustes débito suman, el resto resta. */
 export function sumaSaldo(alias = ''): string {
@@ -20,31 +29,59 @@ export function sumaSaldo(alias = ''): string {
   return `SUM(CASE WHEN ${col}tipo IN ('cargo', 'ajuste_debito') THEN ${col}monto ELSE -${col}monto END)`;
 }
 
+/** Saldo del cliente en una moneda. */
 export async function saldoDeCliente(
   tallerId: number,
   clienteId: number,
+  moneda: Moneda,
   transaction?: Transaction
 ): Promise<number> {
   const [fila] = await sequelize.query<{ saldo: string | null }>(
-    `SELECT ${sumaSaldo()} AS saldo FROM cuenta_movimientos WHERE taller_id = ? AND cliente_id = ?`,
-    { replacements: [tallerId, clienteId], type: QueryTypes.SELECT, transaction }
+    `SELECT ${sumaSaldo()} AS saldo FROM cuenta_movimientos
+      WHERE taller_id = ? AND cliente_id = ? AND moneda = ?`,
+    { replacements: [tallerId, clienteId, moneda], type: QueryTypes.SELECT, transaction }
   );
   return redondearMonto(Number(fila?.saldo ?? 0));
 }
 
-/** Saldos de varios clientes en una sola consulta (para los listados). */
-export async function saldosDeClientes(tallerId: number, clienteIds: number[]): Promise<Map<number, number>> {
-  if (clienteIds.length === 0) return new Map();
+interface FilaSaldo {
+  cliente_id: number;
+  moneda: Moneda;
+  saldo: string | null;
+}
 
-  const filas = await sequelize.query<{ cliente_id: number; saldo: string | null }>(
-    `SELECT cliente_id, ${sumaSaldo()} AS saldo
+/**
+ * Saldos distintos de cero de varios clientes, por moneda, en una sola consulta
+ * (para los listados). Un cliente al día no aparece en el mapa.
+ */
+export async function saldosDeClientes(
+  tallerId: number,
+  clienteIds: number[]
+): Promise<Map<number, SaldoEnMoneda[]>> {
+  const saldos = new Map<number, SaldoEnMoneda[]>();
+  if (clienteIds.length === 0) return saldos;
+
+  const filas = await sequelize.query<FilaSaldo>(
+    `SELECT cliente_id, moneda, ${sumaSaldo()} AS saldo
        FROM cuenta_movimientos
       WHERE taller_id = ? AND cliente_id IN (?)
-      GROUP BY cliente_id`,
+      GROUP BY cliente_id, moneda
+      ORDER BY moneda`,
     { replacements: [tallerId, clienteIds], type: QueryTypes.SELECT }
   );
 
-  return new Map(filas.map((f) => [Number(f.cliente_id), redondearMonto(Number(f.saldo ?? 0))]));
+  for (const f of filas) {
+    const saldo = redondearMonto(Number(f.saldo ?? 0));
+    if (saldo === 0) continue;
+    const id = Number(f.cliente_id);
+    saldos.set(id, [...(saldos.get(id) ?? []), { moneda: f.moneda, saldo }]);
+  }
+  return saldos;
+}
+
+/** Saldos distintos de cero de un cliente, uno por moneda. */
+export async function saldosDeCliente(tallerId: number, clienteId: number): Promise<SaldoEnMoneda[]> {
+  return (await saldosDeClientes(tallerId, [clienteId])).get(clienteId) ?? [];
 }
 
 /**
@@ -65,6 +102,7 @@ interface DatosMovimiento {
   clienteId: number;
   usuarioId: number;
   monto: number;
+  moneda: Moneda;
   ordenId?: number | null;
   sucursalId?: number | null;
   medioPago?: MedioPago | null;
@@ -85,6 +123,7 @@ function crearMovimiento(tipo: TipoMovimiento, datos: DatosMovimiento): Promise<
       usuarioId: datos.usuarioId,
       tipo,
       monto: monto.toFixed(2),
+      moneda: datos.moneda,
       medioPago: datos.medioPago ?? null,
       nota: datos.nota ?? null
     },
