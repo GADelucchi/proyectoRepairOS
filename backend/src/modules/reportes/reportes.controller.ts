@@ -28,7 +28,7 @@ interface FiltroCaja {
  * dos instantes en vez de usar DATE(created_at), así el índice por fecha sigue
  * sirviendo y no se corre el día a las 21 hs.
  */
-function filtroDeCaja(req: Request): FiltroCaja {
+export function filtroDeCaja(req: Request): FiltroCaja {
   const query = rangoCajaQuery.parse(req.query);
   const hoy = fechaEnZona(new Date(), env.timezone);
   const desde = query.desde ?? hoy;

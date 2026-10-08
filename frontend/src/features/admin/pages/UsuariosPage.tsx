@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { Alert, Badge, Button, Form, Table } from 'react-bootstrap';
+import { Alert, Badge, Button, Form } from 'react-bootstrap';
 import { useAuth } from '@/features/auth/useAuth';
 import { AlertaError } from '@/shared/components/AlertaError';
 import { Cargando } from '@/shared/components/Cargando';
+import { TablaApilable } from '@/shared/components/TablaApilable';
 import { useAccion } from '@/shared/hooks/useAccion';
 import { useConsulta } from '@/shared/hooks/useConsulta';
 import type { RolUsuario, Usuario } from '@/shared/types';
@@ -10,10 +11,13 @@ import { nombreCompleto } from '@/shared/utils/texto';
 import * as usuariosApi from '../api/usuarios';
 import { CambiarPasswordModal } from '../components/CambiarPasswordModal';
 import { NuevoUsuarioModal } from '../components/NuevoUsuarioModal';
+import { UsoDelPlanAviso } from '../components/UsoDelPlanAviso';
+import { planLleno } from '../uso-plan';
 
 /** Técnicos y administradores del taller. */
 export function UsuariosPage() {
-  const { usuario: yo } = useAuth();
+  // El perfil trae cuánto del plan se usa: se refresca después de cada alta o baja.
+  const { usuario: yo, refrescar } = useAuth();
   const {
     datos: usuarios = [],
     cargando,
@@ -32,6 +36,7 @@ export function UsuariosPage() {
       await ejecutar(() => usuariosApi.actualizarUsuario(u.id, cambios), 'No se pudo actualizar el usuario')
     ) {
       recargar();
+      refrescar();
     }
   }
 
@@ -39,8 +44,11 @@ export function UsuariosPage() {
     <div>
       <div className="d-flex justify-content-between align-items-center mb-3">
         <h3>Usuarios</h3>
-        <Button onClick={() => setCreando(true)}>+ Nuevo usuario</Button>
+        <Button onClick={() => setCreando(true)} disabled={planLleno(yo?.usoDelPlan, 'usuarios')}>
+          + Nuevo usuario
+        </Button>
       </div>
+      <UsoDelPlanAviso recurso="usuarios" />
 
       <AlertaError error={error} onCerrar={() => setError(null)} />
       {mensaje && (
@@ -52,7 +60,7 @@ export function UsuariosPage() {
       {cargando ? (
         <Cargando />
       ) : (
-        <Table striped bordered hover responsive>
+        <TablaApilable striped bordered hover responsive>
           <thead>
             <tr>
               <th>Nombre</th>
@@ -110,7 +118,7 @@ export function UsuariosPage() {
               );
             })}
           </tbody>
-        </Table>
+        </TablaApilable>
       )}
 
       <NuevoUsuarioModal
@@ -119,6 +127,7 @@ export function UsuariosPage() {
         onCreado={() => {
           setCreando(false);
           recargar();
+          refrescar();
         }}
       />
       <CambiarPasswordModal

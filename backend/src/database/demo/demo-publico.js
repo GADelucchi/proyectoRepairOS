@@ -1,6 +1,12 @@
 'use strict';
 
 const bcrypt = require('bcrypt');
+const { randomInt } = require('crypto');
+
+/** Mismo formato que `modules/seguimiento/codigo.ts`: el link público de cada orden. */
+const ALFABETO_SEGUIMIENTO = '23456789ABCDEFGHJKMNPQRSTUVWXYZ';
+const codigoSeguimiento = () =>
+  Array.from({ length: 10 }, () => ALFABETO_SEGUIMIENTO[randomInt(ALFABETO_SEGUIMIENTO.length)]).join('');
 
 /**
  * Taller de demostración pública.
@@ -506,6 +512,8 @@ async function crearDemo(queryInterface) {
   const tallerId = await insertarYObtenerId(sequelize, 'talleres', {
     nombre: TALLER_NOMBRE,
     activo: true,
+    // Fijo: el portal de clientes de la demo tiene siempre el mismo link.
+    codigo_publico: 'DEMO2026',
     created_at: ahora,
     updated_at: ahora
   });
@@ -659,6 +667,7 @@ async function crearDemo(queryInterface) {
     const ordenId = await insertarYObtenerId(sequelize, 'ordenes', {
       taller_id: tallerId,
       numero_orden: 'ORD-' + String(numero).padStart(6, '0'),
+      codigo_seguimiento: codigoSeguimiento(),
       cliente_id: clienteIds[equipo.cliente],
       equipo_id: equipoIds[ord.equipo],
       sucursal_id: sucursalIds[ord.sucursal],

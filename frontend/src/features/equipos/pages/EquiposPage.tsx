@@ -1,20 +1,23 @@
 import { useState } from 'react';
-import { Alert, Badge, Button, Form, Modal, Table } from 'react-bootstrap';
-import { Link } from 'react-router';
+import { Alert, Badge, Button, Form, Modal } from 'react-bootstrap';
+import { Link, useNavigate } from 'react-router';
 import * as configuracionApi from '@/features/configuracion/api';
 import { AlertaError } from '@/shared/components/AlertaError';
 import { Cargando } from '@/shared/components/Cargando';
+import { TablaApilable } from '@/shared/components/TablaApilable';
 import { useAccion } from '@/shared/hooks/useAccion';
 import { useConsulta } from '@/shared/hooks/useConsulta';
 import { useDebounce } from '@/shared/hooks/useDebounce';
 import type { Equipo } from '@/shared/types';
 import { nombreCompleto } from '@/shared/utils/texto';
+import { filaClickeable } from '@/shared/utils/filas';
 import * as equiposApi from '../api';
 import { EquipoModal } from '../components/EquipoModal';
 import { EtiquetaQr } from '../components/EtiquetaQr';
 import { describirEquipo } from '../equipo-form';
 
 export function EquiposPage() {
+  const navigate = useNavigate();
   const [busqueda, setBusqueda] = useState('');
   const busquedaDebounced = useDebounce(busqueda);
   const {
@@ -96,7 +99,7 @@ export function EquiposPage() {
       {cargando ? (
         <Cargando />
       ) : (
-        <Table striped bordered hover responsive>
+        <TablaApilable striped bordered hover responsive>
           <thead>
             <tr>
               <th>Tipo</th>
@@ -112,7 +115,7 @@ export function EquiposPage() {
             {equipos.map((eq) => {
               const revelado = revelados[eq.id];
               return (
-                <tr key={eq.id}>
+                <tr key={eq.id} {...filaClickeable(() => navigate(`/equipos/${eq.id}`))}>
                   <td>
                     <Badge bg="secondary">{eq.tipoEquipo?.nombre ?? 'Sin especificar'}</Badge>
                   </td>
@@ -171,7 +174,7 @@ export function EquiposPage() {
               </tr>
             )}
           </tbody>
-        </Table>
+        </TablaApilable>
       )}
 
       <EquipoModal
@@ -179,6 +182,7 @@ export function EquiposPage() {
         equipo={editando}
         tiposEquipo={tiposEquipo}
         onCerrar={() => setModalAbierto(false)}
+        onEditarExistente={abrirEdicion}
         onGuardado={(guardado) => {
           const eraNuevo = !editando;
           setModalAbierto(false);

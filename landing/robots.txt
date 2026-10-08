@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://repairos.app/sitemap.xml
+Sitemap: https://proyectorepairoslanding.onrender.com/sitemap.xml

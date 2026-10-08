@@ -1,12 +1,14 @@
 import { useState } from 'react';
-import { Alert, Badge, Card, Col, Row, Table } from 'react-bootstrap';
-import { Link, useParams } from 'react-router';
+import { Alert, Badge, Card, Col, Row } from 'react-bootstrap';
+import { Link, useNavigate, useParams } from 'react-router';
 import * as ordenesApi from '@/features/ordenes/api';
 import { EstadoBadge } from '@/features/ordenes/components/EstadoBadge';
 import { AlertaError } from '@/shared/components/AlertaError';
 import { Cargando } from '@/shared/components/Cargando';
+import { TablaApilable } from '@/shared/components/TablaApilable';
 import { useConsulta } from '@/shared/hooks/useConsulta';
 import { formatearFecha } from '@/shared/utils/fechas';
+import { filaClickeable } from '@/shared/utils/filas';
 import { nombreCompleto } from '@/shared/utils/texto';
 import * as equiposApi from '../api';
 import { EtiquetaQr } from '../components/EtiquetaQr';
@@ -21,6 +23,7 @@ import { EtiquetaQr } from '../components/EtiquetaQr';
  */
 export function EquipoDetallePage() {
   const id = Number(useParams<{ id: string }>().id);
+  const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
 
   const {
@@ -92,7 +95,7 @@ export function EquipoDetallePage() {
               {ordenes.length === 0 ? (
                 <p className="text-muted p-3 mb-0">Este equipo no tiene órdenes en esta sucursal.</p>
               ) : (
-                <Table hover responsive size="sm" className="mb-0 align-middle">
+                <TablaApilable hover responsive size="sm" className="mb-0 align-middle">
                   <thead>
                     <tr>
                       <th>Nº orden</th>
@@ -103,7 +106,7 @@ export function EquipoDetallePage() {
                   </thead>
                   <tbody>
                     {ordenes.map((o) => (
-                      <tr key={o.id}>
+                      <tr key={o.id} {...filaClickeable(() => navigate(`/ordenes/${o.id}`))}>
                         <td className="font-mono">{o.numeroOrden}</td>
                         <td>
                           <EstadoBadge estado={o.estado} />
@@ -117,7 +120,7 @@ export function EquipoDetallePage() {
                       </tr>
                     ))}
                   </tbody>
-                </Table>
+                </TablaApilable>
               )}
             </Card.Body>
           </Card>

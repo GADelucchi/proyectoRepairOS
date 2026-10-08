@@ -45,7 +45,8 @@ app.use(
     credentials: true
   })
 );
-app.use(morgan(env.esProduccion ? 'combined' : 'dev'));
+// En los tests de integración el log de cada request tapa los resultados.
+if (env.nodeEnv !== 'test') app.use(morgan(env.esProduccion ? 'combined' : 'dev'));
 app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ extended: true, limit: '5mb' }));
 

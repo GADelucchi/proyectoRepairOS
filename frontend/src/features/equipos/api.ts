@@ -14,9 +14,21 @@ export interface EquipoInput {
   cuentaPassword: string | null;
 }
 
-export async function listarEquipos(params?: { search?: string; clienteId?: number }): Promise<Equipo[]> {
+export async function listarEquipos(params?: {
+  search?: string;
+  clienteId?: number;
+  numeroSerie?: string;
+}): Promise<Equipo[]> {
   const { data } = await apiClient.get<Equipo[]>('/equipos', { params });
   return data;
+}
+
+/** El equipo del taller con ese número de serie exacto, o null si no está cargado. */
+export async function buscarPorSerie(numeroSerie: string): Promise<Equipo | null> {
+  const serie = numeroSerie.trim();
+  if (!serie) return null;
+  const [equipo] = await listarEquipos({ numeroSerie: serie });
+  return equipo ?? null;
 }
 
 /** Con `revelar`, las credenciales vienen descifradas y la consulta queda auditada. */

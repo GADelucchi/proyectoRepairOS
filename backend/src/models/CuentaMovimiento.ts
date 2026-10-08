@@ -14,8 +14,19 @@ import { MONEDA_POR_DEFECTO, Moneda } from '../shared/utils/dinero';
 export const TIPOS_MOVIMIENTO = ['cargo', 'pago', 'ajuste_debito', 'ajuste_credito'] as const;
 export type TipoMovimiento = (typeof TIPOS_MOVIMIENTO)[number];
 
-/** Medios con los que puede entrar la plata. `otro` cubre lo que no encaje. */
-export const MEDIOS_PAGO = ['efectivo', 'transferencia', 'tarjeta', 'otro'] as const;
+/**
+ * Medios con los que puede entrar la plata. `otro` cubre lo que no encaje.
+ * `tarjeta` (sin decir cuál) queda solo para los cobros anteriores a separar
+ * débito y crédito: la pantalla ya no lo ofrece.
+ */
+export const MEDIOS_PAGO = [
+  'efectivo',
+  'transferencia',
+  'tarjeta_debito',
+  'tarjeta_credito',
+  'otro',
+  'tarjeta'
+] as const;
 export type MedioPago = (typeof MEDIOS_PAGO)[number];
 
 /**

@@ -2,6 +2,7 @@ import { DataTypes, Model, NonAttribute, Optional, Sequelize } from 'sequelize';
 import type { Cliente } from './Cliente';
 import type { Equipo } from './Equipo';
 import type { Sucursal } from './Sucursal';
+import type { Taller } from './Taller';
 import type { User } from './User';
 import type { OrdenChequeo } from './OrdenChequeo';
 import type { OrdenImagen } from './OrdenImagen';
@@ -25,6 +26,7 @@ export interface OrdenAttributes {
   id: number;
   tallerId: number;
   numeroOrden: string;
+  codigoSeguimiento?: string | null;
   clienteId: number;
   equipoId: number;
   sucursalId: number;
@@ -52,6 +54,7 @@ export interface OrdenAttributes {
 export type OrdenCreationAttributes = Optional<
   OrdenAttributes,
   | 'id'
+  | 'codigoSeguimiento'
   | 'estado'
   | 'fechaIngreso'
   | 'fechaPactada'
@@ -76,6 +79,8 @@ export class Orden extends Model<OrdenAttributes, OrdenCreationAttributes> imple
   declare id: number;
   declare tallerId: number;
   declare numeroOrden: string;
+  /** Código aleatorio del link público de seguimiento (`/seguimiento/:codigo`). */
+  declare codigoSeguimiento: string | null;
   declare clienteId: number;
   declare equipoId: number;
   declare sucursalId: number;
@@ -109,6 +114,7 @@ export class Orden extends Model<OrdenAttributes, OrdenCreationAttributes> imple
   declare cliente?: NonAttribute<Cliente>;
   declare equipo?: NonAttribute<Equipo>;
   declare sucursal?: NonAttribute<Sucursal>;
+  declare taller?: NonAttribute<Taller>;
   declare tecnico?: NonAttribute<User>;
   declare chequeos?: NonAttribute<OrdenChequeo[]>;
   declare imagenes?: NonAttribute<OrdenImagen[]>;
@@ -121,6 +127,7 @@ export class Orden extends Model<OrdenAttributes, OrdenCreationAttributes> imple
         tallerId: { type: DataTypes.INTEGER, allowNull: false, field: 'taller_id' },
         // Único por taller (índice `uq_ordenes_taller_numero`), no global.
         numeroOrden: { type: DataTypes.STRING(30), allowNull: false, field: 'numero_orden' },
+        codigoSeguimiento: { type: DataTypes.STRING(20), allowNull: true, field: 'codigo_seguimiento' },
         clienteId: { type: DataTypes.INTEGER, allowNull: false, field: 'cliente_id' },
         equipoId: { type: DataTypes.INTEGER, allowNull: false, field: 'equipo_id' },
         sucursalId: { type: DataTypes.INTEGER, allowNull: false, field: 'sucursal_id' },

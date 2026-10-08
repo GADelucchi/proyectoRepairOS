@@ -1,9 +1,10 @@
 import { FormEvent, useEffect, useState } from 'react';
-import { Alert, Button, Card, Container, Form, Spinner } from 'react-bootstrap';
+import { Button, Card, Container, Form, Spinner } from 'react-bootstrap';
 import { Link, useNavigate, useLocation } from 'react-router';
-import { getApiErrorMessage } from '@/shared/api/client';
+import { avisoLogin, ErrorApi, getApiErrorData } from '@/shared/api/client';
 import { EnlacesLegales } from '@/shared/components/EnlacesLegales';
 import { Logo } from '@/shared/components/Logo';
+import { ErrorDeIngreso } from '../components/ErrorDeIngreso';
 import { useAuth } from '../useAuth';
 
 /**
@@ -29,7 +30,8 @@ export function LoginPage() {
   const location = useLocation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
+  // Si se llegó acá por una salida forzada (suscripción vencida), se explica por qué.
+  const [error, setError] = useState<ErrorApi | null>(avisoLogin.leer);
   const [cargando, setCargando] = useState(false);
 
   useEffect(() => {
@@ -50,7 +52,7 @@ export function LoginPage() {
       // La redirección la hace el efecto de arriba, cuando el perfil ya está cargado.
       await login(correo, clave);
     } catch (err) {
-      setError(getApiErrorMessage(err, 'No se pudo iniciar sesión'));
+      setError(getApiErrorData(err, 'No se pudo iniciar sesión'));
     } finally {
       setCargando(false);
     }
@@ -76,7 +78,7 @@ export function LoginPage() {
             <Logo size={44} />
           </div>
           <Card.Subtitle className="mb-4 text-center text-muted">Ingreso de técnicos</Card.Subtitle>
-          {error && <Alert variant="danger">{error}</Alert>}
+          {error && <ErrorDeIngreso error={error} />}
           <Form onSubmit={handleSubmit}>
             <Form.Group className="mb-3">
               <Form.Label>Email</Form.Label>
@@ -100,6 +102,11 @@ export function LoginPage() {
             <Button type="submit" className="w-100" disabled={cargando}>
               {cargando ? <Spinner size="sm" animation="border" /> : 'Ingresar'}
             </Button>
+            <div className="text-center mt-2">
+              <Link to="/recuperar" state={{ email }} className="small">
+                ¿Olvidaste tu contraseña?
+              </Link>
+            </div>
           </Form>
 
           {demoDisponible && (

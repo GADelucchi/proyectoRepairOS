@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Button, Card, Table, Toast, ToastContainer } from 'react-bootstrap';
+import { useAuth } from '@/features/auth/useAuth';
 import { AlertaError } from '@/shared/components/AlertaError';
 import { Cargando } from '@/shared/components/Cargando';
 import { useAccion } from '@/shared/hooks/useAccion';
@@ -7,10 +8,13 @@ import { useConsulta } from '@/shared/hooks/useConsulta';
 import type { TipoEquipoPersonalizado } from '@/shared/types';
 import * as configuracionApi from '../api';
 import { ChequeosTipoModal } from '../components/ChequeosTipoModal';
+import { DatosTallerCard } from '../components/DatosTallerCard';
+import { PortalClientesCard } from '../components/PortalClientesCard';
 import { NombreTipoModal } from '../components/NombreTipoModal';
 
-/** Tipos de equipo de la sucursal y el checklist de recepción de cada uno. */
+/** Datos del taller (admin), tipos de equipo de la sucursal y el checklist de recepción de cada uno. */
 export function ConfiguracionPage() {
+  const { esAdmin } = useAuth();
   const {
     datos: tipos = [],
     cargando,
@@ -57,6 +61,9 @@ export function ConfiguracionPage() {
           </Toast>
         )}
       </ToastContainer>
+
+      {esAdmin && <DatosTallerCard onError={setError} onGuardado={setExito} />}
+      <PortalClientesCard />
 
       <Card>
         <Card.Header className="d-flex justify-content-between align-items-center">

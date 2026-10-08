@@ -7,9 +7,11 @@ export interface JwtPayload {
   tallerId: number;
   rol: RolUsuario;
   sucursalId?: number;
+  /** No viaja en el token: lo completa `authenticate` en cada request. */
+  adminPlataforma?: boolean;
 }
 
-export function signToken(payload: JwtPayload): string {
+export function signToken({ adminPlataforma: _, ...payload }: JwtPayload): string {
   return jwt.sign(payload, env.jwt.secret, { expiresIn: env.jwt.expiresIn } as jwt.SignOptions);
 }
 

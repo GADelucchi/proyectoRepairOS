@@ -1,5 +1,5 @@
 import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
-import { sesion } from '@/shared/api/client';
+import { EVENTO_PLAN_EXCEDIDO, sesion } from '@/shared/api/client';
 import * as authApi from './api';
 import { AuthContext, AuthContextValue } from './auth-context';
 
@@ -32,6 +32,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     refrescar();
+    window.addEventListener(EVENTO_PLAN_EXCEDIDO, refrescar);
+    return () => window.removeEventListener(EVENTO_PLAN_EXCEDIDO, refrescar);
   }, [refrescar]);
 
   /** Guarda el token nuevo y recarga el perfil con lo que dice la API. */
@@ -48,9 +50,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       usuario,
       cargando,
       esAdmin: usuario?.rol === 'admin',
+      esAdminPlataforma: usuario?.esAdminPlataforma ?? false,
       refrescar,
       login: async (email, password) => iniciarCon((await authApi.login(email, password)).token),
-      registrar: async (datos) => iniciarCon((await authApi.registrar(datos)).token),
+      registrar: async (datos) => {
+        const respuesta = await authApi.registrar(datos);
+        if ('verificacionPendiente' in respuesta) return { verificacionPendiente: true };
+        await iniciarCon(respuesta.token);
+        return { verificacionPendiente: false };
+      },
       seleccionarSucursal: async (sucursalId) =>
         iniciarCon((await authApi.seleccionarSucursal(sucursalId)).token),
       logout: () => {

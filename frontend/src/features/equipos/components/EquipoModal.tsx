@@ -1,5 +1,6 @@
-import { FormEvent, useEffect, useState } from 'react';
-import { Button, Form, Modal, Spinner } from 'react-bootstrap';
+import { FormEvent, useCallback, useEffect, useState } from 'react';
+import { Alert, Button, Form, Modal, Spinner } from 'react-bootstrap';
+import { Link } from 'react-router';
 import * as clientesApi from '@/features/clientes/api';
 import { AlertaError } from '@/shared/components/AlertaError';
 import { BuscadorConSugerencias } from '@/shared/components/BuscadorConSugerencias';
@@ -8,7 +9,14 @@ import { useBusqueda } from '@/shared/hooks/useBusqueda';
 import type { Cliente, Equipo, TipoEquipoPersonalizado } from '@/shared/types';
 import { nombreCompleto } from '@/shared/utils/texto';
 import * as equiposApi from '../api';
-import { EQUIPO_FORM_VACIO, EquipoFormData, equipoAFormulario, formularioAEquipo } from '../equipo-form';
+import {
+  describirEquipo,
+  EQUIPO_FORM_VACIO,
+  EquipoFormData,
+  equipoAFormulario,
+  formularioAEquipo
+} from '../equipo-form';
+import { useBusquedaPorSerie } from '../hooks/useBusquedaPorSerie';
 import { EquipoFormFields } from './EquipoFormFields';
 
 interface EquipoModalProps {
@@ -17,11 +25,20 @@ interface EquipoModalProps {
   equipo: Equipo | null;
   tiposEquipo: TipoEquipoPersonalizado[];
   onCerrar: () => void;
+  /** El número de serie de un alta ya existía: se pasa a editar ese equipo. */
+  onEditarExistente: (equipo: Equipo) => void;
   /** Recibe el equipo guardado (el nuevo, al crear: para ofrecer su etiqueta QR). */
   onGuardado: (equipo: Equipo) => void;
 }
 
-export function EquipoModal({ show, equipo, tiposEquipo, onCerrar, onGuardado }: EquipoModalProps) {
+export function EquipoModal({
+  show,
+  equipo,
+  tiposEquipo,
+  onCerrar,
+  onEditarExistente,
+  onGuardado
+}: EquipoModalProps) {
   const [form, setForm] = useState<EquipoFormData>(EQUIPO_FORM_VACIO);
   const [clienteId, setClienteId] = useState<number | null>(null);
   const [textoCliente, setTextoCliente] = useState('');
@@ -31,12 +48,17 @@ export function EquipoModal({ show, equipo, tiposEquipo, onCerrar, onGuardado }:
 
   const sugerencias = useBusqueda(textoCliente, clientesApi.listarClientes, clienteId === null);
 
+  // Al dar de alta: si la serie ya está cargada, se ofrece ir a ese equipo en vez de duplicarlo.
+  const [existente, setExistente] = useState<Equipo | null>(null);
+  const porSerie = useBusquedaPorSerie(useCallback((encontrado: Equipo) => setExistente(encontrado), []));
+
   useEffect(() => {
     if (!show) return;
     setForm(equipo ? equipoAFormulario(equipo) : EQUIPO_FORM_VACIO);
     setClienteId(equipo?.clienteId ?? null);
     setTextoCliente(nombreCompleto(equipo?.cliente));
     setError(null);
+    setExistente(null);
   }, [show, equipo]);
 
   function elegirCliente(cliente: Cliente) {
@@ -93,9 +115,28 @@ export function EquipoModal({ show, equipo, tiposEquipo, onCerrar, onGuardado }:
             {clienteId && <div className="text-success small mt-1">Cliente seleccionado ✓</div>}
           </Form.Group>
 
+          {existente && (
+            <Alert variant="info" className="py-2">
+              Ese número de serie ya está cargado: <strong>{describirEquipo(existente)}</strong>
+              {existente.cliente && <> de {nombreCompleto(existente.cliente)}</>}.
+              <div className="d-flex gap-2 mt-2">
+                <Link className="btn btn-sm btn-outline-secondary" to={`/equipos/${existente.id}`}>
+                  Ver ficha
+                </Link>
+                <Button size="sm" onClick={() => onEditarExistente(existente)}>
+                  Editar ese equipo
+                </Button>
+              </div>
+            </Alert>
+          )}
           <EquipoFormFields
             value={form}
-            onChange={setForm}
+            onChange={(nuevo) => {
+              if (nuevo.numeroSerie !== form.numeroSerie) setExistente(null);
+              setForm(nuevo);
+            }}
+            onSerieCompleta={equipo ? undefined : porSerie.buscar}
+            buscandoSerie={porSerie.buscando}
             tiposEquipo={tiposEquipo}
             disabled={guardado.enCurso}
             serieObligatoria

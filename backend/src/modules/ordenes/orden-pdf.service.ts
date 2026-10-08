@@ -1,4 +1,5 @@
 import PDFDocument from 'pdfkit';
+import QRCode from 'qrcode';
 import { PassThrough } from 'stream';
 import { env } from '../../config/env';
 import { Orden } from '../../models';
@@ -7,6 +8,7 @@ import { decryptBuffer } from '../../shared/security/encryption';
 import { aNumero, formatearMonto, redondearMonto } from '../../shared/utils/dinero';
 import { formatearFechaHora as fechaHoraEnZona, formatearFechaIso } from '../../shared/utils/fechas';
 import { nombreCompleto } from '../../shared/utils/texto';
+import { urlDeSeguimiento } from '../seguimiento/codigo';
 import { etiquetaEstado } from './estado-orden';
 
 /**
@@ -103,6 +105,26 @@ export async function generarOrdenPdf(orden: Orden): Promise<Buffer> {
   dato('Fecha de ingreso', formatearFechaHora(orden.fechaIngreso));
   if (orden.fechaPactada) dato('Fecha pactada de entrega', formatearFechaIso(orden.fechaPactada));
   dato('Estado actual', etiquetaEstado(orden.estado));
+
+  // QR al link público de seguimiento, arriba a la derecha: el cliente lo
+  // escanea con el celular y ve el estado sin tener que llamar.
+  if (orden.codigoSeguimiento) {
+    const cursor = { x: doc.x, y: doc.y };
+    const url = urlDeSeguimiento(orden.codigoSeguimiento);
+    const qr = await QRCode.toBuffer(url, { type: 'png', margin: 1, width: 240, errorCorrectionLevel: 'M' });
+    const lado = 78;
+    const x = doc.page.width - doc.page.margins.right - lado;
+    const y = doc.page.margins.top + 45;
+    doc.image(qr, x, y, { width: lado, height: lado });
+    doc
+      .fontSize(7)
+      .fillColor('#555555')
+      .text('Seguí tu equipo', x - 6, y + lado + 2, { width: lado + 12, align: 'center', lineBreak: false });
+    doc.fillColor('#000000').fontSize(10);
+    // El texto en posición absoluta mueve el cursor: se vuelve adonde seguía el remito.
+    doc.x = cursor.x;
+    doc.y = cursor.y;
+  }
 
   // ---------- Cliente ----------
   seccion('Datos del cliente');

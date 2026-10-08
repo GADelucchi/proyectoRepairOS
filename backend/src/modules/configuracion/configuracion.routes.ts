@@ -1,10 +1,12 @@
 import { Router } from 'express';
-import { authenticate, requireSucursal } from '../../shared/middlewares/auth.middleware';
+import { authenticate, requireRole, requireSucursal } from '../../shared/middlewares/auth.middleware';
 import * as configuracion from './configuracion.controller';
 
 export const configuracionRoutes = Router();
 
 configuracionRoutes.use(authenticate, requireSucursal);
+
+configuracionRoutes.put('/taller', requireRole('admin'), configuracion.actualizarTaller);
 
 configuracionRoutes.get('/tipos-equipo', configuracion.listarTiposEquipo);
 configuracionRoutes.post('/tipos-equipo', configuracion.crearTipoEquipo);

@@ -2,7 +2,15 @@
  * Códigos que el frontend usa para reaccionar a un error sin tener que
  * interpretar el texto del mensaje (que puede cambiar o traducirse).
  */
-export type CodigoError = 'NO_AUTENTICADO' | 'SIN_PERMISO' | 'SUCURSAL_REQUERIDA' | 'REQUIERE_AUTORIZACION';
+export type CodigoError =
+  | 'NO_AUTENTICADO'
+  | 'SIN_PERMISO'
+  | 'SUCURSAL_REQUERIDA'
+  | 'REQUIERE_AUTORIZACION'
+  | 'SUSCRIPCION_VENCIDA'
+  | 'EMAIL_NO_VERIFICADO'
+  | 'LIMITE_DEL_PLAN'
+  | 'PLAN_EXCEDIDO';
 
 /**
  * Error esperable de negocio: viaja al cliente con su status y su mensaje.
@@ -31,5 +39,13 @@ export const errores = {
   noEncontrado: (recurso: string) => new HttpError(404, `${recurso} no encontrado`),
   conflicto: (mensaje: string) => new HttpError(409, mensaje),
   sucursalRequerida: () =>
-    new HttpError(409, 'Debés seleccionar una sucursal antes de continuar', { codigo: 'SUCURSAL_REQUERIDA' })
+    new HttpError(409, 'Debés seleccionar una sucursal antes de continuar', { codigo: 'SUCURSAL_REQUERIDA' }),
+  /** 402: el taller no tiene una suscripción vigente. Bloquea a todos sus usuarios. */
+  suscripcionVencida: (mensaje: string, datos: Record<string, unknown> = {}) =>
+    new HttpError(402, mensaje, { ...datos, codigo: 'SUSCRIPCION_VENCIDA' }),
+  emailNoVerificado: (email: string) =>
+    new HttpError(403, 'Todavía no confirmaste tu email. Revisá tu casilla (y la carpeta de spam).', {
+      codigo: 'EMAIL_NO_VERIFICADO',
+      email
+    })
 };

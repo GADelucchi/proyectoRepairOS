@@ -26,16 +26,67 @@ export interface UsuarioResumen {
 export interface Taller {
   id: number;
   nombre: string;
+  /** ISO 3166-1 alfa-2: define la moneda por defecto y el prefijo de WhatsApp. */
+  pais: string;
+  /** Moneda con la que arrancan órdenes, cobros y ajustes. */
+  moneda: Moneda;
+  /** Link donde sus clientes consultan sus datos y su cuenta corriente. */
+  portalClientes?: string;
 }
 
 export type EstadoSuscripcion = 'prueba' | 'activa' | 'vencida' | 'cancelada';
 
 export interface Suscripcion {
+  /** Ya contempla el vencimiento: una prueba cuya fecha pasó llega como `vencida`. */
   estado: EstadoSuscripcion;
-  /** Fecha (YYYY-MM-DD) hasta la que el taller puede operar sin haber pagado. */
+  /** Como está guardada, sin evaluar la fecha. */
+  estadoGuardado: EstadoSuscripcion;
+  /** Último día con acceso (YYYY-MM-DD). Null si no vence. */
+  hasta: string | null;
+  diasRestantes: number | null;
+  bloqueada: boolean;
+  /** Fin de la prueba. */
   graciaHasta: string;
-  diasRestantes: number;
+  /** Fin del período pago. */
+  periodoFin: string | null;
   plan: { id: number; codigo: string; nombre: string } | null;
+  /** Mostrar el aviso de vencimiento. */
+  avisar: boolean;
+  contacto: string | null;
+  contactoWhatsapp: string | null;
+}
+
+/** Cuánto usa el taller de cada recurso limitado y cuánto permite su plan (null = sin tope). */
+export interface UsoDelPlan {
+  usuarios: { usados: number; maximo: number | null };
+  sucursales: { usados: number; maximo: number | null };
+}
+
+/** El taller tiene más usuarios o sucursales activos de los que permite su plan. */
+export interface ExcesoDelPlan extends UsoDelPlan {
+  plan: string;
+}
+
+export interface Plan {
+  id: number;
+  codigo: string;
+  nombre: string;
+  descripcion?: string | null;
+  precioMensual?: number | null;
+}
+
+export type TipoNotificacion = 'taller_nuevo' | 'usuario_nuevo' | 'autorizacion';
+
+/** Aviso de la campanita. */
+export interface Notificacion {
+  id: number;
+  tipo: TipoNotificacion;
+  titulo: string;
+  mensaje?: string | null;
+  /** Ruta de la app adonde lleva al tocarlo. */
+  link?: string | null;
+  leidaEn?: string | null;
+  createdAt: string;
 }
 
 export interface Sucursal {
@@ -160,6 +211,8 @@ export interface SaldoEnMoneda {
 export interface Orden {
   id: number;
   numeroOrden: string;
+  /** Código del link público `/seguimiento/:codigo`. */
+  codigoSeguimiento?: string | null;
   clienteId: number;
   equipoId: number;
   sucursalId: number;
@@ -201,7 +254,9 @@ export interface ResultadoNotificacion {
   detalle: string;
 }
 
-export type MedioPago = 'efectivo' | 'transferencia' | 'tarjeta' | 'otro';
+/** `tarjeta` es de los cobros anteriores a separar débito y crédito. */
+export type MedioPago =
+  'efectivo' | 'transferencia' | 'tarjeta_debito' | 'tarjeta_credito' | 'otro' | 'tarjeta';
 
 /** Un asiento de la cuenta corriente: `cargo` suma deuda, `pago` la descuenta. */
 export type TipoMovimiento = 'cargo' | 'pago' | 'ajuste_debito' | 'ajuste_credito';

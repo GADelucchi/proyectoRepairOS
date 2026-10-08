@@ -35,11 +35,12 @@ async function exigirClienteDelTaller(clienteId: number, tallerId: number): Prom
 }
 
 export async function listarEquipos(req: Request, res: Response): Promise<void> {
-  const { search, clienteId } = listarEquiposQuery.parse(req.query);
+  const { search, clienteId, numeroSerie } = listarEquiposQuery.parse(req.query);
 
   const where: WhereOptions<EquipoAttributes> = {
     tallerId: tallerIdDe(req),
     ...(clienteId ? { clienteId } : {}),
+    ...(numeroSerie ? { numeroSerie } : {}),
     ...(search
       ? {
           [Op.or]: ['numeroSerie', 'marca', 'modelo'].map((campo) => ({

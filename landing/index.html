@@ -9,7 +9,7 @@
       name="description"
       content="Sistema de órdenes de reparación para talleres de celulares, computadoras y electrónica. Recepción con checklist y firma del cliente, presupuestos, seguimiento de estados, remitos en PDF y multi-sucursal."
     />
-    <link rel="canonical" href="https://repairos.app/" />
+    <link rel="canonical" href="https://proyectorepairoslanding.onrender.com/" />
     <meta name="robots" content="index, follow, max-image-preview:large" />
 
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
@@ -18,13 +18,13 @@
 
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="RepairOS" />
-    <meta property="og:url" content="https://repairos.app/" />
+    <meta property="og:url" content="https://proyectorepairoslanding.onrender.com/" />
     <meta property="og:title" content="RepairOS · Software de gestión para talleres de reparación" />
     <meta
       property="og:description"
       content="Ordená la recepción de equipos, los presupuestos y las entregas. Con checklist, firma del cliente y remito en PDF."
     />
-    <meta property="og:image" content="https://repairos.app/og-image.png" />
+    <meta property="og:image" content="https://proyectorepairoslanding.onrender.com/og-image.png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta property="og:locale" content="es_AR" />
@@ -34,7 +34,7 @@
       name="twitter:description"
       content="Ordená la recepción de equipos, los presupuestos y las entregas. Con checklist, firma del cliente y remito en PDF."
     />
-    <meta name="twitter:image" content="https://repairos.app/og-image.png" />
+    <meta name="twitter:image" content="https://proyectorepairoslanding.onrender.com/og-image.png" />
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -400,6 +400,98 @@
         font-size: 1.15rem;
       }
 
+      /* ---------- Capturas ---------- */
+      .pantalla {
+        margin: 0;
+      }
+      .pantalla img {
+        display: block;
+        width: 100%;
+        height: auto;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        box-shadow: 0 18px 50px rgba(0, 0, 0, 0.45);
+      }
+      .pantalla figcaption {
+        color: var(--muted);
+        font-size: 0.92rem;
+        margin-top: 0.7rem;
+      }
+      .pantalla-principal {
+        margin-top: 2.5rem;
+      }
+      .capturas-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr 0.42fr;
+        gap: 1.25rem;
+        margin-top: 1.5rem;
+        align-items: start;
+      }
+      @media (max-width: 780px) {
+        .capturas-grid {
+          grid-template-columns: 1fr;
+        }
+        .pantalla-movil {
+          max-width: 260px;
+          margin-inline: auto;
+        }
+      }
+
+      /* ---------- Comparativa con Excel ---------- */
+      .tabla-scroll {
+        overflow-x: auto;
+        margin-top: 2.5rem;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+      }
+      .comparativa {
+        width: 100%;
+        min-width: 620px;
+        border-collapse: collapse;
+        font-size: 0.96rem;
+      }
+      .comparativa th,
+      .comparativa td {
+        padding: 0.9rem 1.1rem;
+        text-align: left;
+        vertical-align: top;
+        border-bottom: 1px solid var(--border);
+      }
+      .comparativa tbody tr:last-child th,
+      .comparativa tbody tr:last-child td {
+        border-bottom: none;
+      }
+      .comparativa thead th {
+        background: var(--surface-alt);
+        font-size: 0.9rem;
+      }
+      .comparativa thead th:last-child {
+        color: var(--cyan);
+      }
+      .comparativa tbody th {
+        font-weight: 500;
+        width: 28%;
+      }
+      .comparativa td:nth-child(2) {
+        color: var(--muted);
+      }
+      .comparativa td:last-child {
+        background: rgba(0, 201, 255, 0.05);
+      }
+      .comparativa td:last-child::before {
+        content: '✓ ';
+        color: var(--green);
+        font-weight: 700;
+      }
+      .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+        white-space: nowrap;
+      }
+
       /* ---------- Problema ---------- */
       .problema {
         background: var(--surface);
@@ -471,18 +563,6 @@
         color: var(--muted);
         margin: 0;
         font-size: 0.96rem;
-      }
-
-      .captura {
-        margin-top: 2rem;
-        border: 1px dashed var(--border);
-        border-radius: 12px;
-        padding: 3.5rem 1.5rem;
-        text-align: center;
-        color: var(--muted);
-        font-family: 'DM Mono', monospace;
-        font-size: 0.85rem;
-        background: var(--surface);
       }
 
       /* ---------- Planes ---------- */
@@ -667,7 +747,8 @@
         </a>
         <div class="nav-links">
           <a href="#funciones">Funciones</a>
-          <a href="#como-funciona">Cómo funciona</a>
+          <a href="#capturas">Capturas</a>
+          <a href="#vs-excel">vs. Excel</a>
           <a href="#planes">Planes</a>
           <a href="#preguntas">Preguntas</a>
         </div>
@@ -833,14 +914,182 @@
             </article>
 
             <article class="card">
-              <div class="icon" aria-hidden="true">✉️</div>
-              <h3>Aviso al cliente</h3>
+              <div class="icon" aria-hidden="true">💬</div>
+              <h3>Aviso por WhatsApp</h3>
               <p>
-                Se le notifica por email cuando su orden cambia de estado, sin que nadie tenga que
-                acordarse de escribirle.
+                Un toque y se abre WhatsApp con el mensaje armado según el estado: presupuesto, listo
+                para retirar o en reparación. Sin aprobaciones ni costos extra.
+              </p>
+            </article>
+
+            <article class="card">
+              <div class="icon" aria-hidden="true">🔎</div>
+              <h3>Seguimiento para el cliente</h3>
+              <p>
+                El remito trae un QR: el cliente lo escanea y ve en qué está su equipo, sin llamar
+                al taller ni crearse una cuenta.
+              </p>
+            </article>
+
+            <article class="card">
+              <div class="icon" aria-hidden="true">🏷️</div>
+              <h3>Etiqueta QR en el equipo</h3>
+              <p>
+                Imprimí una etiqueta para pegar atrás del equipo. Con la cámara del celular encontrás
+                su ficha y todas sus reparaciones.
+              </p>
+            </article>
+
+            <article class="card">
+              <div class="icon" aria-hidden="true">📊</div>
+              <h3>Tablero y reportes</h3>
+              <p>
+                Qué hay que avisar hoy, qué está atrasado, cuánto tardás en reparar y qué presupuestos
+                se aprueban. Todo se baja a Excel.
               </p>
             </article>
           </div>
+        </div>
+      </section>
+
+      <!-- ---------- Capturas ---------- -->
+      <section id="capturas" class="problema">
+        <div class="wrap">
+          <p class="eyebrow">Así se ve</p>
+          <h2>Pensado para el mostrador, no para una oficina</h2>
+          <p class="lead">Capturas reales del taller de demostración. Podés entrar y tocar todo.</p>
+
+          <figure class="pantalla pantalla-principal">
+            <img
+              src="capturas/captura-orden.webp"
+              width="2560"
+              height="1600"
+              loading="lazy"
+              decoding="async"
+              alt="Detalle de una orden de reparación en RepairOS: datos del cliente, equipo, estado y botones para avisar por WhatsApp y descargar el remito"
+            />
+            <figcaption>Cada orden con el cliente, el equipo, el estado y el aviso por WhatsApp.</figcaption>
+          </figure>
+
+          <div class="capturas-grid">
+            <figure class="pantalla">
+              <img
+                src="capturas/captura-tablero.webp"
+                width="2560"
+                height="1600"
+                loading="lazy"
+                decoding="async"
+                alt="Tablero de inicio de RepairOS con equipos listos para retirar, presupuestos sin respuesta y órdenes atrasadas"
+              />
+              <figcaption>El tablero del día: qué avisar y qué está atrasado.</figcaption>
+            </figure>
+            <figure class="pantalla">
+              <img
+                src="capturas/captura-reportes.webp"
+                width="2560"
+                height="1600"
+                loading="lazy"
+                decoding="async"
+                alt="Reportes de RepairOS con órdenes ingresadas, tiempo promedio de reparación, presupuestos aprobados y trabajo por técnico"
+              />
+              <figcaption>Reportes de tiempos, presupuestos y técnicos, exportables a Excel.</figcaption>
+            </figure>
+            <figure class="pantalla pantalla-movil">
+              <img
+                src="capturas/captura-seguimiento.webp"
+                width="780"
+                height="1560"
+                loading="lazy"
+                decoding="async"
+                alt="Página de seguimiento que ve el cliente en el celular con el estado de su equipo"
+              />
+              <figcaption>Lo que ve tu cliente al escanear el QR del remito.</figcaption>
+            </figure>
+          </div>
+
+          <div class="cta-row" style="margin-top: 2rem">
+            <a class="btn btn-primary" href="https://proyectorepairos.onrender.com">Probar la demo</a>
+          </div>
+        </div>
+      </section>
+
+      <!-- ---------- Comparativa con Excel ---------- -->
+      <section id="vs-excel">
+        <div class="wrap">
+          <p class="eyebrow">RepairOS vs. Excel</p>
+          <h2>¿Lo llevás en una planilla? Nosotros también lo hicimos</h2>
+          <p class="lead">
+            RepairOS nació en un taller que se manejaba con Excel. La planilla sirve para anotar; el
+            problema empieza cuando hay que demostrar, avisar o encontrar algo con el cliente enfrente.
+          </p>
+
+          <div class="tabla-scroll">
+            <table class="comparativa">
+              <caption class="sr-only">Comparación entre manejar el taller con Excel y con RepairOS</caption>
+              <thead>
+                <tr>
+                  <th scope="col"></th>
+                  <th scope="col">Planilla de Excel</th>
+                  <th scope="col">RepairOS</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <th scope="row">Estado del equipo al recibirlo</th>
+                  <td>Una celda de texto, si alguien se acuerda</td>
+                  <td>Checklist por tipo de equipo, fotos y firma del cliente</td>
+                </tr>
+                <tr>
+                  <th scope="row">Avisarle al cliente</th>
+                  <td>Buscar el teléfono y escribir el mensaje a mano</td>
+                  <td>Un toque: WhatsApp se abre con el mensaje armado</td>
+                </tr>
+                <tr>
+                  <th scope="row">«¿Cómo viene lo mío?»</th>
+                  <td>Ir a preguntarle al técnico</td>
+                  <td>El cliente lo ve solo con el QR del remito</td>
+                </tr>
+                <tr>
+                  <th scope="row">Varias personas a la vez</th>
+                  <td>Copias del archivo que no coinciden</td>
+                  <td>Todos en el mismo sistema, cada uno con su usuario</td>
+                </tr>
+                <tr>
+                  <th scope="row">Quién hizo cada cambio</th>
+                  <td>No queda registro</td>
+                  <td>Historial con usuario, fecha y hora</td>
+                </tr>
+                <tr>
+                  <th scope="row">Claves de desbloqueo</th>
+                  <td>A la vista de cualquiera que abra la planilla</td>
+                  <td>Cifradas, con registro de quién las consultó</td>
+                </tr>
+                <tr>
+                  <th scope="row">Encontrar un equipo</th>
+                  <td>Ctrl+F y paciencia</td>
+                  <td>Buscador por serie, cliente, DNI o teléfono, y etiqueta QR</td>
+                </tr>
+                <tr>
+                  <th scope="row">Cobros y deudas</th>
+                  <td>Fórmulas que alguien pisa sin querer</td>
+                  <td>Cuenta corriente y caja diaria, en pesos o dólares</td>
+                </tr>
+                <tr>
+                  <th scope="row">Desde el celular</th>
+                  <td>Incómodo de editar</td>
+                  <td>Se instala como app en el celular o la tablet</td>
+                </tr>
+                <tr>
+                  <th scope="row">Remito para el cliente</th>
+                  <td>Armarlo aparte en Word</td>
+                  <td>PDF listo con checklist, firma y QR de seguimiento</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="cta-note" style="margin-top: 1rem">
+            ¿Ya tenés tus clientes en Excel? Escribinos y te ayudamos a pasarlos.
+          </p>
         </div>
       </section>
 
@@ -896,7 +1145,17 @@
             </div>
           </div>
 
-          <div class="captura">[ Reemplazar por una captura real de la pantalla de recepción ]</div>
+          <figure class="pantalla" style="margin-top: 2.5rem">
+            <img
+              src="capturas/captura-recepcion.webp"
+              width="2560"
+              height="1600"
+              loading="lazy"
+              decoding="async"
+              alt="Pantalla de recepción de un equipo en RepairOS: cliente, equipo, estado estético con fotos y checklist inicial"
+            />
+            <figcaption>La recepción: cliente, equipo, fotos del estado en que llegó y checklist.</figcaption>
+          </figure>
         </div>
       </section>
 
@@ -916,7 +1175,7 @@
               <div class="precio">$44.999</div>
               <div class="precio-nota">por mes · 1 sucursal</div>
               <ul>
-                <li>Hasta 2 técnicos</li>
+                <li>Hasta 2 usuarios</li>
                 <li>Órdenes ilimitadas</li>
                 <li>Checklists personalizables</li>
                 <li>Firma y remito en PDF</li>
@@ -930,7 +1189,7 @@
               <div class="precio">$64.999</div>
               <div class="precio-nota">por mes · hasta 3 sucursales</div>
               <ul>
-                <li>Técnicos ilimitados</li>
+                <li>Usuarios ilimitados</li>
                 <li>Permisos por sucursal</li>
                 <li>Avisos por email al cliente</li>
                 <li>Historial y auditoría completos</li>
@@ -1041,7 +1300,7 @@
           <a href="#planes">Planes</a>
           <a href="/privacidad.html">Privacidad</a>
           <a href="/terminos.html">Términos</a>
-          <a href="https://app.repairos.app">Ingresar</a>
+          <a href="https://proyectorepairos.onrender.com/login">Ingresar</a>
         </nav>
       </div>
     </footer>
@@ -1060,18 +1319,18 @@
             "applicationCategory": "BusinessApplication",
             "applicationSubCategory": "Software de gestión para talleres de reparación",
             "operatingSystem": "Web",
-            "url": "https://repairos.app/",
+            "url": "https://proyectorepairoslanding.onrender.com/",
             "description": "Sistema de órdenes de reparación para talleres de celulares, computadoras y electrónica. Recepción con checklist y firma del cliente, presupuestos, seguimiento de estados, remitos en PDF y soporte multi-sucursal.",
             "inLanguage": "es",
             "offers": [
               {
                 "@type": "Offer",
                 "name": "Taller",
-                "description": "1 sucursal, hasta 2 técnicos, órdenes ilimitadas.",
+                "description": "1 sucursal, hasta 2 usuarios, órdenes ilimitadas.",
                 "category": "subscription",
                 "price": "44999",
                 "priceCurrency": "ARS",
-                "url": "https://repairos.app/#planes",
+                "url": "https://proyectorepairoslanding.onrender.com/#planes",
                 "availability": "https://schema.org/InStock",
                 "priceSpecification": {
                   "@type": "UnitPriceSpecification",
@@ -1085,11 +1344,11 @@
               {
                 "@type": "Offer",
                 "name": "Cadena",
-                "description": "Hasta 3 sucursales, técnicos ilimitados, permisos por sucursal.",
+                "description": "Hasta 3 sucursales, usuarios ilimitados, permisos por sucursal.",
                 "category": "subscription",
                 "price": "64999",
                 "priceCurrency": "ARS",
-                "url": "https://repairos.app/#planes",
+                "url": "https://proyectorepairoslanding.onrender.com/#planes",
                 "availability": "https://schema.org/InStock",
                 "priceSpecification": {
                   "@type": "UnitPriceSpecification",

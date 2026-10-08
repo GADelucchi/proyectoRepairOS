@@ -17,6 +17,8 @@ import { Contador } from './Contador';
 import { AccesoSensible } from './AccesoSensible';
 import { CuentaMovimiento } from './CuentaMovimiento';
 import { Solicitud } from './Solicitud';
+import { Notificacion } from './Notificacion';
+import { TokenUsuario } from './TokenUsuario';
 
 Taller.initModel(sequelize);
 Plan.initModel(sequelize);
@@ -36,6 +38,8 @@ Contador.initModel(sequelize);
 AccesoSensible.initModel(sequelize);
 CuentaMovimiento.initModel(sequelize);
 Solicitud.initModel(sequelize);
+Notificacion.initModel(sequelize);
+TokenUsuario.initModel(sequelize);
 
 // Taller -> todo lo que se consulta desde la raíz
 Taller.hasOne(Suscripcion, { foreignKey: 'tallerId', as: 'suscripcion' });
@@ -146,6 +150,10 @@ Equipo.hasMany(AccesoSensible, { foreignKey: 'equipoId', as: 'accesosSensibles' 
 Equipo.belongsTo(TipoEquipoPersonalizado, { foreignKey: 'tipoEquipoPersonalizadoId', as: 'tipoEquipo' });
 TipoEquipoPersonalizado.hasMany(Equipo, { foreignKey: 'tipoEquipoPersonalizadoId', as: 'equipos' });
 
+// Notificaciones en la app (la campanita)
+Notificacion.belongsTo(User, { foreignKey: 'usuarioId', as: 'usuario' });
+User.hasMany(Notificacion, { foreignKey: 'usuarioId', as: 'notificaciones' });
+
 export {
   sequelize,
   Taller,
@@ -165,5 +173,7 @@ export {
   Contador,
   AccesoSensible,
   CuentaMovimiento,
-  Solicitud
+  Solicitud,
+  Notificacion,
+  TokenUsuario
 };

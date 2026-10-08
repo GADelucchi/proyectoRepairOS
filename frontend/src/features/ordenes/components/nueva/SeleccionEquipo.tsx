@@ -1,6 +1,8 @@
+import { useCallback, useState } from 'react';
 import { Alert, Button, Card } from 'react-bootstrap';
 import * as equiposApi from '@/features/equipos/api';
 import { EquipoFormFields } from '@/features/equipos/components/EquipoFormFields';
+import { useBusquedaPorSerie } from '@/features/equipos/hooks/useBusquedaPorSerie';
 import { describirEquipo, EQUIPO_FORM_VACIO, EquipoFormData } from '@/features/equipos/equipo-form';
 import { BuscadorConSugerencias } from '@/shared/components/BuscadorConSugerencias';
 import { useBusqueda } from '@/shared/hooks/useBusqueda';
@@ -30,7 +32,22 @@ export function SeleccionEquipo({ value, onChange, clienteId, tiposEquipo, disab
     !value.existente && !value.nuevo,
     [clienteId]
   );
-  const limpiar = () => onChange({ existente: null, nuevo: null, texto: '' });
+  const limpiar = () => {
+    setReconocido(false);
+    onChange({ existente: null, nuevo: null, texto: '' });
+  };
+
+  // Si la serie que se está cargando ya existe, se usa ese equipo (y la orden
+  // completa el cliente con su dueño) en vez de cargarlo de nuevo.
+  const [reconocido, setReconocido] = useState(false);
+  const usarExistente = useCallback(
+    (equipo: Equipo) => {
+      setReconocido(true);
+      onChange({ existente: equipo, nuevo: null, texto: describirEquipo(equipo) });
+    },
+    [onChange]
+  );
+  const porSerie = useBusquedaPorSerie(usarExistente);
 
   return (
     <Card className="h-100">
@@ -43,6 +60,8 @@ export function SeleccionEquipo({ value, onChange, clienteId, tiposEquipo, disab
               onChange={(nuevo) => onChange({ ...value, nuevo })}
               tiposEquipo={tiposEquipo}
               disabled={disabled}
+              onSerieCompleta={porSerie.buscar}
+              buscandoSerie={porSerie.buscando}
             />
             <Button variant="outline-secondary" size="sm" className="mt-2" onClick={limpiar}>
               Volver a buscar un equipo existente
@@ -61,7 +80,13 @@ export function SeleccionEquipo({ value, onChange, clienteId, tiposEquipo, disab
             />
             {value.existente && (
               <Alert variant="success" className="mt-2 mb-0 py-2 d-flex justify-content-between">
-                <span>Seleccionado: {describirEquipo(value.existente)}</span>
+                <span>
+                  {reconocido ? 'Ese número de serie ya estaba cargado: ' : 'Seleccionado: '}
+                  {describirEquipo(value.existente)}
+                  {reconocido && value.existente.cliente && (
+                    <> de {nombreCompleto(value.existente.cliente)}</>
+                  )}
+                </span>
                 <Button variant="link" size="sm" onClick={limpiar}>
                   Cambiar
                 </Button>

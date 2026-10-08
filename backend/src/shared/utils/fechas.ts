@@ -7,7 +7,7 @@
  */
 
 /** Diferencia en minutos entre la hora local de `zona` y UTC en ese instante. */
-function desfasajeMinutos(instante: Date, zona: string): number {
+export function desfasajeMinutos(instante: Date, zona: string): number {
   const partes = new Intl.DateTimeFormat('en-US', {
     timeZone: zona,
     hourCycle: 'h23',
@@ -83,4 +83,16 @@ export function formatearFechaHora(instante: Date | string, zona: string): strin
 export function formatearFechaIso(fecha: string): string {
   const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(fecha);
   return match ? `${match[3]}/${match[2]}/${match[1]}` : fecha;
+}
+
+/**
+ * Desfasaje de `zona` respecto de UTC como lo pide `CONVERT_TZ` de MySQL
+ * ("-03:00"). Sirve para agrupar por día o mes en la zona del negocio sin
+ * depender de que la base tenga cargadas las tablas de zonas horarias.
+ */
+export function desfasajeSql(zona: string, instante: Date = new Date()): string {
+  const minutos = desfasajeMinutos(instante, zona);
+  const signo = minutos < 0 ? '-' : '+';
+  const abs = Math.abs(minutos);
+  return `${signo}${String(Math.floor(abs / 60)).padStart(2, '0')}:${String(abs % 60).padStart(2, '0')}`;
 }

@@ -1,14 +1,16 @@
 import { useState } from 'react';
-import { Button, Form, Table } from 'react-bootstrap';
+import { Button, Form } from 'react-bootstrap';
 import { Link } from 'react-router';
 import { useAuth } from '@/features/auth/useAuth';
 import { AlertaError } from '@/shared/components/AlertaError';
 import { Cargando } from '@/shared/components/Cargando';
+import { TablaApilable } from '@/shared/components/TablaApilable';
 import { useAccion } from '@/shared/hooks/useAccion';
 import { useConsulta } from '@/shared/hooks/useConsulta';
 import { useDebounce } from '@/shared/hooks/useDebounce';
 import type { Cliente } from '@/shared/types';
 import { formatearMonto } from '@/shared/utils/dinero';
+import { filaClickeable } from '@/shared/utils/filas';
 import { formatearFechaHora } from '@/shared/utils/fechas';
 import { nombreCompleto } from '@/shared/utils/texto';
 import * as clientesApi from '../api';
@@ -81,7 +83,7 @@ export function ClientesPage() {
       {cargando ? (
         <Cargando />
       ) : (
-        <Table striped bordered hover responsive>
+        <TablaApilable striped bordered hover responsive>
           <thead>
             <tr>
               <th>Nombre</th>
@@ -97,7 +99,7 @@ export function ClientesPage() {
           </thead>
           <tbody>
             {clientes.map((c) => (
-              <tr key={c.id}>
+              <tr key={c.id} {...(c.anonimizadoEn ? {} : filaClickeable(() => abrirModal(c)))}>
                 <td>{nombreCompleto(c)}</td>
                 <td>{c.dniCuit ?? '-'}</td>
                 <td>{c.telefono ?? '-'}</td>
@@ -159,7 +161,7 @@ export function ClientesPage() {
               </tr>
             )}
           </tbody>
-        </Table>
+        </TablaApilable>
       )}
 
       <ClienteModal

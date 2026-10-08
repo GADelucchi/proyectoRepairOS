@@ -3,6 +3,7 @@ import { Badge, Button, Card, Col, Form, Row, Table } from 'react-bootstrap';
 import { useAuth } from '@/features/auth/useAuth';
 import { AlertaError } from '@/shared/components/AlertaError';
 import { Cargando } from '@/shared/components/Cargando';
+import { TablaApilable } from '@/shared/components/TablaApilable';
 import { ETIQUETA_MEDIO_PAGO } from '@/shared/constants/pagos';
 import { useConsulta } from '@/shared/hooks/useConsulta';
 import type { GrupoCaja, MedioPago, TotalesCaja } from '@/shared/types';
@@ -185,7 +186,7 @@ export function CajaPage() {
               {movimientos.length === 0 ? (
                 <p className="text-muted p-3 mb-0">No entró plata en este período.</p>
               ) : (
-                <Table hover responsive size="sm" className="mb-0 align-middle">
+                <TablaApilable hover responsive size="sm" className="mb-0 align-middle">
                   <thead>
                     <tr>
                       <th>Fecha</th>
@@ -210,7 +211,7 @@ export function CajaPage() {
                       </tr>
                     ))}
                   </tbody>
-                </Table>
+                </TablaApilable>
               )}
             </Card.Body>
           </Card>

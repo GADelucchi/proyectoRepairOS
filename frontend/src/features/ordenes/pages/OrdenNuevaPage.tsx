@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { Alert, Button, Card, Col, Form, InputGroup, Row, Spinner } from 'react-bootstrap';
 import { useNavigate } from 'react-router';
-import { useAuth } from '@/features/auth/useAuth';
+import { useAuth, useMonedaDelTaller } from '@/features/auth/useAuth';
 import { formularioAClienteInput } from '@/features/clientes/cliente-form';
 import * as configuracionApi from '@/features/configuracion/api';
 import { formularioAEquipo } from '@/features/equipos/equipo-form';
@@ -9,7 +9,6 @@ import { getApiErrorMessage } from '@/shared/api/client';
 import { AlertaError } from '@/shared/components/AlertaError';
 import { DateInput } from '@/shared/components/DateInput';
 import { SelectorMoneda } from '@/shared/components/SelectorMoneda';
-import { MONEDA_POR_DEFECTO } from '@/shared/constants/monedas';
 import { useConsulta } from '@/shared/hooks/useConsulta';
 import type { Cliente, Moneda } from '@/shared/types';
 import { aNumero } from '@/shared/utils/dinero';
@@ -66,7 +65,7 @@ export function OrdenNuevaPage() {
   const [notasInternas, setNotasInternas] = useState('');
   const [fechaPactada, setFechaPactada] = useState('');
   const [presupuestoMonto, setPresupuestoMonto] = useState('');
-  const [moneda, setMoneda] = useState<Moneda>(MONEDA_POR_DEFECTO);
+  const [moneda, setMoneda] = useState<Moneda>(useMonedaDelTaller());
 
   // El checklist sale del tipo del equipo, sea uno existente o uno que se está cargando.
   const tipoId = equipo.existente?.tipoEquipoPersonalizadoId ?? equipo.nuevo?.tipoEquipoPersonalizadoId ?? 0;
@@ -110,9 +109,11 @@ export function OrdenNuevaPage() {
 
   function cambiarEquipo(nuevo: EleccionEquipo) {
     setEquipo(nuevo);
-    // Elegir un equipo sin haber elegido cliente completa el cliente con su dueño.
-    if (nuevo.existente?.cliente && !cliente.existente && !cliente.nuevo) {
-      const dueno: Cliente = nuevo.existente.cliente;
+    // Un equipo existente define al cliente: es su dueño. Si no había cliente, o
+    // había otro (por ejemplo, se reconoció la serie de un equipo ya cargado), se
+    // completa con el dueño; si no, la orden quedaría con un equipo ajeno.
+    const dueno = nuevo.existente?.cliente as Cliente | undefined;
+    if (dueno && cliente.existente?.id !== dueno.id) {
       setCliente({ existente: dueno, nuevo: null, texto: nombreCompleto(dueno) });
     }
   }

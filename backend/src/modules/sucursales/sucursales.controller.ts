@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { Sucursal, User, UsuarioSucursal } from '../../models';
 import { errores } from '../../shared/http/http-error';
 import { paramId, tallerIdDe, usuarioDe } from '../../shared/http/request-context';
+import { exigirLugarEnPlan } from '../suscripciones/limites.service';
 import { sucursalesDisponiblesPara } from './sucursal-access.service';
 import { actualizarSucursalSchema, crearSucursalSchema, otorgarPermisoSchema } from './sucursales.schemas';
 
@@ -25,12 +26,16 @@ export async function listarSucursales(req: Request, res: Response): Promise<voi
 
 export async function crearSucursal(req: Request, res: Response): Promise<void> {
   const data = crearSucursalSchema.parse(req.body);
+  await exigirLugarEnPlan(tallerIdDe(req), 'sucursales');
   res.status(201).json(await Sucursal.create({ ...data, tallerId: tallerIdDe(req) }));
 }
 
 export async function actualizarSucursal(req: Request, res: Response): Promise<void> {
   const sucursal = await buscarSucursalDelTaller(req);
-  await sucursal.update(actualizarSucursalSchema.parse(req.body));
+  const data = actualizarSucursalSchema.parse(req.body);
+  // Reactivar una sucursal dada de baja también ocupa un lugar del plan.
+  if (data.activo && !sucursal.activo) await exigirLugarEnPlan(sucursal.tallerId, 'sucursales', sucursal.id);
+  await sucursal.update(data);
   res.json(sucursal);
 }
 

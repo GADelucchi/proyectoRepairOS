@@ -1,20 +1,24 @@
 import { useState } from 'react';
-import { Alert, Badge, Button, Table } from 'react-bootstrap';
+import { Alert, Badge, Button } from 'react-bootstrap';
 import { useNavigate } from 'react-router';
 import { useAuth } from '@/features/auth/useAuth';
 import { AlertaError } from '@/shared/components/AlertaError';
 import { Cargando } from '@/shared/components/Cargando';
+import { TablaApilable } from '@/shared/components/TablaApilable';
 import { useAccion } from '@/shared/hooks/useAccion';
 import { useConsulta } from '@/shared/hooks/useConsulta';
 import type { Sucursal } from '@/shared/types';
+import { filaClickeable } from '@/shared/utils/filas';
 import * as sucursalesApi from '../api/sucursales';
 import * as usuariosApi from '../api/usuarios';
 import { PermisosSucursalModal } from '../components/PermisosSucursalModal';
 import { SucursalModal } from '../components/SucursalModal';
+import { UsoDelPlanAviso } from '../components/UsoDelPlanAviso';
+import { planLleno } from '../uso-plan';
 
 export function SucursalesPage() {
   const navigate = useNavigate();
-  const { refrescar } = useAuth();
+  const { usuario, refrescar } = useAuth();
   const { datos, cargando, error, setError, recargar } = useConsulta(
     async () => {
       const [sucursales, usuarios] = await Promise.all([
@@ -58,8 +62,11 @@ export function SucursalesPage() {
     <div>
       <div className="d-flex justify-content-between align-items-center mb-3">
         <h3>Sucursales</h3>
-        <Button onClick={() => setEditando(null)}>+ Nueva sucursal</Button>
+        <Button onClick={() => setEditando(null)} disabled={planLleno(usuario?.usoDelPlan, 'sucursales')}>
+          + Nueva sucursal
+        </Button>
       </div>
+      <UsoDelPlanAviso recurso="sucursales" />
 
       {habilitada && (
         <Alert
@@ -80,7 +87,7 @@ export function SucursalesPage() {
       {cargando ? (
         <Cargando />
       ) : (
-        <Table striped bordered hover responsive>
+        <TablaApilable striped bordered hover responsive>
           <thead>
             <tr>
               <th>Nombre</th>
@@ -92,7 +99,7 @@ export function SucursalesPage() {
           </thead>
           <tbody>
             {sucursales.map((s) => (
-              <tr key={s.id}>
+              <tr key={s.id} {...filaClickeable(() => setEditando(s))}>
                 <td>{s.nombre}</td>
                 <td>{s.direccion ?? '-'}</td>
                 <td>{s.telefono ?? '-'}</td>
@@ -129,7 +136,7 @@ export function SucursalesPage() {
               </tr>
             )}
           </tbody>
-        </Table>
+        </TablaApilable>
       )}
 
       <SucursalModal

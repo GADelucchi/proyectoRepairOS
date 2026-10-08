@@ -8,6 +8,7 @@ import {
   OrdenHistorialEstado,
   OrdenImagen,
   Sucursal,
+  Taller,
   TipoEquipoPersonalizado,
   User
 } from '../../models';
@@ -19,7 +20,8 @@ import { cifrarCredenciales } from '../equipos/equipos.service';
 import { generarNumeroSerieUnico } from '../equipos/numero-serie';
 import { esEstadoFinal, etiquetaEstado } from './estado-orden';
 import { generarNumeroOrden } from './numero-orden';
-import { MONEDA_POR_DEFECTO } from '../../shared/utils/dinero';
+import { monedaDePais, PAIS_POR_DEFECTO } from '../../shared/utils/paises';
+import { generarCodigoSeguimiento } from '../seguimiento/codigo';
 import { ChequeoInput, crearOrdenSchema, listarOrdenesQuery } from './ordenes.schemas';
 import type { z } from 'zod';
 
@@ -228,6 +230,10 @@ async function resolverEquipo(
  * se reserva dentro de la misma transacción (ver `numero-orden.ts`).
  */
 export async function crearOrden(data: NuevaOrden, ctx: ContextoAlta): Promise<Orden> {
+  // Sin moneda elegida, la del país del taller.
+  const taller = await Taller.findByPk(ctx.tallerId, { attributes: ['pais'] });
+  const monedaPorDefecto = monedaDePais(taller?.pais ?? PAIS_POR_DEFECTO);
+
   const ordenId = await sequelize.transaction(async (transaction) => {
     const clienteId = await resolverCliente(data, ctx, transaction);
     const equipoId = await resolverEquipo(data, clienteId, ctx, transaction);
@@ -236,6 +242,7 @@ export async function crearOrden(data: NuevaOrden, ctx: ContextoAlta): Promise<O
       {
         tallerId: ctx.tallerId,
         numeroOrden: await generarNumeroOrden(transaction, ctx.tallerId),
+        codigoSeguimiento: generarCodigoSeguimiento(),
         clienteId,
         equipoId,
         sucursalId: ctx.sucursalId,
@@ -246,7 +253,7 @@ export async function crearOrden(data: NuevaOrden, ctx: ContextoAlta): Promise<O
         notasInternas: data.notasInternas ?? null,
         fechaPactada: data.fechaPactada,
         presupuestoMonto: data.presupuestoMonto ?? null,
-        moneda: data.moneda ?? MONEDA_POR_DEFECTO
+        moneda: data.moneda ?? monedaPorDefecto
       },
       { transaction }
     );

@@ -9,3 +9,8 @@ export function getEmailProvider(): EmailProvider {
   }
   return instance;
 }
+
+/** Reemplaza el proveedor (los tests de integración capturan los emails en memoria). */
+export function setEmailProvider(proveedor: EmailProvider | null): void {
+  instance = proveedor;
+}

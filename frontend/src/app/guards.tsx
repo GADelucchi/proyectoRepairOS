@@ -28,8 +28,15 @@ export function RutaConSucursal() {
   return <Outlet />;
 }
 
+/** Administración de la plataforma (todos los talleres). */
+export function RutaPlataforma() {
+  const { esAdminPlataforma } = useAuth();
+  if (!esAdminPlataforma) return <Navigate to="/inicio" replace />;
+  return <Outlet />;
+}
+
 export function RutaAdmin() {
   const { esAdmin } = useAuth();
-  if (!esAdmin) return <Navigate to="/ordenes" replace />;
+  if (!esAdmin) return <Navigate to="/inicio" replace />;
   return <Outlet />;
 }

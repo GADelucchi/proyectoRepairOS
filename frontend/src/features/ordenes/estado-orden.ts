@@ -37,7 +37,8 @@ export const CLASE_BADGE_ESTADO: Record<EstadoOrden, string> = {
   aprobado: 'badge-violet-light',
   rechazado: 'badge-pink',
   listo_para_retirar: 'badge-green',
-  entregado: 'badge-green',
+  // Gris: la orden está cerrada. En verde se confundía con "listo para retirar".
+  entregado: 'badge-gris',
   cancelado: 'badge-red'
 };
 

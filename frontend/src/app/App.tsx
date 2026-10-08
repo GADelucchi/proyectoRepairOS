@@ -3,7 +3,7 @@ import { Navigate, Route, Routes } from 'react-router';
 import { LoginPage } from '@/features/auth/pages/LoginPage';
 import { Cargando } from '@/shared/components/Cargando';
 import { Layout } from './Layout';
-import { RutaAdmin, RutaConSucursal, RutaProtegida } from './guards';
+import { RutaAdmin, RutaConSucursal, RutaPlataforma, RutaProtegida } from './guards';
 
 /**
  * Carga diferida de una página exportada con nombre. El login va en el bundle
@@ -14,6 +14,28 @@ function diferida<M extends Record<string, unknown>>(importar: () => Promise<M>,
 }
 
 const RegistroPage = diferida(() => import('@/features/auth/pages/RegistroPage'), 'RegistroPage');
+const RecuperarPasswordPage = diferida(
+  () => import('@/features/auth/pages/RecuperarPasswordPage'),
+  'RecuperarPasswordPage'
+);
+const RestablecerPasswordPage = diferida(
+  () => import('@/features/auth/pages/RestablecerPasswordPage'),
+  'RestablecerPasswordPage'
+);
+const VerificarEmailPage = diferida(
+  () => import('@/features/auth/pages/VerificarEmailPage'),
+  'VerificarEmailPage'
+);
+const PortalClientePage = diferida(
+  () => import('@/features/portal/pages/PortalClientePage'),
+  'PortalClientePage'
+);
+const SeguimientoPage = diferida(
+  () => import('@/features/seguimiento/pages/SeguimientoPage'),
+  'SeguimientoPage'
+);
+const InicioPage = diferida(() => import('@/features/inicio/pages/InicioPage'), 'InicioPage');
+const ReportesPage = diferida(() => import('@/features/reportes/pages/ReportesPage'), 'ReportesPage');
 const SeleccionSucursalPage = diferida(
   () => import('@/features/auth/pages/SeleccionSucursalPage'),
   'SeleccionSucursalPage'
@@ -43,6 +65,7 @@ const ConfiguracionPage = diferida(
 );
 const UsuariosPage = diferida(() => import('@/features/admin/pages/UsuariosPage'), 'UsuariosPage');
 const SucursalesPage = diferida(() => import('@/features/admin/pages/SucursalesPage'), 'SucursalesPage');
+const PlataformaPage = diferida(() => import('@/features/plataforma/pages/PlataformaPage'), 'PlataformaPage');
 
 export function App() {
   return (
@@ -50,6 +73,12 @@ export function App() {
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/registro" element={<RegistroPage />} />
+        <Route path="/recuperar" element={<RecuperarPasswordPage />} />
+        <Route path="/restablecer" element={<RestablecerPasswordPage />} />
+        <Route path="/verificar-email" element={<VerificarEmailPage />} />
+        {/* Público: lo abre el cliente con el link o el QR del remito. */}
+        <Route path="/seguimiento/:codigo" element={<SeguimientoPage />} />
+        <Route path="/cliente/:codigo" element={<PortalClientePage />} />
 
         <Route element={<RutaProtegida />}>
           <Route path="/seleccionar-sucursal" element={<SeleccionSucursalPage />} />
@@ -61,7 +90,14 @@ export function App() {
               <Route path="/admin/sucursales" element={<SucursalesPage />} />
             </Route>
 
+            {/* Todos los talleres: no depende de la sucursal elegida en el propio. */}
+            <Route element={<RutaPlataforma />}>
+              <Route path="/plataforma" element={<PlataformaPage />} />
+            </Route>
+
             <Route element={<RutaConSucursal />}>
+              <Route path="/inicio" element={<InicioPage />} />
+              <Route path="/reportes" element={<ReportesPage />} />
               <Route path="/ordenes" element={<OrdenesPage />} />
               <Route path="/ordenes/nueva" element={<OrdenNuevaPage />} />
               <Route path="/ordenes/:id" element={<OrdenDetallePage />} />
@@ -78,7 +114,7 @@ export function App() {
           </Route>
         </Route>
 
-        <Route path="*" element={<Navigate to="/ordenes" replace />} />
+        <Route path="*" element={<Navigate to="/inicio" replace />} />
       </Routes>
     </Suspense>
   );

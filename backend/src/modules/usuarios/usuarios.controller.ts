@@ -1,12 +1,14 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcrypt';
 import { Op } from 'sequelize';
-import { User } from '../../models';
+import { Taller, User } from '../../models';
 import { RolUsuario } from '../../models/User';
 import { errores } from '../../shared/http/http-error';
 import { paramId, tallerIdDe, usuarioDe } from '../../shared/http/request-context';
 import { invalidarCacheUsuario } from '../../shared/middlewares/auth.middleware';
 import { BCRYPT_ROUNDS } from '../auth/auth.controller';
+import { notificarAdminsDePlataforma } from '../plataforma/plataforma.service';
+import { exigirLugarEnPlan } from '../suscripciones/limites.service';
 import { actualizarUsuarioSchema, cambiarPasswordSchema, crearUsuarioSchema } from './usuarios.schemas';
 
 const ATRIBUTOS_PUBLICOS = ['id', 'nombre', 'apellido', 'email', 'rol', 'activo', 'createdAt'] as const;
@@ -66,14 +68,29 @@ export async function listarUsuarios(req: Request, res: Response): Promise<void>
  */
 export async function crearUsuario(req: Request, res: Response): Promise<void> {
   const data = crearUsuarioSchema.parse(req.body);
+  await exigirLugarEnPlan(tallerIdDe(req), 'usuarios');
   const usuario = await User.create({
     tallerId: tallerIdDe(req),
     nombre: data.nombre,
     apellido: data.apellido,
     email: data.email,
     passwordHash: await bcrypt.hash(data.password, BCRYPT_ROUNDS),
-    rol: data.rol
+    rol: data.rol,
+    // Lo da de alta un admin del taller, que responde por el email: no se le pide confirmarlo.
+    emailVerificadoEn: new Date()
   });
+
+  const taller = await Taller.findByPk(usuario.tallerId, { attributes: ['id', 'nombre'] });
+  await notificarAdminsDePlataforma(
+    {
+      tipo: 'usuario_nuevo',
+      titulo: `Nuevo usuario en ${taller?.nombre ?? 'un taller'}`,
+      mensaje: `${usuario.nombre} ${usuario.apellido} (${usuario.email}), ${usuario.rol === 'admin' ? 'administrador' : 'técnico'}.`,
+      link: `/plataforma?taller=${usuario.tallerId}`
+    },
+    usuarioDe(req).userId
+  );
+
   res.status(201).json(usuarioPublico(usuario));
 }
 
@@ -82,6 +99,8 @@ export async function actualizarUsuario(req: Request, res: Response): Promise<vo
   const data = actualizarUsuarioSchema.parse(req.body);
 
   await exigirQueQuedeUnAdmin(req, usuario, data);
+  // Reactivar un usuario dado de baja también ocupa un lugar del plan.
+  if (data.activo && !usuario.activo) await exigirLugarEnPlan(usuario.tallerId, 'usuarios', usuario.id);
   await usuario.update(data);
 
   // Cambiar rol o dar de baja tiene que surtir efecto ya, no cuando expire el token.

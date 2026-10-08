@@ -14,15 +14,16 @@ const booleano = z
   .default('false')
   .transform((v) => v === 'true');
 
+const aLista = (v: string) =>
+  v
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+
 const listaSeparadaPorComas = z
   .string()
   .default('http://localhost:5173,http://localhost:5174')
-  .transform((v) =>
-    v
-      .split(',')
-      .map((origen) => origen.trim())
-      .filter(Boolean)
-  );
+  .transform(aLista);
 
 const esquema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
@@ -60,7 +61,36 @@ const esquema = z.object({
   EMAIL_FROM: z.string().default('RepairOS <no-reply@example.com>'),
 
   WHATSAPP_PROVIDER: z.string().default('none'),
-  WHATSAPP_API_KEY: z.string().default('')
+  WHATSAPP_API_KEY: z.string().default(''),
+
+  /**
+   * Emails de quienes administran la plataforma (todos los talleres). Van acá y
+   * no en la base para que nadie pueda ganarse el permiso desde la app.
+   */
+  PLATFORM_ADMIN_EMAILS: z
+    .string()
+    .default('')
+    .transform((v) => aLista(v).map((email) => email.toLowerCase())),
+  /** Contacto que se muestra cuando vence la suscripción de un taller. */
+  SOPORTE_EMAIL: z.string().default(''),
+  /** Usuario del taller de demostración pública (para ofrecerle crear su propio taller). */
+  DEMO_EMAIL: z.string().default('demo@repairos.ar'),
+  /** WhatsApp de soporte, con código de país y sin "+" (5492211234567). */
+  SOPORTE_WHATSAPP: z
+    .string()
+    .default('')
+    .transform((v) => v.replace(/\D/g, '')),
+
+  /** Dirección pública de la app: arma los links de los emails y del seguimiento. */
+  APP_PUBLIC_URL: z
+    .string()
+    .default('http://localhost:5173')
+    .transform((v) => v.replace(/\/+$/, '')),
+  /**
+   * Exigir que el dueño confirme su email antes de usar el taller. Activarlo
+   * recién con RESEND_API_KEY configurada: sin envío de emails nadie podría entrar.
+   */
+  EXIGIR_EMAIL_VERIFICADO: booleano
 });
 
 function cargarEntorno() {
@@ -125,5 +155,16 @@ export const env = {
   whatsapp: {
     provider: e.WHATSAPP_PROVIDER,
     apiKey: e.WHATSAPP_API_KEY
-  }
+  },
+
+  plataforma: {
+    adminEmails: e.PLATFORM_ADMIN_EMAILS,
+    // Sin un contacto propio, el de quien administra la plataforma.
+    soporteEmail: e.SOPORTE_EMAIL || e.PLATFORM_ADMIN_EMAILS[0] || '',
+    soporteWhatsapp: e.SOPORTE_WHATSAPP,
+    demoEmail: e.DEMO_EMAIL.toLowerCase()
+  },
+
+  appPublicUrl: e.APP_PUBLIC_URL,
+  exigirEmailVerificado: e.EXIGIR_EMAIL_VERIFICADO
 } as const;

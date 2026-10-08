@@ -17,7 +17,7 @@ export default defineConfig({
         description:
           'Órdenes de reparación, clientes, equipos y presupuestos para talleres de electrónica.',
         lang: 'es',
-        start_url: '/ordenes',
+        start_url: '/inicio',
         scope: '/',
         display: 'standalone',
         orientation: 'any',

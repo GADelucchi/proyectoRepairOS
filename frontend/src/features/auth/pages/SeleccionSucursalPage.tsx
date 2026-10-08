@@ -13,7 +13,7 @@ export function SeleccionSucursalPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   // Si se llegó acá desde un link (por ejemplo, el QR de un equipo), se vuelve a él.
-  const destino = (useLocation().state as { from?: string } | null)?.from ?? '/ordenes';
+  const destino = (useLocation().state as { from?: string } | null)?.from ?? '/inicio';
   const [error, setError] = useState<string | null>(null);
   const [seleccionando, setSeleccionando] = useState<number | null>(null);
 

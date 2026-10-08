@@ -83,6 +83,7 @@ cambiar esas contraseñas apenas se crea la base.
 | `dev` / `build` / `start` | desarrollo, compilación, producción |
 | `check` | typecheck + lint + tests |
 | `test` | tests unitarios (Vitest) |
+| `test:integracion` | la API completa contra MySQL (borra y migra `repairos_test`; usa el servidor del `.env`) |
 | `db:init` / `db:init:seed` | crea la base y aplica migraciones (y seed) |
 | `db:migrate` / `db:migrate:undo` | migraciones |
 | `demo:reset` | rehace el taller de demo (pensado para un cron) |
@@ -115,6 +116,13 @@ cambiar esas contraseñas apenas se crea la base.
   nunca se suman pesos con dólares.
 - **Fiar y ajustar saldos requieren autorización.** El mostrador pide, un admin aprueba;
   aprobar ejecuta la entrega o el ajuste en la misma transacción.
+- **Suscripción aplicada en cada request.** Prueba hasta `gracia_hasta`, plan activo hasta
+  `periodo_fin` (vacío = no vence). Vencida o cancelada, ningún usuario del taller entra
+  (402 `SUSCRIPCION_VENCIDA`). Un taller sin suscripción (la demo) no tiene restricción.
+- **Administración de la plataforma por configuración.** Los emails de
+  `PLATFORM_ADMIN_EMAILS` ven la sección Plataforma (todos los talleres), reciben en la
+  campanita cada taller y usuario nuevo y nunca quedan bloqueados. Pueden tener además su
+  propio taller con la misma cuenta.
 - **Datos sensibles cifrados** (AES-256-GCM): credenciales de equipos y firma del cliente.
   Revelarlas queda auditado en `accesos_sensibles`.
 - **Fechas en la zona del negocio.** `APP_TIMEZONE` define qué es "hoy" en la caja y la
@@ -124,6 +132,12 @@ cambiar esas contraseñas apenas se crea la base.
 ## Producción
 
 - `STORAGE_DRIVER=s3` para no perder imágenes al redeployar.
+- `APP_PUBLIC_URL` con la dirección del frontend: arma los links de seguimiento (y el QR del
+  remito) y los de los emails.
+- `PLATFORM_ADMIN_EMAILS`, `SOPORTE_EMAIL` y `SOPORTE_WHATSAPP`: quién administra la plataforma
+  y a quién escribe un taller con la suscripción vencida.
+- `EXIGIR_EMAIL_VERIFICADO=true` recién con `RESEND_API_KEY` configurada: sin envío de emails
+  nadie podría confirmar su cuenta.
 - `JWT_SECRET` y `ENCRYPTION_KEY` propios de producción; `CORS_ALLOWED_ORIGINS` con el
   dominio del frontend; `RESEND_API_KEY` para enviar emails.
 - Para cambiar `ENCRYPTION_KEY` con datos cargados (hacer backup antes):

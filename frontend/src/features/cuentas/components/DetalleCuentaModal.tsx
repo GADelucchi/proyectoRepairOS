@@ -13,11 +13,10 @@ import {
   Table
 } from 'react-bootstrap';
 import { Link } from 'react-router';
-import { useAuth } from '@/features/auth/useAuth';
+import { useAuth, useMonedaDelTaller } from '@/features/auth/useAuth';
 import { AlertaError } from '@/shared/components/AlertaError';
 import { Cargando } from '@/shared/components/Cargando';
 import { SelectorMoneda } from '@/shared/components/SelectorMoneda';
-import { MONEDA_POR_DEFECTO } from '@/shared/constants/monedas';
 import { esDebito, ETIQUETA_MEDIO_PAGO, ETIQUETA_MOVIMIENTO, MEDIOS_PAGO } from '@/shared/constants/pagos';
 import { useAccion } from '@/shared/hooks/useAccion';
 import { useConsulta } from '@/shared/hooks/useConsulta';
@@ -51,9 +50,10 @@ export function DetalleCuentaModal({
   onAjusteAplicado
 }: DetalleCuentaModalProps) {
   const { esAdmin } = useAuth();
+  const monedaDelTaller = useMonedaDelTaller();
   const [mensajeAjuste, setMensajeAjuste] = useState<string | null>(null);
   const [monto, setMonto] = useState('');
-  const [moneda, setMoneda] = useState<Moneda>(MONEDA_POR_DEFECTO);
+  const [moneda, setMoneda] = useState<Moneda>(monedaDelTaller);
   const [medioPago, setMedioPago] = useState<MedioPago>('efectivo');
   const [nota, setNota] = useState('');
 
@@ -68,7 +68,7 @@ export function DetalleCuentaModal({
       const data = await cuentasApi.obtenerCuenta(clienteId);
       // Se propone saldar la deuda entera de la primera moneda que debe, que es lo más frecuente.
       const deudora = data.saldos.find((s) => s.saldo > 0);
-      setMoneda(deudora?.moneda ?? MONEDA_POR_DEFECTO);
+      setMoneda(deudora?.moneda ?? monedaDelTaller);
       setMonto(deudora ? String(deudora.saldo) : '');
       return data;
     },
@@ -218,7 +218,7 @@ export function DetalleCuentaModal({
             <FormularioAjuste
               clienteId={clienteId}
               esAdmin={esAdmin}
-              monedaInicial={saldos[0]?.moneda ?? MONEDA_POR_DEFECTO}
+              monedaInicial={saldos[0]?.moneda ?? monedaDelTaller}
               onListo={(aplicada) => {
                 // Un ajuste aplicado agrega un movimiento: se recarga la cuenta entera, no solo el saldo.
                 if (aplicada) {

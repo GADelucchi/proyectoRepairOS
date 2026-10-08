@@ -18,6 +18,8 @@ import { FirmaCard } from '../components/detalle/FirmaCard';
 import { HistorialCard } from '../components/detalle/HistorialCard';
 import { ImagenesCard } from '../components/detalle/ImagenesCard';
 import { PresupuestoCard } from '../components/detalle/PresupuestoCard';
+import { datosAvisoDeOrden, urlDeSeguimiento } from '../aviso-cliente';
+import { AvisarWhatsApp } from '../components/AvisarWhatsApp';
 import { EntregaModal, ResultadoEntrega } from '../components/EntregaModal';
 import { EstadoBadge } from '../components/EstadoBadge';
 import { esEstadoFinal, ETIQUETA_ESTADO } from '../estado-orden';
@@ -61,6 +63,7 @@ export function OrdenDetallePage() {
   const [error, setError] = useState<string | null>(null);
   const [mensaje, setMensaje] = useState<string | null>(avisoInicial);
   const [entregando, setEntregando] = useState(false);
+  const [linkCopiado, setLinkCopiado] = useState(false);
   const { enCurso: descargando, ejecutar } = useAccion(setError);
 
   const onActualizada = useCallback(
@@ -92,14 +95,34 @@ export function OrdenDetallePage() {
     }, 'No se pudo descargar el PDF');
   }
 
+  const aviso = datosAvisoDeOrden(orden);
+
+  /** El cliente lo abre sin cuenta: se copia para mandarlo por donde haga falta. */
+  async function copiarSeguimiento() {
+    if (!orden?.codigoSeguimiento) return;
+    try {
+      await navigator.clipboard.writeText(urlDeSeguimiento(orden.codigoSeguimiento));
+      setLinkCopiado(true);
+      setTimeout(() => setLinkCopiado(false), 2500);
+    } catch {
+      setError('No se pudo copiar el link. Copialo desde el PDF de la orden.');
+    }
+  }
+
   return (
     <div>
-      <div className="d-flex justify-content-between align-items-center mb-3">
+      <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
         <div>
           <h3 className="mb-0 font-mono">Orden {orden.numeroOrden}</h3>
           <EstadoBadge estado={orden.estado} className="mt-1" />
         </div>
-        <Stack direction="horizontal" gap={2}>
+        <Stack direction="horizontal" gap={2} className="flex-wrap">
+          <AvisarWhatsApp datos={aviso} />
+          {orden.codigoSeguimiento && (
+            <Button variant="outline-secondary" onClick={copiarSeguimiento}>
+              {linkCopiado ? 'Link copiado ✓' : 'Link de seguimiento'}
+            </Button>
+          )}
           <Link className="btn btn-outline-secondary" to="/ordenes">
             Volver
           </Link>
@@ -121,6 +144,11 @@ export function OrdenDetallePage() {
       {mensaje && (
         <Alert variant="success" dismissible onClose={() => setMensaje(null)}>
           {mensaje}
+          {orden.cliente?.telefono && (
+            <div className="mt-2">
+              <AvisarWhatsApp datos={aviso} size="sm" texto="Avisarle al cliente por WhatsApp" />
+            </div>
+          )}
         </Alert>
       )}
 

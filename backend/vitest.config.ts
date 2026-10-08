@@ -3,6 +3,8 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
   test: {
     include: ['src/**/*.test.ts'],
+    // Los de integración necesitan MySQL: corren aparte con `npm run test:integracion`.
+    exclude: ['src/**/*.integration.test.ts', 'node_modules/**'],
     // Valores de prueba para que `config/env` valide sin un .env real.
     env: {
       NODE_ENV: 'test',

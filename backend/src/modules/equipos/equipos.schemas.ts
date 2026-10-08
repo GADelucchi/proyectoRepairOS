@@ -28,7 +28,9 @@ export const actualizarEquipoSchema = crearEquipoSchema.partial();
 
 export const listarEquiposQuery = z.object({
   search: busqueda,
-  clienteId: idEnQuery.optional()
+  clienteId: idEnQuery.optional(),
+  /** Coincidencia exacta: al cargar un equipo nuevo, para saber si ya existe. */
+  numeroSerie: busqueda
 });
 
 export const obtenerEquipoQuery = z.object({ reveal: booleanoEnQuery });

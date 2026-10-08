@@ -2,7 +2,7 @@
 /// <reference types="vite-plugin-pwa/react" />
 
 interface ImportMetaEnv {
-  /** URL base de la API, por ejemplo https://api.repairos.app/api */
+  /** URL base de la API, por ejemplo https://mi-backend.onrender.com/api */
   readonly VITE_API_BASE_URL?: string;
   /** Credenciales del taller de demostración pública. Sin ellas, el login no muestra la demo. */
   readonly VITE_DEMO_EMAIL?: string;

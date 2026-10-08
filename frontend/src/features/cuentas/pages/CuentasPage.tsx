@@ -1,12 +1,14 @@
 import { useState } from 'react';
-import { Alert, Badge, Button, Card, Col, Form, Row, Table } from 'react-bootstrap';
+import { Alert, Badge, Button, Card, Col, Form, Row } from 'react-bootstrap';
 import { AlertaError } from '@/shared/components/AlertaError';
 import { Cargando } from '@/shared/components/Cargando';
+import { TablaApilable } from '@/shared/components/TablaApilable';
 import { useConsulta } from '@/shared/hooks/useConsulta';
 import { useDebounce } from '@/shared/hooks/useDebounce';
 import type { Moneda } from '@/shared/types';
 import { formatearMonto } from '@/shared/utils/dinero';
 import { formatearFechaHora } from '@/shared/utils/fechas';
+import { filaClickeable } from '@/shared/utils/filas';
 import * as cuentasApi from '../api';
 import { DetalleCuentaModal } from '../components/DetalleCuentaModal';
 
@@ -105,7 +107,7 @@ export function CuentasPage() {
               : 'Nadie debe nada. Todas las cuentas están al día.'}
         </Alert>
       ) : (
-        <Table hover responsive className="align-middle">
+        <TablaApilable hover responsive className="align-middle">
           <thead>
             <tr>
               <th>Cliente</th>
@@ -117,7 +119,10 @@ export function CuentasPage() {
           </thead>
           <tbody>
             {cuentas.map((cuenta) => (
-              <tr key={`${cuenta.clienteId}-${cuenta.moneda}`}>
+              <tr
+                key={`${cuenta.clienteId}-${cuenta.moneda}`}
+                {...filaClickeable(() => setClienteAbierto(cuenta.clienteId))}
+              >
                 <td>
                   {cuenta.apellido}, {cuenta.nombre}
                   {!cuenta.cuentaCorrienteHabilitada && cuenta.saldo > 0 && (
@@ -153,7 +158,7 @@ export function CuentasPage() {
               </tr>
             ))}
           </tbody>
-        </Table>
+        </TablaApilable>
       )}
 
       {clienteAbierto !== null && (

@@ -1,5 +1,5 @@
 import { apiClient } from '@/shared/api/client';
-import type { ChequeoPersonalizado, TipoEquipoPersonalizado } from '@/shared/types';
+import type { ChequeoPersonalizado, Taller, TipoEquipoPersonalizado } from '@/shared/types';
 
 /** Tipos de equipo de la sucursal activa. */
 export async function listarTiposEquipo(): Promise<TipoEquipoPersonalizado[]> {
@@ -39,5 +39,11 @@ export async function guardarChequeos(
     `/configuracion/tipos-equipo/${tipoEquipoId}/chequeos`,
     { chequeos }
   );
+  return data;
+}
+
+/** Nombre y país del taller (solo admin). El país define la moneda por defecto. */
+export async function actualizarTaller(datos: { nombre?: string; pais?: string }): Promise<Taller> {
+  const { data } = await apiClient.put<Taller>('/configuracion/taller', datos);
   return data;
 }

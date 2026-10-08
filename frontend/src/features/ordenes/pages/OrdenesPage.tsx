@@ -1,12 +1,14 @@
 import { useState } from 'react';
-import { Badge, Col, Form, Row, Table } from 'react-bootstrap';
-import { Link } from 'react-router';
+import { Badge, Col, Form, Row } from 'react-bootstrap';
+import { Link, useNavigate, useSearchParams } from 'react-router';
 import { AlertaError } from '@/shared/components/AlertaError';
 import { Cargando } from '@/shared/components/Cargando';
+import { TablaApilable } from '@/shared/components/TablaApilable';
 import { useConsulta } from '@/shared/hooks/useConsulta';
 import { useDebounce } from '@/shared/hooks/useDebounce';
 import type { EstadoOrden } from '@/shared/types';
 import { convertirDesdeBackend, formatearFecha } from '@/shared/utils/fechas';
+import { filaClickeable } from '@/shared/utils/filas';
 import { nombreCompleto } from '@/shared/utils/texto';
 import * as ordenesApi from '../api';
 import { EstadoBadge } from '../components/EstadoBadge';
@@ -19,7 +21,12 @@ import { ESTADOS_ORDEN, ETIQUETA_ESTADO } from '../estado-orden';
  * equipo, y el nombre, el teléfono y el DNI del cliente.
  */
 export function OrdenesPage() {
-  const [estadoFiltro, setEstadoFiltro] = useState<EstadoOrden | ''>('');
+  const navigate = useNavigate();
+  // El tablero de inicio enlaza acá con `?estado=…` para ver una sola columna.
+  const [params] = useSearchParams();
+  const [estadoFiltro, setEstadoFiltro] = useState<EstadoOrden | ''>(
+    () => (params.get('estado') as EstadoOrden | null) ?? ''
+  );
   const [busqueda, setBusqueda] = useState('');
   const busquedaDebounced = useDebounce(busqueda.trim());
   const {
@@ -78,7 +85,7 @@ export function OrdenesPage() {
       {cargando ? (
         <Cargando />
       ) : (
-        <Table striped bordered hover responsive>
+        <TablaApilable striped bordered hover responsive>
           <thead>
             <tr>
               <th>Nº orden</th>
@@ -93,7 +100,7 @@ export function OrdenesPage() {
           </thead>
           <tbody>
             {ordenes.map((o) => (
-              <tr key={o.id}>
+              <tr key={o.id} {...filaClickeable(() => navigate(`/ordenes/${o.id}`))}>
                 <td className="font-mono">{o.numeroOrden}</td>
                 <td>{nombreCompleto(o.cliente) || '-'}</td>
                 <td className="font-mono">
@@ -111,7 +118,7 @@ export function OrdenesPage() {
                 <td>{formatearFecha(o.fechaIngreso)}</td>
                 <td>{convertirDesdeBackend(o.fechaPactada) || '-'}</td>
                 <td>
-                  <Link className="btn btn-sm btn-outline-primary" to={`/ordenes/${o.id}`}>
+                  <Link className="btn btn-sm btn-outline-primary solo-escritorio" to={`/ordenes/${o.id}`}>
                     Ver
                   </Link>
                 </td>
@@ -125,7 +132,7 @@ export function OrdenesPage() {
               </tr>
             )}
           </tbody>
-        </Table>
+        </TablaApilable>
       )}
     </div>
   );

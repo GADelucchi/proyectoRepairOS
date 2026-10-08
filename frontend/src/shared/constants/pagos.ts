@@ -1,11 +1,20 @@
 import type { MedioPago, TipoMovimiento } from '@/shared/types';
 
-export const MEDIOS_PAGO: readonly MedioPago[] = ['efectivo', 'transferencia', 'tarjeta', 'otro'];
+/** Los que se ofrecen al cobrar. `tarjeta` solo aparece en cobros viejos. */
+export const MEDIOS_PAGO: readonly MedioPago[] = [
+  'efectivo',
+  'transferencia',
+  'tarjeta_debito',
+  'tarjeta_credito',
+  'otro'
+];
 
 export const ETIQUETA_MEDIO_PAGO: Record<MedioPago, string> = {
   efectivo: 'Efectivo',
   transferencia: 'Transferencia',
-  tarjeta: 'Tarjeta',
+  tarjeta_debito: 'Tarjeta de débito',
+  tarjeta_credito: 'Tarjeta de crédito',
+  tarjeta: 'Tarjeta (sin especificar)',
   otro: 'Otro'
 };
 

@@ -5,8 +5,10 @@ export interface AuthContextValue {
   usuario: Perfil | null;
   cargando: boolean;
   esAdmin: boolean;
+  esAdminPlataforma: boolean;
   login: (email: string, password: string) => Promise<void>;
-  registrar: (datos: RegistroDatos) => Promise<void>;
+  /** `verificacionPendiente`: la cuenta se creó pero hay que confirmar el email antes de entrar. */
+  registrar: (datos: RegistroDatos) => Promise<{ verificacionPendiente: boolean }>;
   logout: () => void;
   seleccionarSucursal: (sucursalId: number) => Promise<void>;
   refrescar: () => Promise<void>;

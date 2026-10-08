@@ -25,7 +25,7 @@ export function HistorialCard({ historial }: { historial: OrdenHistorialEstado[]
                 </div>
                 {h.comentario && <div className="text-muted small">{h.comentario}</div>}
                 {h.notaInterna && (
-                  <div className="small mt-1 p-2 rounded bg-body-tertiary" style={{ whiteSpace: 'pre-wrap' }}>
+                  <div className="small mt-1 p-2 rounded nota-interna" style={{ whiteSpace: 'pre-wrap' }}>
                     <span className="fw-semibold">Nota interna: </span>
                     {h.notaInterna}
                   </div>

@@ -74,6 +74,16 @@ a:hover {
 .text-muted {
   color: var(--repairos-muted) !important;
 }
+/* El verde y el rojo de Bootstrap quedan apagados sobre el fondo oscuro: los de la marca se leen mejor. */
+.text-success {
+  color: var(--repairos-status-green) !important;
+}
+.text-danger {
+  color: var(--repairos-status-red) !important;
+}
+.text-warning {
+  color: var(--repairos-status-amber) !important;
+}
 
 /* ---------- Navbar ---------- */
 .navbar {
@@ -218,6 +228,10 @@ a:hover {
   background-color: var(--repairos-status-pink) !important;
   color: #3a0620 !important;
 }
+.badge-gris {
+  background-color: #5b6475 !important;
+  color: #f2f3f7 !important;
+}
 
 /* ---------- Alerts ---------- */
 .alert {
@@ -229,4 +243,279 @@ a:hover {
   background-color: var(--repairos-surface);
   border-color: var(--repairos-border);
   color: var(--repairos-snow);
+}
+
+/* ---------- Notas internas del historial ---------- */
+.nota-interna {
+  /* Colores explícitos: no depende del tema de Bootstrap (con el claro quedaba blanco sobre blanco). */
+  background-color: rgba(255, 185, 40, 0.1) !important;
+  color: var(--repairos-snow) !important;
+  border-left: 3px solid var(--repairos-status-amber);
+}
+.nota-interna .fw-semibold {
+  color: var(--repairos-status-amber);
+}
+
+/* ---------- Menús desplegables (campanita) ---------- */
+.dropdown-menu {
+  --bs-dropdown-bg: var(--repairos-surface);
+  --bs-dropdown-color: var(--repairos-snow);
+  --bs-dropdown-border-color: var(--repairos-border);
+  --bs-dropdown-link-color: var(--repairos-snow);
+  --bs-dropdown-link-hover-bg: var(--repairos-surface-alt);
+  --bs-dropdown-link-hover-color: var(--repairos-snow);
+  --bs-dropdown-link-active-bg: var(--repairos-surface-alt);
+  --bs-dropdown-link-active-color: var(--repairos-snow);
+}
+.campanita::after {
+  display: none; /* sin la flechita del dropdown */
+}
+.notificacion-nueva {
+  background-color: rgba(0, 201, 255, 0.06);
+}
+.punto-notificacion {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--repairos-cyan-core);
+}
+
+/* ---------- Demo: llamada a crear el taller propio ---------- */
+.btn-crear-taller {
+  background-color: var(--repairos-status-amber);
+  border-color: var(--repairos-status-amber);
+  color: var(--repairos-abyss);
+  font-weight: 700;
+  white-space: nowrap;
+}
+.btn-crear-taller:hover,
+.btn-crear-taller:focus {
+  background-color: #ffcb5c;
+  border-color: #ffcb5c;
+  color: var(--repairos-abyss);
+}
+
+/* ---------- Seguimiento público: pasos de la orden ---------- */
+.seguimiento-pasos li {
+  flex: 1;
+  text-align: center;
+  position: relative;
+  font-size: 0.7rem;
+  color: var(--repairos-muted);
+}
+.seguimiento-pasos li::before {
+  content: '';
+  position: absolute;
+  top: 6px;
+  left: -50%;
+  width: 100%;
+  height: 2px;
+  background: var(--repairos-border);
+}
+.seguimiento-pasos li:first-child::before {
+  display: none;
+}
+.seguimiento-pasos .punto {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 14px;
+  height: 14px;
+  margin: 0 auto 4px;
+  border-radius: 50%;
+  background: var(--repairos-surface-alt);
+  border: 2px solid var(--repairos-border);
+}
+.seguimiento-pasos li.hecho .punto,
+.seguimiento-pasos li.hecho::before,
+.seguimiento-pasos li.actual::before {
+  background: var(--repairos-cyan-core);
+  border-color: var(--repairos-cyan-core);
+}
+.seguimiento-pasos li.actual .punto {
+  border-color: var(--repairos-cyan-core);
+  box-shadow: 0 0 0 4px rgba(0, 201, 255, 0.25);
+}
+.seguimiento-pasos li.actual {
+  color: var(--repairos-snow);
+  font-weight: 600;
+}
+
+/* ---------- Guía de primeros pasos ---------- */
+.guia {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+}
+.guia-fondo {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+}
+/* El elemento señalado queda iluminado: la sombra gigante oscurece todo lo demás. */
+.guia-hueco {
+  position: fixed;
+  border-radius: 8px;
+  box-shadow:
+    0 0 0 3px var(--repairos-cyan-core),
+    0 0 0 9999px rgba(0, 0, 0, 0.6);
+  pointer-events: none;
+  transition: all 0.2s ease;
+}
+.guia-globo {
+  position: fixed;
+  background: var(--repairos-surface);
+  color: var(--repairos-snow);
+  border: 1px solid var(--repairos-cyan-core);
+  border-radius: 10px;
+  padding: 14px 16px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+}
+.guia-flecha {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  background: var(--repairos-surface);
+  border: 1px solid var(--repairos-cyan-core);
+  transform: translateX(-50%) rotate(45deg);
+}
+.guia-flecha-arriba {
+  top: -8px;
+  border-right: none;
+  border-bottom: none;
+}
+.guia-flecha-abajo {
+  bottom: -8px;
+  border-left: none;
+  border-top: none;
+}
+
+/* Los ítems del menú nunca se parten en dos renglones. */
+.navbar .nav-link,
+.navbar .dropdown-toggle {
+  white-space: nowrap;
+}
+
+/* Botón "Elegir archivos" del input de fotos: con el tema oscuro quedaba blanco sobre blanco. */
+.form-control::file-selector-button {
+  background-color: var(--repairos-border);
+  color: var(--repairos-snow);
+}
+.form-control:hover:not(:disabled):not([readonly])::file-selector-button {
+  background-color: var(--repairos-surface);
+}
+
+/* ---------- Volver arriba ---------- */
+.volver-arriba {
+  position: fixed;
+  right: 16px;
+  bottom: calc(16px + env(safe-area-inset-bottom));
+  z-index: 1030;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: 1px solid var(--repairos-cyan-core);
+  background: var(--repairos-surface);
+  color: var(--repairos-cyan-core);
+  display: grid;
+  place-items: center;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+}
+.volver-arriba:hover {
+  background: var(--repairos-surface-alt);
+}
+
+/* ---------- Filas que abren su detalle con un toque ---------- */
+.fila-clickeable {
+  cursor: pointer;
+}
+.fila-clickeable:focus-visible {
+  outline: 2px solid var(--repairos-cyan-core);
+  outline-offset: -2px;
+}
+
+/* ---------- Tablas como tarjetas en el celular (ver TablaApilable) ---------- */
+@media (max-width: 767.98px) {
+  .tabla-apilable thead {
+    display: none;
+  }
+  .tabla-apilable,
+  .tabla-apilable tbody,
+  .tabla-apilable tr,
+  .tabla-apilable td {
+    display: block;
+    width: 100%;
+  }
+  .tabla-apilable tr {
+    background: var(--repairos-surface);
+    border: 1px solid var(--repairos-border);
+    border-radius: 10px;
+    margin-bottom: 0.75rem;
+    padding: 0.6rem 0.85rem;
+  }
+  .tabla-apilable > :not(caption) > * > * {
+    background: transparent !important;
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0.2rem 0 !important;
+  }
+  /* Etiqueta a la izquierda; el contenido (aunque sean varias líneas) apilado a la derecha. */
+  .tabla-apilable td {
+    display: grid;
+    grid-template-columns: minmax(0, 40%) minmax(0, 1fr);
+    column-gap: 1rem;
+    align-items: baseline;
+    text-align: right !important;
+    overflow-wrap: anywhere;
+  }
+  .tabla-apilable td > * {
+    grid-column: 2;
+    justify-self: end;
+  }
+  .tabla-apilable td::before {
+    content: attr(data-label);
+    grid-column: 1;
+    text-align: left;
+    color: var(--repairos-muted);
+    font-size: 0.85rem;
+  }
+  /* Sin título (la columna de botones) o celda de "no hay nada": a todo el ancho. */
+  .tabla-apilable td[data-label='']::before,
+  .tabla-apilable td[colspan]::before {
+    content: none;
+  }
+  .tabla-apilable td[data-label=''],
+  .tabla-apilable td[colspan] {
+    display: flex;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    text-align: left !important;
+  }
+  .tabla-apilable td[data-label=''] {
+    margin-top: 0.35rem;
+  }
+  /* La primera celda es el título de la tarjeta. */
+  .tabla-apilable td:first-child {
+    font-weight: 600;
+    font-size: 1.02rem;
+  }
+  .tabla-apilable td:first-child::before {
+    content: none;
+  }
+  .tabla-apilable td:first-child {
+    display: block;
+    text-align: left !important;
+  }
+  .tabla-apilable td[data-vacia]:not(:first-child) {
+    display: none;
+  }
+  /* La tarjeta entera abre el detalle: el botón "Ver" sobra. */
+  .tabla-apilable .solo-escritorio {
+    display: none !important;
+  }
+  .table-responsive:has(> .tabla-apilable) {
+    overflow-x: visible;
+  }
 }

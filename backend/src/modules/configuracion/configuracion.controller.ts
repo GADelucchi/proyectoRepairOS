@@ -1,9 +1,15 @@
 import { Request, Response } from 'express';
-import { sequelize, ChequeoPersonalizado, Equipo, TipoEquipoPersonalizado } from '../../models';
+import { sequelize, ChequeoPersonalizado, Equipo, Taller, TipoEquipoPersonalizado } from '../../models';
 import { OPCIONES_CHEQUEO_POR_DEFECTO } from '../../models/OrdenChequeo';
 import { errores } from '../../shared/http/http-error';
-import { paramId, sucursalIdDe, usuarioDe } from '../../shared/http/request-context';
-import { actualizarTipoSchema, crearTipoSchema, guardarChequeosSchema } from './configuracion.schemas';
+import { paramId, sucursalIdDe, tallerIdDe, usuarioDe } from '../../shared/http/request-context';
+import { monedaDePais } from '../../shared/utils/paises';
+import {
+  actualizarTallerSchema,
+  actualizarTipoSchema,
+  crearTipoSchema,
+  guardarChequeosSchema
+} from './configuracion.schemas';
 
 /**
  * Configuración de tipos de equipo y sus checklists.
@@ -107,4 +113,12 @@ export async function guardarChequeos(req: Request, res: Response): Promise<void
       order: ORDEN_CHEQUEOS
     })
   );
+}
+
+/** Nombre y país del taller. Las órdenes ya cargadas conservan su moneda. */
+export async function actualizarTaller(req: Request, res: Response): Promise<void> {
+  const taller = await Taller.findByPk(tallerIdDe(req));
+  if (!taller) throw errores.noEncontrado('Taller');
+  await taller.update(actualizarTallerSchema.parse(req.body));
+  res.json({ id: taller.id, nombre: taller.nombre, pais: taller.pais, moneda: monedaDePais(taller.pais) });
 }
