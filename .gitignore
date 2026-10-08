@@ -42,8 +42,6 @@ yarn-error.log*
 # ---- Entorno / secretos ----
 .env
 .env.*
-# Las plantillas sí se versionan: documentan qué variables hacen falta.
-!.env.example
 *.pem
 *.key
 *.p12
