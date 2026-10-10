@@ -59,7 +59,7 @@ export function OrdenDetallePage() {
     cargando,
     error: errorCarga,
     recargar
-  } = useConsulta(() => ordenesApi.obtenerOrden(id), [id], 'No se pudo cargar la orden');
+  } = useConsulta(() => ordenesApi.obtenerOrden(id), [id], 'No se pudo cargar la orden', 'orden');
   const [error, setError] = useState<string | null>(null);
   const [mensaje, setMensaje] = useState<string | null>(avisoInicial);
   const [entregando, setEntregando] = useState(false);

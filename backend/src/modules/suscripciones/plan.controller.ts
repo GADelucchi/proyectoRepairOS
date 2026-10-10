@@ -1,10 +1,9 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
-import { Sucursal, User } from '../../models';
 import { tallerIdDe, usuarioDe } from '../../shared/http/request-context';
 import { invalidarCacheCompleta } from '../../shared/middlewares/auth.middleware';
 import { idPositivo } from '../../shared/validation/campos';
-import { ajustarAlPlan, excesoDelPlan } from './limites.service';
+import { activosDelTaller, ajustarAlPlan, excesoDelPlan } from './limites.service';
 
 const ajusteSchema = z.object({
   usuarios: z.array(idPositivo).optional(),
@@ -22,19 +21,7 @@ export async function obtenerExceso(req: Request, res: Response): Promise<void> 
     res.json({ exceso: null });
     return;
   }
-  const [usuarios, sucursales] = await Promise.all([
-    User.findAll({
-      where: { tallerId, activo: true },
-      attributes: ['id', 'nombre', 'apellido', 'email', 'rol', 'ultimoAccesoAt'],
-      order: [['nombre', 'ASC']]
-    }),
-    Sucursal.findAll({
-      where: { tallerId, activo: true },
-      attributes: ['id', 'nombre', 'direccion'],
-      order: [['nombre', 'ASC']]
-    })
-  ]);
-  res.json({ exceso, usuarios, sucursales });
+  res.json({ exceso, ...(await activosDelTaller(tallerId)) });
 }
 
 export async function ajustar(req: Request, res: Response): Promise<void> {

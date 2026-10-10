@@ -1,16 +1,39 @@
-import { ComponentType, lazy, Suspense } from 'react';
+import { ComponentType, lazy, Suspense, useEffect } from 'react';
 import { Navigate, Route, Routes } from 'react-router';
+import { useAuth } from '@/features/auth/useAuth';
 import { LoginPage } from '@/features/auth/pages/LoginPage';
 import { Cargando } from '@/shared/components/Cargando';
 import { Layout } from './Layout';
 import { RutaAdmin, RutaConSucursal, RutaPlataforma, RutaProtegida } from './guards';
+
+/** Descargas de todas las páginas diferidas, para adelantarlas con la sesión iniciada. */
+const descargas: (() => Promise<unknown>)[] = [];
 
 /**
  * Carga diferida de una página exportada con nombre. El login va en el bundle
  * inicial; el resto se descarga al navegar, así la primera pantalla es liviana.
  */
 function diferida<M extends Record<string, unknown>>(importar: () => Promise<M>, nombre: keyof M) {
+  descargas.push(importar);
   return lazy(() => importar().then((m) => ({ default: m[nombre] as ComponentType })));
+}
+
+/**
+ * Con la sesión iniciada, descarga el resto de las páginas cuando el navegador
+ * está libre: así pasar de un panel a otro no espera la red.
+ */
+function usePrecargarPaginas(): void {
+  const { usuario } = useAuth();
+  useEffect(() => {
+    if (!usuario) return;
+    const precargar = () => descargas.forEach((descargar) => descargar().catch(() => undefined));
+    if ('requestIdleCallback' in window) {
+      const id = window.requestIdleCallback(precargar);
+      return () => window.cancelIdleCallback(id);
+    }
+    const id = setTimeout(precargar, 1500);
+    return () => clearTimeout(id);
+  }, [usuario]);
 }
 
 const RegistroPage = diferida(() => import('@/features/auth/pages/RegistroPage'), 'RegistroPage');
@@ -68,6 +91,8 @@ const SucursalesPage = diferida(() => import('@/features/admin/pages/SucursalesP
 const PlataformaPage = diferida(() => import('@/features/plataforma/pages/PlataformaPage'), 'PlataformaPage');
 
 export function App() {
+  usePrecargarPaginas();
+
   return (
     <Suspense fallback={<Cargando />}>
       <Routes>

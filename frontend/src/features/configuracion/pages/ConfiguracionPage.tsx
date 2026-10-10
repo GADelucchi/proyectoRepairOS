@@ -21,7 +21,12 @@ export function ConfiguracionPage() {
     error,
     setError,
     recargar
-  } = useConsulta(configuracionApi.listarTiposEquipo, [], 'No se pudieron cargar los tipos de equipo');
+  } = useConsulta(
+    configuracionApi.listarTiposEquipo,
+    [],
+    'No se pudieron cargar los tipos de equipo',
+    'tiposEquipo'
+  );
   const { ejecutar } = useAccion(setError);
   const [exito, setExito] = useState<string | null>(null);
 

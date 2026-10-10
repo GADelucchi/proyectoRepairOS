@@ -64,7 +64,8 @@ export function SolicitudesPage() {
   } = useConsulta(
     () => solicitudesApi.listarSolicitudes(filtro === 'todas' ? undefined : filtro),
     [filtro],
-    'No se pudieron cargar las autorizaciones'
+    'No se pudieron cargar las autorizaciones',
+    'autorizaciones'
   );
   const { ejecutar } = useAccion(setError);
 

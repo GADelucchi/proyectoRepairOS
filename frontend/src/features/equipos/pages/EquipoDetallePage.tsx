@@ -39,7 +39,8 @@ export function EquipoDetallePage() {
       return { equipo, ordenes };
     },
     [id],
-    'No se pudo cargar el equipo'
+    'No se pudo cargar el equipo',
+    'equipo'
   );
 
   if (cargando && !datos) return <Cargando />;

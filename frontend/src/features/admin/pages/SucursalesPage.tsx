@@ -28,7 +28,8 @@ export function SucursalesPage() {
       return { sucursales, usuarios };
     },
     [],
-    'No se pudieron cargar las sucursales'
+    'No se pudieron cargar las sucursales',
+    'sucursales'
   );
   const { ejecutar } = useAccion(setError);
   const sucursales = datos?.sucursales ?? [];

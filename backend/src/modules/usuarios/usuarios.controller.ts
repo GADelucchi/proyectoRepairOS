@@ -1,125 +1,38 @@
 import { Request, Response } from 'express';
-import bcrypt from 'bcrypt';
-import { Op } from 'sequelize';
-import { Taller, User } from '../../models';
-import { RolUsuario } from '../../models/User';
-import { errores } from '../../shared/http/http-error';
 import { paramId, tallerIdDe, usuarioDe } from '../../shared/http/request-context';
-import { invalidarCacheUsuario } from '../../shared/middlewares/auth.middleware';
-import { BCRYPT_ROUNDS } from '../auth/auth.controller';
-import { notificarAdminsDePlataforma } from '../plataforma/plataforma.service';
-import { exigirLugarEnPlan } from '../suscripciones/limites.service';
 import { actualizarUsuarioSchema, cambiarPasswordSchema, crearUsuarioSchema } from './usuarios.schemas';
+import * as usuarios from './usuarios.service';
 
-const ATRIBUTOS_PUBLICOS = ['id', 'nombre', 'apellido', 'email', 'rol', 'activo', 'createdAt'] as const;
-
-function usuarioPublico(u: User) {
-  return { id: u.id, nombre: u.nombre, apellido: u.apellido, email: u.email, rol: u.rol, activo: u.activo };
-}
-
-/** Busca un usuario del taller del admin autenticado o corta con 404. */
-async function buscarUsuarioDelTaller(req: Request): Promise<User> {
-  const usuario = await User.findOne({ where: { id: paramId(req), tallerId: tallerIdDe(req) } });
-  if (!usuario) throw errores.noEncontrado('Usuario');
-  return usuario;
-}
-
-/**
- * Corta si el cambio deja al taller sin ningún administrador activo, o si el
- * admin se está quitando permisos a sí mismo: en los dos casos nadie podría
- * volver a entrar a administrar el taller.
- */
-async function exigirQueQuedeUnAdmin(
-  req: Request,
-  usuario: User,
-  cambios: { rol?: RolUsuario; activo?: boolean }
-): Promise<void> {
-  const pierdeAdmin =
-    usuario.rol === 'admin' &&
-    usuario.activo &&
-    ((cambios.rol !== undefined && cambios.rol !== 'admin') || cambios.activo === false);
-  if (!pierdeAdmin) return;
-
-  if (usuario.id === usuarioDe(req).userId) {
-    throw errores.conflicto('No podés quitarte el rol de administrador ni desactivarte a vos mismo');
-  }
-
-  const otrosAdmins = await User.count({
-    where: { tallerId: usuario.tallerId, rol: 'admin', activo: true, id: { [Op.ne]: usuario.id } }
-  });
-  if (otrosAdmins === 0) {
-    throw errores.conflicto('El taller tiene que conservar al menos un administrador activo');
-  }
+function usuarioDelTaller(req: Request) {
+  return usuarios.usuarioDelTaller(tallerIdDe(req), paramId(req));
 }
 
 export async function listarUsuarios(req: Request, res: Response): Promise<void> {
-  const usuarios = await User.findAll({
-    where: { tallerId: tallerIdDe(req) },
-    attributes: [...ATRIBUTOS_PUBLICOS],
-    order: [['nombre', 'ASC']]
-  });
-  res.json(usuarios);
+  res.json(await usuarios.listarUsuarios(tallerIdDe(req)));
 }
 
-/**
- * El email es único en toda la base, no por taller: el login pide solo email y
- * contraseña, así que dos talleres no pueden compartir una dirección. Un
- * duplicado lo frena el índice único (ver error-handler).
- */
 export async function crearUsuario(req: Request, res: Response): Promise<void> {
   const data = crearUsuarioSchema.parse(req.body);
-  await exigirLugarEnPlan(tallerIdDe(req), 'usuarios');
-  const usuario = await User.create({
-    tallerId: tallerIdDe(req),
-    nombre: data.nombre,
-    apellido: data.apellido,
-    email: data.email,
-    passwordHash: await bcrypt.hash(data.password, BCRYPT_ROUNDS),
-    rol: data.rol,
-    // Lo da de alta un admin del taller, que responde por el email: no se le pide confirmarlo.
-    emailVerificadoEn: new Date()
-  });
-
-  const taller = await Taller.findByPk(usuario.tallerId, { attributes: ['id', 'nombre'] });
-  await notificarAdminsDePlataforma(
-    {
-      tipo: 'usuario_nuevo',
-      titulo: `Nuevo usuario en ${taller?.nombre ?? 'un taller'}`,
-      mensaje: `${usuario.nombre} ${usuario.apellido} (${usuario.email}), ${usuario.rol === 'admin' ? 'administrador' : 'técnico'}.`,
-      link: `/plataforma?taller=${usuario.tallerId}`
-    },
-    usuarioDe(req).userId
-  );
-
-  res.status(201).json(usuarioPublico(usuario));
+  const usuario = await usuarios.crearUsuario(tallerIdDe(req), usuarioDe(req).userId, data);
+  res.status(201).json(usuarios.usuarioPublico(usuario));
 }
 
 export async function actualizarUsuario(req: Request, res: Response): Promise<void> {
-  const usuario = await buscarUsuarioDelTaller(req);
+  const usuario = await usuarioDelTaller(req);
   const data = actualizarUsuarioSchema.parse(req.body);
-
-  await exigirQueQuedeUnAdmin(req, usuario, data);
-  // Reactivar un usuario dado de baja también ocupa un lugar del plan.
-  if (data.activo && !usuario.activo) await exigirLugarEnPlan(usuario.tallerId, 'usuarios', usuario.id);
-  await usuario.update(data);
-
-  // Cambiar rol o dar de baja tiene que surtir efecto ya, no cuando expire el token.
-  invalidarCacheUsuario(usuario.id);
-  res.json(usuarioPublico(usuario));
+  await usuarios.actualizarUsuario(usuarioDe(req).userId, usuario, data);
+  res.json(usuarios.usuarioPublico(usuario));
 }
 
 export async function cambiarPassword(req: Request, res: Response): Promise<void> {
-  const usuario = await buscarUsuarioDelTaller(req);
+  const usuario = await usuarioDelTaller(req);
   const { password } = cambiarPasswordSchema.parse(req.body);
-  await usuario.update({ passwordHash: await bcrypt.hash(password, BCRYPT_ROUNDS) });
+  await usuarios.cambiarPassword(usuario, password);
   res.status(204).send();
 }
 
 /** Baja lógica: preserva el historial de órdenes asociado al técnico. */
 export async function desactivarUsuario(req: Request, res: Response): Promise<void> {
-  const usuario = await buscarUsuarioDelTaller(req);
-  await exigirQueQuedeUnAdmin(req, usuario, { activo: false });
-  await usuario.update({ activo: false });
-  invalidarCacheUsuario(usuario.id);
+  await usuarios.desactivarUsuario(usuarioDe(req).userId, await usuarioDelTaller(req));
   res.status(204).send();
 }

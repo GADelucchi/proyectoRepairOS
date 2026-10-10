@@ -29,7 +29,8 @@ export function PlataformaPage() {
   const { datos: planes = [] } = useConsulta(
     plataformaApi.listarPlanes,
     [],
-    'No se pudieron cargar los planes'
+    'No se pudieron cargar los planes',
+    'plataforma.planes'
   );
 
   function abrirTaller(id: number | null) {
@@ -82,7 +83,8 @@ function Resumen({ version, onAbrirTaller }: SeccionProps) {
   const { datos, cargando, error } = useConsulta(
     plataformaApi.obtenerResumen,
     [version],
-    'No se pudo cargar el resumen'
+    'No se pudo cargar el resumen',
+    'plataforma.resumen'
   );
 
   if (cargando && !datos) return <Cargando />;
@@ -161,7 +163,8 @@ function Talleres({ version, onAbrirTaller }: SeccionProps) {
   } = useConsulta(
     () => plataformaApi.listarTalleres(busquedaDebounced || undefined),
     [busquedaDebounced, version],
-    'No se pudieron cargar los talleres'
+    'No se pudieron cargar los talleres',
+    'plataforma.talleres'
   );
 
   const visibles = talleres.filter((t) => {
@@ -279,7 +282,8 @@ function Usuarios({ onAbrirTaller }: SeccionProps) {
   } = useConsulta(
     () => plataformaApi.listarUsuarios(busquedaDebounced || undefined),
     [busquedaDebounced],
-    'No se pudieron cargar los usuarios'
+    'No se pudieron cargar los usuarios',
+    'plataforma.usuarios'
   );
 
   return (

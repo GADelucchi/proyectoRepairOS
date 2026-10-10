@@ -1,124 +1,57 @@
 import { Request, Response } from 'express';
-import { sequelize, ChequeoPersonalizado, Equipo, Taller, TipoEquipoPersonalizado } from '../../models';
-import { OPCIONES_CHEQUEO_POR_DEFECTO } from '../../models/OrdenChequeo';
-import { errores } from '../../shared/http/http-error';
 import { paramId, sucursalIdDe, tallerIdDe, usuarioDe } from '../../shared/http/request-context';
-import { monedaDePais } from '../../shared/utils/paises';
 import {
   actualizarTallerSchema,
   actualizarTipoSchema,
   crearTipoSchema,
   guardarChequeosSchema
 } from './configuracion.schemas';
+import { actualizarTaller as guardarTaller } from './configuracion.service';
+import * as tipos from './tipos-equipo.service';
 
-/**
- * Configuración de tipos de equipo y sus checklists.
- *
- * Los tipos pertenecen a la sucursal, no al técnico que los creó: todo el
- * equipo de esa sucursal comparte el mismo catálogo.
- */
+/** Configuración de tipos de equipo, sus checklists y los datos del taller. */
 
-const ORDEN_CHEQUEOS = [
-  ['orden', 'ASC'],
-  ['id', 'ASC']
-] as [string, string][];
-
-async function buscarTipoDeSucursal(req: Request, id: number): Promise<TipoEquipoPersonalizado> {
-  const tipo = await TipoEquipoPersonalizado.findOne({ where: { id, sucursalId: sucursalIdDe(req) } });
-  if (!tipo) throw errores.noEncontrado('Tipo de equipo');
-  return tipo;
+function tipoDeSucursal(req: Request, id: number) {
+  return tipos.tipoDeSucursal(sucursalIdDe(req), id);
 }
 
 export async function listarTiposEquipo(req: Request, res: Response): Promise<void> {
-  const tipos = await TipoEquipoPersonalizado.findAll({
-    where: { sucursalId: sucursalIdDe(req), activo: true },
-    order: [['nombre', 'ASC']]
-  });
-  res.json(tipos);
+  res.json(await tipos.listarTiposEquipo(sucursalIdDe(req)));
 }
 
-/** Si ya existía dado de baja, se reactiva en lugar de chocar con el índice único. */
+/** Un alta responde 201; reactivar uno dado de baja, 200. */
 export async function crearTipoEquipo(req: Request, res: Response): Promise<void> {
   const sucursalId = sucursalIdDe(req);
   const { nombre } = crearTipoSchema.parse(req.body);
-
-  const existente = await TipoEquipoPersonalizado.findOne({ where: { sucursalId, nombre } });
-  if (existente?.activo) {
-    throw errores.conflicto('Ya existe un tipo de equipo con ese nombre en esta sucursal');
-  }
-  if (existente) {
-    await existente.update({ activo: true });
-    res.json(existente);
-    return;
-  }
-
-  const tipo = await TipoEquipoPersonalizado.create({
-    nombre,
-    usuarioId: usuarioDe(req).userId,
-    sucursalId,
-    activo: true
-  });
-  res.status(201).json(tipo);
+  const { tipo, creado } = await tipos.crearTipoEquipo(sucursalId, usuarioDe(req).userId, nombre);
+  res.status(creado ? 201 : 200).json(tipo);
 }
 
 export async function actualizarTipoEquipo(req: Request, res: Response): Promise<void> {
-  const tipo = await buscarTipoDeSucursal(req, paramId(req));
+  const tipo = await tipoDeSucursal(req, paramId(req));
   const { nombre } = actualizarTipoSchema.parse(req.body);
-  if (nombre !== undefined) await tipo.update({ nombre });
-  res.json(tipo);
+  res.json(await tipos.renombrarTipoEquipo(tipo, nombre));
 }
 
-/** Si algún equipo lo usa se da de baja lógica, para que siga mostrando su nombre. */
 export async function eliminarTipoEquipo(req: Request, res: Response): Promise<void> {
-  const tipo = await buscarTipoDeSucursal(req, paramId(req));
-  const enUso = await Equipo.count({ where: { tipoEquipoPersonalizadoId: tipo.id } });
-
-  if (enUso > 0) await tipo.update({ activo: false });
-  else await tipo.destroy();
-
+  await tipos.eliminarTipoEquipo(await tipoDeSucursal(req, paramId(req)));
   res.status(204).send();
 }
 
 export async function listarChequeos(req: Request, res: Response): Promise<void> {
-  const tipo = await buscarTipoDeSucursal(req, paramId(req, 'tipoId'));
-  res.json(
-    await ChequeoPersonalizado.findAll({
-      where: { tipoEquipoPersonalizadoId: tipo.id },
-      order: ORDEN_CHEQUEOS
-    })
-  );
+  const tipo = await tipoDeSucursal(req, paramId(req, 'tipoId'));
+  res.json(await tipos.listarChequeos(tipo));
 }
 
 /** Reemplaza la lista completa de chequeos de un tipo de equipo. */
 export async function guardarChequeos(req: Request, res: Response): Promise<void> {
-  const tipo = await buscarTipoDeSucursal(req, paramId(req, 'tipoId'));
+  const tipo = await tipoDeSucursal(req, paramId(req, 'tipoId'));
   const { chequeos } = guardarChequeosSchema.parse(req.body);
-
-  await sequelize.transaction(async (transaction) => {
-    await ChequeoPersonalizado.destroy({ where: { tipoEquipoPersonalizadoId: tipo.id }, transaction });
-    await ChequeoPersonalizado.bulkCreate(
-      chequeos.map((c, indice) => ({
-        tipoEquipoPersonalizadoId: tipo.id,
-        texto: c.texto,
-        opciones: c.opciones ?? OPCIONES_CHEQUEO_POR_DEFECTO,
-        orden: indice
-      })),
-      { transaction }
-    );
-  });
-
-  res.json(
-    await ChequeoPersonalizado.findAll({
-      where: { tipoEquipoPersonalizadoId: tipo.id },
-      order: ORDEN_CHEQUEOS
-    })
-  );
+  res.json(await tipos.guardarChequeos(tipo, chequeos));
 }
 
 /** Nombre y país del taller. Las órdenes ya cargadas conservan su moneda. */
 export async function actualizarTaller(req: Request, res: Response): Promise<void> {
-  const taller = await Taller.findByPk(tallerIdDe(req));
-  if (!taller) throw errores.noEncontrado('Taller');
-  await taller.update(actualizarTallerSchema.parse(req.body));
-  res.json({ id: taller.id, nombre: taller.nombre, pais: taller.pais, moneda: monedaDePais(taller.pais) });
+  const tallerId = tallerIdDe(req);
+  res.json(await guardarTaller(tallerId, actualizarTallerSchema.parse(req.body)));
 }

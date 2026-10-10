@@ -30,7 +30,7 @@ export function InicioPage() {
     datos: t,
     cargando,
     error
-  } = useConsulta(reportesApi.obtenerTablero, [], 'No se pudo cargar el tablero');
+  } = useConsulta(reportesApi.obtenerTablero, [], 'No se pudo cargar el tablero', 'tablero');
 
   if (cargando && !t) return <Cargando />;
   if (!t) return <AlertaError error={error} />;

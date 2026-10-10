@@ -88,7 +88,8 @@ export function ReportesPage() {
   } = useConsulta(
     () => reportesApi.obtenerReportes({ ...rango, todasLasSucursales: verTodas }),
     [rango.desde, rango.hasta, verTodas],
-    'No se pudieron cargar los reportes'
+    'No se pudieron cargar los reportes',
+    'reportes'
   );
 
   const sufijo = `${rango.desde}_a_${rango.hasta}`;

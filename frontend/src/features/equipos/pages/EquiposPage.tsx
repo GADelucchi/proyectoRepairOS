@@ -29,12 +29,14 @@ export function EquiposPage() {
   } = useConsulta(
     () => equiposApi.listarEquipos({ search: busquedaDebounced || undefined }),
     [busquedaDebounced],
-    'No se pudieron cargar los equipos'
+    'No se pudieron cargar los equipos',
+    'equipos'
   );
   const { datos: tiposEquipo = [] } = useConsulta(
     configuracionApi.listarTiposEquipo,
     [],
-    'No se pudieron cargar los tipos de equipo'
+    'No se pudieron cargar los tipos de equipo',
+    'tiposEquipo'
   );
   const { ejecutar } = useAccion(setError);
 

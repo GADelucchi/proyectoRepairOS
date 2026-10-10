@@ -140,3 +140,30 @@ export async function avisarAdmins(tallerId: number, asunto: string, parrafos: s
 
   await Promise.allSettled(admins.map((admin) => proveedor.send({ to: admin.email, subject: asunto, html })));
 }
+
+const LIMITE_LISTADO = 30;
+
+/** Los avisos más recientes del usuario, leídos y no leídos. */
+export function listarNotificaciones(usuarioId: number): Promise<Notificacion[]> {
+  return Notificacion.findAll({
+    where: { usuarioId },
+    order: [
+      ['createdAt', 'DESC'],
+      ['id', 'DESC']
+    ],
+    limit: LIMITE_LISTADO
+  });
+}
+
+export function contarNoLeidas(usuarioId: number): Promise<number> {
+  return Notificacion.count({ where: { usuarioId, leidaEn: null } });
+}
+
+/** Marcar un aviso ajeno no hace nada: el filtro por usuario lo deja afuera. */
+export async function marcarLeida(usuarioId: number, id: number): Promise<void> {
+  await Notificacion.update({ leidaEn: new Date() }, { where: { id, usuarioId, leidaEn: null } });
+}
+
+export async function marcarTodasLeidas(usuarioId: number): Promise<void> {
+  await Notificacion.update({ leidaEn: new Date() }, { where: { usuarioId, leidaEn: null } });
+}

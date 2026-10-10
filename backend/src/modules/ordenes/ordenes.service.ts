@@ -18,11 +18,20 @@ import { errores } from '../../shared/http/http-error';
 import { exigirTipoDelTaller } from '../configuracion/tipos-equipo.service';
 import { cifrarCredenciales } from '../equipos/equipos.service';
 import { generarNumeroSerieUnico } from '../equipos/numero-serie';
-import { esEstadoFinal, etiquetaEstado } from './estado-orden';
+import { esEstadoFinal, esTransicionValida, etiquetaEstado, transicionesDesde } from './estado-orden';
 import { generarNumeroOrden } from './numero-orden';
 import { monedaDePais, PAIS_POR_DEFECTO } from '../../shared/utils/paises';
 import { generarCodigoSeguimiento } from '../seguimiento/codigo';
-import { ChequeoInput, crearOrdenSchema, listarOrdenesQuery } from './ordenes.schemas';
+import {
+  actualizarOrdenSchema,
+  cambiarEstadoSchema,
+  ChequeoInput,
+  crearOrdenSchema,
+  listarOrdenesQuery,
+  presupuestoSchema
+} from './ordenes.schemas';
+import { saldoDeCliente } from '../cuentas/cuenta-corriente.service';
+import { notificarCambioEstadoOrden, ResultadoNotificacion } from '../notificaciones/notificaciones.service';
 import type { z } from 'zod';
 
 const USUARIO_RESUMIDO = ['id', 'nombre', 'apellido'];
@@ -273,4 +282,171 @@ export async function crearOrden(data: NuevaOrden, ctx: ContextoAlta): Promise<O
   });
 
   return buscarOrdenDeSucursal(ordenId, ctx.sucursalId, { include: INCLUDES_DETALLE });
+}
+
+// ---------------------------------------------------------------------------
+// Consultas y cambios de una orden
+// ---------------------------------------------------------------------------
+
+const LIMITE_LISTADO = 200;
+
+/** Para cambios que avisan al cliente: la orden viene con su cliente. */
+export const CON_CLIENTE = { include: [{ model: Cliente, as: 'cliente' }] };
+
+export function listarOrdenes(
+  sucursalId: number,
+  filtros: z.infer<typeof listarOrdenesQuery>
+): Promise<Orden[]> {
+  return Orden.findAll({
+    where: filtroDeOrdenes(sucursalId, filtros),
+    include: INCLUDES_LISTADO,
+    order: [['createdAt', 'DESC']],
+    limit: LIMITE_LISTADO
+  });
+}
+
+/** Saldo del cliente en la moneda de la orden: es el único que la entrega puede usar. */
+export const saldoEnMonedaDe = (orden: Orden) =>
+  saldoDeCliente(orden.tallerId, orden.clienteId, orden.moneda);
+
+/** Va con el saldo del cliente, para que la entrega pueda ofrecer aplicar el saldo a favor. */
+export async function conSaldoCliente(orden: Orden) {
+  return { ...orden.get({ plain: true }), saldoCliente: await saldoEnMonedaDe(orden) };
+}
+
+export function actualizarOrden(orden: Orden, data: z.infer<typeof actualizarOrdenSchema>): Promise<Orden> {
+  return orden.update(data);
+}
+
+/** Avisa al cliente si cambió el estado. El aviso nunca revierte el cambio. */
+async function avisarSiCambio(orden: Orden, estadoAnterior: string): Promise<ResultadoNotificacion | null> {
+  if (orden.estado === estadoAnterior || !orden.cliente) return null;
+  return notificarCambioEstadoOrden(orden, orden.cliente);
+}
+
+/** Cambio de estado manual. La orden tiene que venir con su cliente (`CON_CLIENTE`) para avisarle. */
+export async function cambiarEstado(
+  orden: Orden,
+  { estado: nuevoEstado, comentario, notaInterna, forzar }: z.infer<typeof cambiarEstadoSchema>,
+  quien: { usuarioId: number; esAdmin: boolean }
+) {
+  const estadoAnterior = orden.estado;
+
+  // La entrega mueve plata y tiene su propio endpoint: por acá el equipo
+  // saldría entregado sin registrar cuánto se cobró.
+  if (nuevoEstado === 'entregado') {
+    throw errores.conflicto('Para entregar el equipo hay que registrar el cobro desde la entrega.');
+  }
+  if (nuevoEstado === estadoAnterior) {
+    throw errores.solicitudInvalida(`La orden ya está en estado "${etiquetaEstado(estadoAnterior)}"`);
+  }
+
+  const forzado = !esTransicionValida(estadoAnterior, nuevoEstado);
+  if (forzado) {
+    // El admin puede salirse del circuito cuando la realidad no entra en el
+    // diagrama, pero tiene que dejar asentado por qué.
+    if (!(forzar && quien.esAdmin)) {
+      const posibles = transicionesDesde(estadoAnterior).map(etiquetaEstado);
+      throw errores.conflicto(
+        posibles.length > 0
+          ? `No se puede pasar de "${etiquetaEstado(estadoAnterior)}" a "${etiquetaEstado(nuevoEstado)}". Estados posibles: ${posibles.join(', ')}.`
+          : `La orden está en "${etiquetaEstado(estadoAnterior)}" y no admite más cambios de estado.`
+      );
+    }
+    if (!comentario) {
+      throw errores.solicitudInvalida(
+        'Para forzar un cambio de estado fuera del circuito hay que indicar el motivo'
+      );
+    }
+  }
+
+  await sequelize.transaction(async (transaction) => {
+    await orden.update({ estado: nuevoEstado }, { transaction });
+    await registrarCambioDeEstado(
+      {
+        ordenId: orden.id,
+        estadoAnterior,
+        estadoNuevo: nuevoEstado,
+        usuarioId: quien.usuarioId,
+        comentario: forzado ? `[Forzado] ${comentario}` : comentario,
+        notaInterna
+      },
+      transaction
+    );
+  });
+
+  return { ...orden.get({ plain: true }), notificacion: await avisarSiCambio(orden, estadoAnterior) };
+}
+
+/**
+ * Carga el monto del presupuesto y/o la respuesta del cliente.
+ *
+ * Cargar el monto es, en la práctica, presupuestar: si el circuito lo permite
+ * la orden avanza sola a "presupuestado", así el mostrador no lo hace aparte.
+ *
+ * La moneda se elige junto con el monto. Una vez entregada la orden no se
+ * cambia: lo cobrado ya quedó asentado en la cuenta en esa moneda.
+ */
+export async function actualizarPresupuesto(
+  orden: Orden,
+  { monto, moneda, aprobado }: z.infer<typeof presupuestoSchema>,
+  usuarioId: number
+) {
+  const estadoAnterior = orden.estado;
+
+  const cambios: Partial<Pick<Orden, 'presupuestoMonto' | 'presupuestoAprobado' | 'estado' | 'moneda'>> = {};
+
+  if (moneda !== undefined && moneda !== orden.moneda) {
+    if (orden.montoTotal != null) {
+      throw errores.conflicto(
+        `La orden ya se cobró en ${orden.moneda}: la moneda no se puede cambiar después de la entrega.`
+      );
+    }
+    cambios.moneda = moneda;
+  }
+
+  if (monto !== undefined) {
+    cambios.presupuestoMonto = monto;
+    if (monto !== null && esTransicionValida(estadoAnterior, 'presupuestado'))
+      cambios.estado = 'presupuestado';
+  }
+
+  if (aprobado !== undefined && aprobado !== null) {
+    const destino = aprobado ? 'aprobado' : 'rechazado';
+    const estadoBase = cambios.estado ?? estadoAnterior;
+    if (!esTransicionValida(estadoBase, destino)) {
+      throw errores.conflicto(
+        `Para registrar la respuesta del cliente, la orden tiene que estar presupuestada (hoy está en "${etiquetaEstado(estadoBase)}").`
+      );
+    }
+    cambios.presupuestoAprobado = aprobado;
+    cambios.estado = destino;
+  }
+
+  await sequelize.transaction(async (transaction) => {
+    await orden.update(cambios, { transaction });
+    if (orden.estado !== estadoAnterior) {
+      await registrarCambioDeEstado(
+        {
+          ordenId: orden.id,
+          estadoAnterior,
+          estadoNuevo: orden.estado,
+          usuarioId,
+          comentario: 'Actualización de presupuesto'
+        },
+        transaction
+      );
+    }
+  });
+
+  return { ...orden.get({ plain: true }), notificacion: await avisarSiCambio(orden, estadoAnterior) };
+}
+
+export async function reemplazarChequeos(orden: Orden, chequeos: ChequeoInput[]): Promise<OrdenChequeo[]> {
+  await sequelize.transaction(async (transaction) => {
+    await OrdenChequeo.destroy({ where: { ordenId: orden.id }, transaction });
+    await OrdenChequeo.bulkCreate(filasDeChequeo(orden.id, chequeos), { transaction });
+  });
+
+  return OrdenChequeo.findAll({ where: { ordenId: orden.id }, order: [['orden', 'ASC']] });
 }

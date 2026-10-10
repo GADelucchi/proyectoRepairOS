@@ -40,7 +40,8 @@ export function OrdenesPage() {
         search: busquedaDebounced || undefined
       }),
     [estadoFiltro, busquedaDebounced],
-    'No se pudieron cargar las órdenes'
+    'No se pudieron cargar las órdenes',
+    'ordenes'
   );
   const filtrando = Boolean(estadoFiltro || busquedaDebounced);
 

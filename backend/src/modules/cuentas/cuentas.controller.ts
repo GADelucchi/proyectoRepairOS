@@ -1,167 +1,32 @@
 import { Request, Response } from 'express';
-import { QueryTypes } from 'sequelize';
-import { sequelize, Cliente, CuentaMovimiento, Orden, User } from '../../models';
-import { errores } from '../../shared/http/http-error';
 import { paramId, sucursalIdDe, tallerIdDe, usuarioDe, esAdmin } from '../../shared/http/request-context';
-import { MONEDA_POR_DEFECTO, Moneda, montoConMoneda, redondearMonto } from '../../shared/utils/dinero';
 import { solicitarAjusteSchema } from '../solicitudes/solicitudes.schemas';
 import { pedirAjuste } from '../solicitudes/solicitudes.service';
-import {
-  bloquearCliente,
-  registrarPago,
-  saldoDeCliente,
-  saldosDeCliente,
-  sumaSaldo
-} from './cuenta-corriente.service';
 import { listarCuentasQuery, registrarCobroSchema } from './cuentas.schemas';
+import * as cuentas from './cuentas.service';
 
-const LIMITE_LISTADO = 200;
-const LIMITE_MOVIMIENTOS = 300;
-
-async function clienteDelTaller(req: Request): Promise<Cliente> {
-  const cliente = await Cliente.findOne({
-    where: { id: paramId(req, 'clienteId'), tallerId: tallerIdDe(req) }
-  });
-  if (!cliente) throw errores.noEncontrado('Cliente');
-  return cliente;
+function clienteDelTaller(req: Request) {
+  return cuentas.clienteDelTaller(tallerIdDe(req), paramId(req, 'clienteId'));
 }
 
-interface FilaCuenta {
-  id: number;
-  nombre: string;
-  apellido: string;
-  telefono: string | null;
-  cuenta_corriente_habilitada: number;
-  moneda: Moneda;
-  saldo: string | null;
-  ultimo_movimiento: string | null;
-}
-
-/**
- * Estado de las cuentas del taller. Por defecto solo los que deben, que es lo
- * que se mira todos los días; con `?todos=true` también los que tienen cuenta
- * habilitada y están al día.
- *
- * El saldo se agrupa en la base: un cliente con años de historia son cientos
- * de movimientos por renglón.
- *
- * Hay un renglón por cliente y moneda: quien debe pesos y dólares aparece dos
- * veces, y el total adeudado se informa por separado en cada moneda.
- */
+/** Estado de las cuentas del taller (ver `cuentas.listarCuentas`). */
 export async function listarCuentas(req: Request, res: Response): Promise<void> {
   const tallerId = tallerIdDe(req);
-  const { search, todos } = listarCuentasQuery.parse(req.query);
-
-  const filtroBusqueda = search
-    ? `AND (c.nombre LIKE :busqueda OR c.apellido LIKE :busqueda OR c.dni_cuit LIKE :busqueda
-            OR c.telefono LIKE :busqueda OR c.nombre_gremio LIKE :busqueda)`
-    : '';
-
-  const filas = await sequelize.query<FilaCuenta>(
-    `SELECT c.id, c.nombre, c.apellido, c.telefono, c.cuenta_corriente_habilitada,
-            COALESCE(m.moneda, :monedaPorDefecto) AS moneda,
-            COALESCE(${sumaSaldo('m')}, 0) AS saldo,
-            MAX(m.created_at) AS ultimo_movimiento
-       FROM clientes c
-       LEFT JOIN cuenta_movimientos m ON m.cliente_id = c.id AND m.taller_id = :tallerId
-      WHERE c.taller_id = :tallerId ${filtroBusqueda}
-      GROUP BY c.id, c.nombre, c.apellido, c.telefono, c.cuenta_corriente_habilitada,
-               COALESCE(m.moneda, :monedaPorDefecto)
-     HAVING ${todos ? '(saldo <> 0 OR c.cuenta_corriente_habilitada = 1)' : 'saldo <> 0'}
-      ORDER BY saldo DESC, c.apellido ASC, c.nombre ASC
-      LIMIT ${LIMITE_LISTADO}`,
-    {
-      replacements: { tallerId, busqueda: `%${search ?? ''}%`, monedaPorDefecto: MONEDA_POR_DEFECTO },
-      type: QueryTypes.SELECT
-    }
-  );
-
-  const cuentas = filas.map((f) => ({
-    clienteId: Number(f.id),
-    nombre: f.nombre,
-    apellido: f.apellido,
-    telefono: f.telefono,
-    cuentaCorrienteHabilitada: Boolean(f.cuenta_corriente_habilitada),
-    moneda: f.moneda,
-    saldo: redondearMonto(Number(f.saldo ?? 0)),
-    ultimoMovimiento: f.ultimo_movimiento
-  }));
-
-  const totales = new Map<Moneda, number>();
-  for (const c of cuentas) {
-    if (c.saldo > 0) totales.set(c.moneda, redondearMonto((totales.get(c.moneda) ?? 0) + c.saldo));
-  }
-  const totalesAdeudados = [...totales].map(([moneda, total]) => ({ moneda, total }));
-  res.json({ cuentas, totalesAdeudados });
+  const filtros = listarCuentasQuery.parse(req.query);
+  res.json(await cuentas.listarCuentas(tallerId, filtros));
 }
 
-/** Cuenta de un cliente con sus saldos por moneda y sus movimientos, del más nuevo al más viejo. */
+/** Cuenta de un cliente con sus saldos por moneda y sus movimientos. */
 export async function detalleCuenta(req: Request, res: Response): Promise<void> {
-  const cliente = await clienteDelTaller(req);
-
-  const movimientos = await CuentaMovimiento.findAll({
-    where: { tallerId: cliente.tallerId, clienteId: cliente.id },
-    include: [
-      { model: Orden, as: 'orden', attributes: ['id', 'numeroOrden'] },
-      { model: User, as: 'usuario', attributes: ['id', 'nombre', 'apellido'] }
-    ],
-    order: [
-      ['createdAt', 'DESC'],
-      ['id', 'DESC']
-    ],
-    limit: LIMITE_MOVIMIENTOS
-  });
-
-  res.json({
-    cliente: {
-      id: cliente.id,
-      nombre: cliente.nombre,
-      apellido: cliente.apellido,
-      telefono: cliente.telefono,
-      email: cliente.email,
-      cuentaCorrienteHabilitada: cliente.cuentaCorrienteHabilitada
-    },
-    saldos: await saldosDeCliente(cliente.tallerId, cliente.id),
-    movimientos
-  });
+  res.json(await cuentas.detalleCuenta(await clienteDelTaller(req)));
 }
 
-/**
- * Cobro contra la cuenta del cliente. Va contra el saldo, no contra una orden:
- * en el mostrador el cliente paga "lo que debe".
- *
- * El saldo se lee y el pago se asienta con el cliente bloqueado, así dos cobros
- * simultáneos no pueden dejar la cuenta con saldo a favor por error.
- */
+/** Cobro contra la cuenta del cliente (ver `cuentas.registrarCobro`). */
 export async function registrarCobro(req: Request, res: Response): Promise<void> {
   const cliente = await clienteDelTaller(req);
-  const { monto, moneda, medioPago, nota } = registrarCobroSchema.parse(req.body);
-
-  const movimiento = await sequelize.transaction(async (transaction) => {
-    await bloquearCliente(cliente.id, transaction);
-    const saldo = await saldoDeCliente(cliente.tallerId, cliente.id, moneda, transaction);
-
-    if (saldo <= 0) throw errores.conflicto(`El cliente no tiene saldo pendiente en ${moneda}`);
-    if (redondearMonto(monto) > saldo) {
-      throw errores.conflicto(
-        `El cobro supera lo que debe el cliente (saldo actual: ${montoConMoneda(saldo, moneda)}).`
-      );
-    }
-
-    return registrarPago({
-      tallerId: cliente.tallerId,
-      clienteId: cliente.id,
-      usuarioId: usuarioDe(req).userId,
-      sucursalId: sucursalIdDe(req),
-      monto,
-      moneda,
-      medioPago: medioPago ?? null,
-      nota: nota ?? null,
-      transaction
-    });
-  });
-
-  res.status(201).json({ movimiento, saldo: await saldoDeCliente(cliente.tallerId, cliente.id, moneda) });
+  const datos = registrarCobroSchema.parse(req.body);
+  const { userId } = usuarioDe(req);
+  res.status(201).json(await cuentas.registrarCobro(cliente, userId, sucursalIdDe(req), datos));
 }
 
 /**

@@ -34,7 +34,8 @@ export function ClientesPage() {
   } = useConsulta(
     () => clientesApi.listarClientes(busquedaDebounced || undefined),
     [busquedaDebounced],
-    'No se pudieron cargar los clientes'
+    'No se pudieron cargar los clientes',
+    'clientes'
   );
   const { ejecutar } = useAccion(setError);
 

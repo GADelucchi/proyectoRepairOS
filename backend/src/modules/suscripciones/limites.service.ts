@@ -180,3 +180,20 @@ export async function ajustarAlPlan(
     }
   });
 }
+
+/** Usuarios y sucursales activos del taller, para que el admin elija cuáles quedan. */
+export async function activosDelTaller(tallerId: number) {
+  const [usuarios, sucursales] = await Promise.all([
+    User.findAll({
+      where: { tallerId, activo: true },
+      attributes: ['id', 'nombre', 'apellido', 'email', 'rol', 'ultimoAccesoAt'],
+      order: [['nombre', 'ASC']]
+    }),
+    Sucursal.findAll({
+      where: { tallerId, activo: true },
+      attributes: ['id', 'nombre', 'direccion'],
+      order: [['nombre', 'ASC']]
+    })
+  ]);
+  return { usuarios, sucursales };
+}

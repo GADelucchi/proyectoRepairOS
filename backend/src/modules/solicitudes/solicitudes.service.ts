@@ -1,5 +1,5 @@
 import { Transaction } from 'sequelize';
-import { sequelize, Cliente, Solicitud } from '../../models';
+import { sequelize, Cliente, Orden, Solicitud, User } from '../../models';
 import { DatosAjuste, DatosFiado, EstadoSolicitud } from '../../models/Solicitud';
 import { errores } from '../../shared/http/http-error';
 import { Moneda, montoConMoneda } from '../../shared/utils/dinero';
@@ -276,4 +276,44 @@ export async function rechazarOCancelar(
     const bloqueada = await bloquearPendiente(solicitud.id, transaction);
     await cerrarSolicitud(bloqueada, estado, usuarioId, respuesta, transaction);
   });
+}
+
+// ---------------------------------------------------------------------------
+// Consultas
+// ---------------------------------------------------------------------------
+
+const LIMITE_LISTADO = 200;
+
+const INCLUDES = [
+  { model: Cliente, as: 'cliente', attributes: ['id', 'nombre', 'apellido', 'cuentaCorrienteHabilitada'] },
+  { model: Orden, as: 'orden', attributes: ['id', 'numeroOrden', 'estado'] },
+  { model: User, as: 'solicitante', attributes: ['id', 'nombre', 'apellido'] },
+  { model: User, as: 'resueltoPor', attributes: ['id', 'nombre', 'apellido'] }
+];
+
+export async function solicitudDelTaller(tallerId: number, id: number): Promise<Solicitud> {
+  const solicitud = await Solicitud.findOne({ where: { id, tallerId }, include: INCLUDES });
+  if (!solicitud) throw errores.noEncontrado('Solicitud');
+  return solicitud;
+}
+
+export function listarSolicitudes(tallerId: number, estado?: EstadoSolicitud): Promise<Solicitud[]> {
+  return Solicitud.findAll({
+    where: { tallerId, ...(estado ? { estado } : {}) },
+    include: INCLUDES,
+    order: [['createdAt', 'DESC']],
+    limit: LIMITE_LISTADO
+  });
+}
+
+/** Cuántas esperan resolución. Alimenta el aviso del menú. */
+export function contarPendientes(tallerId: number): Promise<number> {
+  return Solicitud.count({ where: { tallerId, estado: 'pendiente' } });
+}
+
+/** Quién aprueba, con el nombre que queda asentado en la solicitud. */
+export async function aprobadorDe(usuarioId: number): Promise<{ id: number; nombre: string }> {
+  const aprobador = await User.findByPk(usuarioId, { attributes: ['id', 'nombre', 'apellido'] });
+  if (!aprobador) throw errores.noAutenticado();
+  return { id: aprobador.id, nombre: nombreCompleto(aprobador) || 'un administrador' };
 }

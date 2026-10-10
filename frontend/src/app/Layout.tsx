@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router';
 import { Button, Container, Nav, NavDropdown, Navbar } from 'react-bootstrap';
 import { AvisoSuscripcion } from '@/features/auth/components/AvisoSuscripcion';
@@ -8,6 +8,7 @@ import { abrirGuia } from '@/features/guia/pasos';
 import { Campanita } from '@/features/notificaciones/components/Campanita';
 import { AjustePlan } from '@/features/plan/AjustePlan';
 import { AvisoAutorizaciones } from '@/features/solicitudes/components/AvisoAutorizaciones';
+import { Cargando } from '@/shared/components/Cargando';
 import { Logo } from '@/shared/components/Logo';
 import { VolverArriba } from '@/shared/components/VolverArriba';
 
@@ -188,7 +189,10 @@ export function Layout() {
         ) : (
           <>
             {!usuario?.esDemo && <AvisoSuscripcion suscripcion={usuario?.suscripcion ?? null} />}
-            <Outlet />
+            {/* La página se descarga sin tapar el menú. */}
+            <Suspense fallback={<Cargando />}>
+              <Outlet />
+            </Suspense>
           </>
         )}
       </Container>

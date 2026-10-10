@@ -51,7 +51,8 @@ export function OrdenNuevaPage() {
   const { datos: tiposEquipo = [], error: errorTipos } = useConsulta(
     configuracionApi.listarTiposEquipo,
     [],
-    'No se pudieron cargar los tipos de equipo'
+    'No se pudieron cargar los tipos de equipo',
+    'tiposEquipo'
   );
 
   const [cliente, setCliente] = useState<EleccionCliente>(SIN_ELEGIR);

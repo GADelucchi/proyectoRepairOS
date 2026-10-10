@@ -24,7 +24,7 @@ export function UsuariosPage() {
     error,
     setError,
     recargar
-  } = useConsulta(usuariosApi.listarUsuarios, [], 'No se pudieron cargar los usuarios');
+  } = useConsulta(usuariosApi.listarUsuarios, [], 'No se pudieron cargar los usuarios', 'usuarios');
   const { ejecutar } = useAccion(setError);
 
   const [creando, setCreando] = useState(false);

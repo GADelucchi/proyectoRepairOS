@@ -31,7 +31,8 @@ export function CuentasPage() {
   const { datos, cargando, error, recargar } = useConsulta(
     () => cuentasApi.listarCuentas({ search: busquedaDebounced || undefined, todos: incluirAlDia }),
     [busquedaDebounced, incluirAlDia],
-    'No se pudieron cargar las cuentas'
+    'No se pudieron cargar las cuentas',
+    'cuentas'
   );
   const cuentas = datos?.cuentas ?? [];
   const totalesAdeudados = datos?.totalesAdeudados ?? [];

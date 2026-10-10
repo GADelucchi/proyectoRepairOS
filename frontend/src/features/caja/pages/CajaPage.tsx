@@ -37,7 +37,8 @@ export function CajaPage() {
       return { resumen, movimientos };
     },
     [desde, hasta, verTodas],
-    'No se pudo cargar la caja'
+    'No se pudo cargar la caja',
+    'caja'
   );
   const resumen = datos?.resumen;
   const movimientos = datos?.movimientos ?? [];
