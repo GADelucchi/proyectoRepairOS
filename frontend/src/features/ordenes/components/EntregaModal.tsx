@@ -7,6 +7,7 @@ import type { MedioPago, Orden } from '@/shared/types';
 import { aNumero, formatearMonto, redondear } from '@/shared/utils/dinero';
 import { nombreCompleto } from '@/shared/utils/texto';
 import * as ordenesApi from '../api';
+import { estaListoParaRetirar } from '../estado-orden';
 
 /** Lo único que la pantalla necesita saber después de entregar. */
 export interface ResultadoEntrega {
@@ -308,7 +309,7 @@ export function EntregaModal({
             />
           </Form.Group>
 
-          {esAdmin && orden.estado !== 'listo_para_retirar' && (
+          {esAdmin && !estaListoParaRetirar(orden.estado) && (
             <Form.Check
               type="checkbox"
               id="forzar-entrega"

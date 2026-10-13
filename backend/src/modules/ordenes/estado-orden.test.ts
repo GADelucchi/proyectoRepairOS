@@ -7,9 +7,14 @@ describe('máquina de estados de la orden', () => {
     expect(Object.keys(TRANSICIONES_ORDEN).sort()).toEqual([...ESTADOS_ORDEN].sort());
   });
 
-  it('solo se entrega desde "listo para retirar"', () => {
+  it('solo se entrega desde "listo para retirar", reparado o no', () => {
     const origenes = ESTADOS_ORDEN.filter((e) => esTransicionValida(e, 'entregado'));
-    expect(origenes).toEqual(['listo_para_retirar']);
+    expect(origenes).toEqual(['listo_para_retirar', 'no_reparado']);
+  });
+
+  it('desde "aprobado" se pasa a reparado o no reparado', () => {
+    expect(esTransicionValida('aprobado', 'listo_para_retirar')).toBe(true);
+    expect(esTransicionValida('aprobado', 'no_reparado')).toBe(true);
   });
 
   it('entregado y cancelado son finales', () => {

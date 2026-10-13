@@ -8,13 +8,14 @@ import { EstadoOrden } from '../../models/Orden';
  */
 export const TRANSICIONES_ORDEN: Record<EstadoOrden, readonly EstadoOrden[]> = {
   recibido: ['en_diagnostico', 'presupuestado', 'cancelado'],
-  en_diagnostico: ['presupuestado', 'en_reparacion', 'cancelado'],
+  en_diagnostico: ['presupuestado', 'listo_para_retirar', 'no_reparado', 'cancelado'],
   presupuestado: ['aprobado', 'rechazado', 'cancelado'],
-  aprobado: ['en_reparacion', 'cancelado'],
+  aprobado: ['listo_para_retirar', 'no_reparado', 'cancelado'],
   // Un rechazo no cierra la orden: el equipo se devuelve sin reparar.
-  rechazado: ['listo_para_retirar', 'presupuestado', 'cancelado'],
-  en_reparacion: ['listo_para_retirar', 'presupuestado', 'cancelado'],
-  listo_para_retirar: ['entregado', 'en_reparacion'],
+  rechazado: ['no_reparado', 'presupuestado', 'cancelado'],
+  // Si al final no quedó bien, vuelve a "aprobado" para seguir trabajando.
+  listo_para_retirar: ['entregado', 'aprobado'],
+  no_reparado: ['entregado', 'aprobado'],
   // Estados finales.
   entregado: [],
   cancelado: []
@@ -26,14 +27,19 @@ const ETIQUETAS_ESTADO: Record<EstadoOrden, string> = {
   presupuestado: 'Presupuestado',
   aprobado: 'Aprobado por el cliente',
   rechazado: 'Rechazado por el cliente',
-  en_reparacion: 'En reparación',
-  listo_para_retirar: 'Listo para retirar',
+  listo_para_retirar: 'Reparado - Listo para retirar',
+  no_reparado: 'No reparado - Listo para retirar',
   entregado: 'Entregado',
   cancelado: 'Cancelado'
 };
 
+/** Estados que ya no existen pero pueden aparecer en el historial de órdenes viejas. */
+const ETIQUETAS_ESTADO_ANTERIORES: Record<string, string> = {
+  en_reparacion: 'En reparación'
+};
+
 export function etiquetaEstado(estado: EstadoOrden | string): string {
-  return ETIQUETAS_ESTADO[estado as EstadoOrden] ?? estado;
+  return ETIQUETAS_ESTADO[estado as EstadoOrden] ?? ETIQUETAS_ESTADO_ANTERIORES[estado] ?? estado;
 }
 
 export function transicionesDesde(actual: EstadoOrden): readonly EstadoOrden[] {

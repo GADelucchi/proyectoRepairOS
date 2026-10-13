@@ -3,6 +3,7 @@ import { Badge, Button, Card, Col, Form, Row, Table } from 'react-bootstrap';
 import { useAuth } from '@/features/auth/useAuth';
 import { AlertaError } from '@/shared/components/AlertaError';
 import { Cargando } from '@/shared/components/Cargando';
+import { FechaFiltro } from '@/shared/components/FechaFiltro';
 import { useConsulta } from '@/shared/hooks/useConsulta';
 import { descargarCsv } from '@/shared/utils/csv';
 import { formatearMonto } from '@/shared/utils/dinero';
@@ -111,24 +112,18 @@ export function ReportesPage() {
         <Card.Body>
           <Row className="g-2 align-items-end">
             <Col sm={3}>
-              <Form.Group controlId="rep-desde">
-                <Form.Label className="small">Desde</Form.Label>
-                <Form.Control
-                  type="date"
-                  value={rango.desde}
-                  onChange={(e) => setRango((p) => ({ ...p, desde: e.target.value }))}
-                />
-              </Form.Group>
+              <FechaFiltro
+                label="Desde"
+                value={rango.desde}
+                onChange={(desde) => setRango((p) => ({ ...p, desde }))}
+              />
             </Col>
             <Col sm={3}>
-              <Form.Group controlId="rep-hasta">
-                <Form.Label className="small">Hasta</Form.Label>
-                <Form.Control
-                  type="date"
-                  value={rango.hasta}
-                  onChange={(e) => setRango((p) => ({ ...p, hasta: e.target.value }))}
-                />
-              </Form.Group>
+              <FechaFiltro
+                label="Hasta"
+                value={rango.hasta}
+                onChange={(hasta) => setRango((p) => ({ ...p, hasta }))}
+              />
             </Col>
             <Col sm="auto" className="d-flex flex-wrap gap-2">
               {(

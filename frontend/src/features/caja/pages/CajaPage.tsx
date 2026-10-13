@@ -3,6 +3,7 @@ import { Badge, Button, Card, Col, Form, Row, Table } from 'react-bootstrap';
 import { useAuth } from '@/features/auth/useAuth';
 import { AlertaError } from '@/shared/components/AlertaError';
 import { Cargando } from '@/shared/components/Cargando';
+import { FechaFiltro } from '@/shared/components/FechaFiltro';
 import { TablaApilable } from '@/shared/components/TablaApilable';
 import { ETIQUETA_MEDIO_PAGO } from '@/shared/constants/pagos';
 import { useConsulta } from '@/shared/hooks/useConsulta';
@@ -65,16 +66,10 @@ export function CajaPage() {
         <Card.Body>
           <Row className="g-2 align-items-end">
             <Col sm={3}>
-              <Form.Group controlId="caja-desde">
-                <Form.Label className="small">Desde</Form.Label>
-                <Form.Control type="date" value={desde} onChange={(e) => setDesde(e.target.value)} />
-              </Form.Group>
+              <FechaFiltro label="Desde" value={desde} onChange={setDesde} />
             </Col>
             <Col sm={3}>
-              <Form.Group controlId="caja-hasta">
-                <Form.Label className="small">Hasta</Form.Label>
-                <Form.Control type="date" value={hasta} onChange={(e) => setHasta(e.target.value)} />
-              </Form.Group>
+              <FechaFiltro label="Hasta" value={hasta} onChange={setHasta} />
             </Col>
             <Col sm="auto" className="d-flex gap-2">
               <Button size="sm" variant="outline-secondary" onClick={() => aplicarAtajo(0)}>

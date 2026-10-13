@@ -15,8 +15,8 @@ export const ESTADOS_ORDEN = [
   'presupuestado',
   'aprobado',
   'rechazado',
-  'en_reparacion',
   'listo_para_retirar',
+  'no_reparado',
   'entregado',
   'cancelado'
 ] as const;

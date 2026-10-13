@@ -21,13 +21,7 @@ describe('moneda', () => {
       .expect(200);
 
     const ruta = `/api/ordenes/${enDolares.id}`;
-    for (const estado of [
-      'en_diagnostico',
-      'presupuestado',
-      'aprobado',
-      'en_reparacion',
-      'listo_para_retirar'
-    ]) {
+    for (const estado of ['en_diagnostico', 'presupuestado', 'aprobado', 'listo_para_retirar']) {
       await api()
         .put(`${ruta}/estado`)
         .set(taller.auth)
@@ -69,6 +63,37 @@ describe('moneda', () => {
     ).toBe(true);
     const publico = await api().get(`/api/seguimiento/${detalle.body.codigoSeguimiento}`).expect(200);
     expect(JSON.stringify(publico.body)).not.toContain('nota aprobado');
+  });
+});
+
+describe('presupuesto y estados', () => {
+  it('guardar un monto nuevo deja la orden presupuestada y sin respuesta del cliente', async () => {
+    const taller = await tallerConSucursal();
+    const orden = await crearOrden(taller);
+    const ruta = `/api/ordenes/${orden.id}`;
+
+    const aprobada = await api()
+      .put(`${ruta}/presupuesto`)
+      .set(taller.auth)
+      .send({ monto: 1000, aprobado: true })
+      .expect(200);
+    expect(aprobada.body).toMatchObject({ estado: 'aprobado', presupuestoAprobado: true });
+
+    const nuevo = await api().put(`${ruta}/presupuesto`).set(taller.auth).send({ monto: 1500 }).expect(200);
+    expect(nuevo.body).toMatchObject({ estado: 'presupuestado', presupuestoAprobado: null });
+  });
+
+  it('desde "aprobado" pasa a "no reparado" y se entrega', async () => {
+    const taller = await tallerConSucursal();
+    const orden = await crearOrden(taller);
+    const ruta = `/api/ordenes/${orden.id}`;
+    await api().put(`${ruta}/presupuesto`).set(taller.auth).send({ monto: 1000, aprobado: true }).expect(200);
+    await api().put(`${ruta}/estado`).set(taller.auth).send({ estado: 'no_reparado' }).expect(200);
+    await api()
+      .post(`${ruta}/entrega`)
+      .set(taller.auth)
+      .send({ montoTotal: 0, montoAbonado: 0, medioPago: 'efectivo' })
+      .expect(200);
   });
 });
 
@@ -165,13 +190,7 @@ describe('portal de clientes', () => {
       .set(taller.auth)
       .send({ cuentaCorrienteHabilitada: true })
       .expect(200);
-    for (const estado of [
-      'en_diagnostico',
-      'presupuestado',
-      'aprobado',
-      'en_reparacion',
-      'listo_para_retirar'
-    ]) {
+    for (const estado of ['en_diagnostico', 'presupuestado', 'aprobado', 'listo_para_retirar']) {
       await api().put(`/api/ordenes/${orden.id}/estado`).set(taller.auth).send({ estado }).expect(200);
     }
     await api()

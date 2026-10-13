@@ -86,7 +86,8 @@ export function PresupuestoCard({
         </Stack>
         {orden.montoTotal != null && <CobroAlEntregar orden={orden} />}
         <Form.Text className="text-muted d-block mt-2">
-          Guardar el monto deja la orden como presupuestada.
+          Guardar el monto es un presupuesto nuevo: la orden vuelve a presupuestada y espera otra vez la
+          respuesta del cliente.
         </Form.Text>
       </Card.Body>
     </Card>

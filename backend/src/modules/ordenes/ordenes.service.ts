@@ -381,8 +381,9 @@ export async function cambiarEstado(
 /**
  * Carga el monto del presupuesto y/o la respuesta del cliente.
  *
- * Cargar el monto es, en la práctica, presupuestar: si el circuito lo permite
- * la orden avanza sola a "presupuestado", así el mostrador no lo hace aparte.
+ * Cargar el monto es, en la práctica, presupuestar: la orden pasa sola a
+ * "presupuestado" y pierde la respuesta anterior del cliente, así el mostrador
+ * no lo hace aparte.
  *
  * La moneda se elige junto con el monto. Una vez entregada la orden no se
  * cambia: lo cobrado ya quedó asentado en la cuenta en esa moneda.
@@ -407,8 +408,13 @@ export async function actualizarPresupuesto(
 
   if (monto !== undefined) {
     cambios.presupuestoMonto = monto;
-    if (monto !== null && esTransicionValida(estadoAnterior, 'presupuestado'))
+    // Un monto guardado es un presupuesto nuevo, aunque ya hubiera otro aprobado
+    // o rechazado: vuelve a "presupuestado" y espera otra respuesta del cliente.
+    // Una orden cerrada (lo corrige un admin) no cambia de estado.
+    if (monto !== null && !esEstadoFinal(estadoAnterior)) {
       cambios.estado = 'presupuestado';
+      cambios.presupuestoAprobado = null;
+    }
   }
 
   if (aprobado !== undefined && aprobado !== null) {

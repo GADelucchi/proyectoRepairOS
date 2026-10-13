@@ -3,7 +3,7 @@ import { Button, Card, Form, Spinner } from 'react-bootstrap';
 import { useAccion } from '@/shared/hooks/useAccion';
 import type { EstadoOrden } from '@/shared/types';
 import * as ordenesApi from '../../api';
-import { ESTADOS_ORDEN, ETIQUETA_ESTADO, transicionesDesde } from '../../estado-orden';
+import { ESTADOS_ORDEN, ETIQUETA_ESTADO, estaListoParaRetirar, transicionesDesde } from '../../estado-orden';
 import type { SeccionOrdenProps } from './tipos';
 
 interface EstadoCardProps extends Omit<SeccionOrdenProps, 'puedeEditar'> {
@@ -38,7 +38,7 @@ export function EstadoCard({
   const posibles = (forzar && esAdmin ? ESTADOS_ORDEN : transicionesDesde(orden.estado)).filter(
     (e) => e !== 'entregado' && e !== orden.estado
   );
-  const puedeEntregar = orden.estado !== 'entregado' && (orden.estado === 'listo_para_retirar' || esAdmin);
+  const puedeEntregar = orden.estado !== 'entregado' && (estaListoParaRetirar(orden.estado) || esAdmin);
 
   async function cambiar() {
     if (!nuevoEstado) return;

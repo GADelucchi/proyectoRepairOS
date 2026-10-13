@@ -9,6 +9,8 @@ import { FiltroCaja } from './caja.service';
 export const DIAS_ABANDONO = 90;
 const LIMITE_LISTA = 10;
 const ESTADOS_CERRADOS = "('entregado', 'cancelado')";
+/** Reparado o no, el equipo espera que lo retiren. */
+const ESTADOS_LISTOS = "('listo_para_retirar', 'no_reparado')";
 
 type Parametros = Record<string, unknown>;
 
@@ -94,12 +96,12 @@ export async function tablero(tallerId: number, sucursalId: number) {
         p
       ),
       listaDeOrdenes(
-        `${deSucursal} AND o.estado NOT IN ('entregado', 'cancelado', 'listo_para_retirar')
+        `${deSucursal} AND o.estado NOT IN ('entregado', 'cancelado', 'listo_para_retirar', 'no_reparado')
          AND o.fecha_pactada < :hoy`,
         'fechaPactada ASC',
         p
       ),
-      listaDeOrdenes(`${deSucursal} AND o.estado = 'listo_para_retirar'`, 'desde ASC', p),
+      listaDeOrdenes(`${deSucursal} AND o.estado IN ${ESTADOS_LISTOS}`, 'desde ASC', p),
       listaDeOrdenes(`${deSucursal} AND o.estado = 'presupuestado'`, 'desde ASC', p),
       consultar<Record<string, number>>(
         `SELECT (SELECT COUNT(*) FROM ordenes o WHERE ${deSucursal}
@@ -186,13 +188,13 @@ export async function reportes(filtro: FiltroCaja) {
         ORDER BY ingresadas DESC`,
       p
     ),
-    // Quién recibe, quién termina (pasa a "listo para retirar") y quién entrega.
+    // Quién recibe, quién termina (pasa a "listo para retirar", reparado o no) y quién entrega.
     consultar<{ usuario: string; recibidas: number; terminadas: number; entregadas: number }>(
       `SELECT CONCAT(u.nombre, ' ', u.apellido) AS usuario,
               (SELECT COUNT(*) FROM ordenes o
                 WHERE o.tecnico_id = u.id AND ${deSucursal('o')} AND ${enRango('o.fecha_ingreso')}) AS recibidas,
               (SELECT COUNT(*) FROM orden_historial_estados h JOIN ordenes o ON o.id = h.orden_id
-                WHERE h.usuario_id = u.id AND h.estado_nuevo = 'listo_para_retirar'
+                WHERE h.usuario_id = u.id AND h.estado_nuevo IN ${ESTADOS_LISTOS}
                   AND ${deSucursal('o')} AND ${enRango('h.created_at')}) AS terminadas,
               (SELECT COUNT(*) FROM orden_historial_estados h JOIN ordenes o ON o.id = h.orden_id
                 WHERE h.usuario_id = u.id AND h.estado_nuevo = 'entregado'
@@ -216,9 +218,9 @@ export async function reportes(filtro: FiltroCaja) {
     ),
     // Equipos listos hace más de DIAS_ABANDONO días: no depende del período elegido.
     listaDeOrdenes(
-      `${deSucursal('o')} AND o.estado = 'listo_para_retirar'
+      `${deSucursal('o')} AND o.estado IN ${ESTADOS_LISTOS}
          AND (SELECT MAX(h.created_at) FROM orden_historial_estados h
-               WHERE h.orden_id = o.id AND h.estado_nuevo = 'listo_para_retirar')
+               WHERE h.orden_id = o.id AND h.estado_nuevo = o.estado)
              < DATE_SUB(UTC_TIMESTAMP(), INTERVAL :diasAbandono DAY)`,
       'desde ASC',
       p,

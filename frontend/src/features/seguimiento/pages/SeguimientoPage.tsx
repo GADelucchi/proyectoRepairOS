@@ -1,5 +1,6 @@
 import { Alert, Badge, Card, Container, ListGroup } from 'react-bootstrap';
 import { Link, useParams } from 'react-router';
+import { estaListoParaRetirar } from '@/features/ordenes/estado-orden';
 import { Cargando } from '@/shared/components/Cargando';
 import { Logo } from '@/shared/components/Logo';
 import { useConsulta } from '@/shared/hooks/useConsulta';
@@ -12,9 +13,9 @@ import { consultarSeguimiento } from '../api';
 const PASOS: { estados: EstadoOrden[]; etiqueta: string }[] = [
   { estados: ['recibido'], etiqueta: 'Recibido' },
   { estados: ['en_diagnostico'], etiqueta: 'En revisión' },
-  { estados: ['presupuestado', 'aprobado', 'rechazado'], etiqueta: 'Presupuesto' },
-  { estados: ['en_reparacion'], etiqueta: 'En reparación' },
-  { estados: ['listo_para_retirar'], etiqueta: 'Listo' },
+  { estados: ['presupuestado', 'rechazado'], etiqueta: 'Presupuesto' },
+  { estados: ['aprobado'], etiqueta: 'En reparación' },
+  { estados: ['listo_para_retirar', 'no_reparado'], etiqueta: 'Listo' },
   { estados: ['entregado'], etiqueta: 'Entregado' }
 ];
 
@@ -25,8 +26,8 @@ const QUE_SIGUE: Partial<Record<EstadoOrden, string>> = {
   presupuestado: 'Ya tenemos el presupuesto: esperamos tu respuesta para seguir.',
   aprobado: 'Aprobaste el presupuesto. Empezamos con la reparación.',
   rechazado: 'No vas a seguir con la reparación. Podés pasar a retirar el equipo.',
-  en_reparacion: 'Estamos reparando tu equipo.',
   listo_para_retirar: '¡Tu equipo está listo! Ya podés pasar a retirarlo.',
+  no_reparado: 'No pudimos reparar tu equipo. Ya podés pasar a retirarlo.',
   entregado: 'Ya retiraste tu equipo. ¡Gracias por confiar en nosotros!',
   cancelado: 'La orden fue cancelada. Si tenés dudas, comunicate con el taller.'
 };
@@ -72,7 +73,7 @@ export function SeguimientoPage() {
               <div className="d-flex align-items-center gap-2 mb-2">
                 <Badge
                   bg={
-                    s.estado === 'listo_para_retirar'
+                    estaListoParaRetirar(s.estado)
                       ? 'success'
                       : s.estado === 'cancelado'
                         ? 'secondary'

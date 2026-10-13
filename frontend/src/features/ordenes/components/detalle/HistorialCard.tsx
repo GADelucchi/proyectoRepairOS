@@ -2,7 +2,7 @@ import { Card, ListGroup } from 'react-bootstrap';
 import type { OrdenHistorialEstado } from '@/shared/types';
 import { formatearFechaHora } from '@/shared/utils/fechas';
 import { nombreCompleto } from '@/shared/utils/texto';
-import { ETIQUETA_ESTADO } from '../../estado-orden';
+import { etiquetaEstado } from '../../estado-orden';
 
 export function HistorialCard({ historial }: { historial: OrdenHistorialEstado[] }) {
   return (
@@ -17,8 +17,8 @@ export function HistorialCard({ historial }: { historial: OrdenHistorialEstado[]
               <ListGroup.Item key={h.id} className="px-0">
                 <div className="d-flex justify-content-between">
                   <span>
-                    {h.estadoAnterior && `${ETIQUETA_ESTADO[h.estadoAnterior]} → `}
-                    <strong>{ETIQUETA_ESTADO[h.estadoNuevo]}</strong>
+                    {h.estadoAnterior && `${etiquetaEstado(h.estadoAnterior)} → `}
+                    <strong>{etiquetaEstado(h.estadoNuevo)}</strong>
                     {h.usuario && ` — ${nombreCompleto(h.usuario)}`}
                   </span>
                   <span className="text-muted small">{formatearFechaHora(h.createdAt)}</span>
