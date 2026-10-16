@@ -7,7 +7,8 @@ interface LogoProps {
 /**
  * Isotipo + wordmark de RepairOS según la identidad de marca:
  * ícono "R" con acento de circuito en cyan sobre superficie oscura,
- * wordmark "Repair" + "OS" en cyan, tipografía Space Grotesk.
+ * wordmark "Repair" + "OS" en cyan, tipografía Space Grotesk. El "OS" toma el
+ * cian del tema, que en el claro es más oscuro para que se lea sobre blanco.
  */
 export function Logo({ size = 32, showText = true, className }: LogoProps) {
   return (
@@ -43,7 +44,7 @@ export function Logo({ size = 32, showText = true, className }: LogoProps) {
       </svg>
       {showText && (
         <span style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: size * 0.56 }}>
-          Repair<span style={{ color: '#00C9FF' }}>OS</span>
+          Repair<span style={{ color: 'var(--rs-accent)' }}>OS</span>
         </span>
       )}
     </span>

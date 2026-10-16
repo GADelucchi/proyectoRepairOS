@@ -1,50 +1,133 @@
 /* ============================================================
-   RepairOS — Brand Identity System
-   Paleta, tipografía y overrides de Bootstrap para el tema oscuro.
+   RepairOS — Sistema visual
+   Tokens de color para el tema claro y el oscuro, y overrides de
+   Bootstrap 5.3. El tema lo elige `data-bs-theme` en <html>
+   (ver `public/tema-inicial.js` y `useTema`).
    ============================================================ */
 
-:root {
-  /* Base */
-  --repairos-cyan-core: #00c9ff;
-  --repairos-cyan-deep: #007baf;
-  --repairos-abyss: #0a0d12;
-  --repairos-surface: #141820;
-  --repairos-surface-alt: #1e2535;
-  --repairos-snow: #ebecf2;
-  --repairos-border: #262e3d;
-  --repairos-muted: #8b93a7;
+/* ---------- Tokens: tema claro ---------- */
+:root,
+[data-bs-theme='light'] {
+  --rs-bg: #f4f4f5;
+  --rs-surface: #ffffff;
+  --rs-surface-alt: #f4f4f5;
+  --rs-border: #e4e4e7;
+  --rs-input-border: #d4d4d8;
+  --rs-input-bg: #ffffff;
+  --rs-text: #18181b;
+  --rs-muted: #71717a;
 
-  /* Estados de orden */
-  --repairos-status-cyan: #00c9ff;
-  --repairos-status-amber: #ffb928;
-  --repairos-status-green: #00dc82;
-  --repairos-status-red: #ff5050;
-  --repairos-status-violet: #8b5cf6;
-  --repairos-status-violet-light: #c4b5fd;
-  --repairos-status-pink: #f472b6;
+  /* Cian de la marca, oscurecido para que se lea sobre blanco. */
+  --rs-accent: #007baf;
+  --rs-accent-rgb: 0, 123, 175;
+  --rs-accent-hover: #00658f;
+  --rs-on-accent: #ffffff;
+  --rs-accent-soft: rgba(0, 123, 175, 0.1);
 
-  /* Overrides de variables de Bootstrap 5.3 */
-  --bs-primary: var(--repairos-cyan-core);
-  --bs-primary-rgb: 0, 201, 255;
-  --bs-link-color: var(--repairos-cyan-core);
-  --bs-link-hover-color: var(--repairos-cyan-deep);
-  --bs-link-color-rgb: 0, 201, 255;
-  --bs-link-hover-color-rgb: 0, 123, 175;
-  --bs-body-bg: var(--repairos-abyss);
-  --bs-body-color: var(--repairos-snow);
-  --bs-border-color: var(--repairos-border);
-  --bs-emphasis-color: var(--repairos-snow);
-  --bs-secondary-color: var(--repairos-muted);
+  --rs-success: #15803d;
+  --rs-danger: #dc2626;
+  --rs-warning: #b45309;
+
+  --rs-shadow: 0 1px 2px rgba(24, 24, 27, 0.04), 0 1px 3px rgba(24, 24, 27, 0.06);
+  --rs-shadow-lg: 0 12px 32px rgba(24, 24, 27, 0.14);
+
+  /* Tonos: fondo pastel + color de ícono o texto. Estados, chips y menú. */
+  --rs-tono-cyan-bg: #e0f2fe;
+  --rs-tono-cyan: #0369a1;
+  --rs-tono-blue-bg: #dbeafe;
+  --rs-tono-blue: #1d4ed8;
+  --rs-tono-indigo-bg: #e0e7ff;
+  --rs-tono-indigo: #4338ca;
+  --rs-tono-violet-bg: #ede9fe;
+  --rs-tono-violet: #6d28d9;
+  --rs-tono-pink-bg: #fce7f3;
+  --rs-tono-pink: #be185d;
+  --rs-tono-red-bg: #fee2e2;
+  --rs-tono-red: #b91c1c;
+  --rs-tono-amber-bg: #fef3c7;
+  --rs-tono-amber: #b45309;
+  --rs-tono-green-bg: #dcfce7;
+  --rs-tono-green: #15803d;
+  --rs-tono-gris-bg: #f4f4f5;
+  --rs-tono-gris: #52525b;
+}
+
+/* ---------- Tokens: tema oscuro (grises neutros, sin tinte azul) ---------- */
+[data-bs-theme='dark'] {
+  --rs-bg: #111113;
+  --rs-surface: #18181b;
+  --rs-surface-alt: #222226;
+  --rs-border: #2a2a2e;
+  --rs-input-border: #3f3f46;
+  --rs-input-bg: #141417;
+  --rs-text: #ececef;
+  --rs-muted: #a1a1aa;
+
+  --rs-accent: #00c9ff;
+  --rs-accent-rgb: 0, 201, 255;
+  --rs-accent-hover: #4dd9ff;
+  --rs-on-accent: #04121a;
+  --rs-accent-soft: rgba(0, 201, 255, 0.12);
+
+  --rs-success: #00dc82;
+  --rs-danger: #ff5050;
+  --rs-warning: #ffb928;
+
+  --rs-shadow: none;
+  --rs-shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.55);
+
+  --rs-tono-cyan-bg: rgba(0, 201, 255, 0.14);
+  --rs-tono-cyan: #4dd9ff;
+  --rs-tono-blue-bg: rgba(96, 165, 250, 0.15);
+  --rs-tono-blue: #93c5fd;
+  --rs-tono-indigo-bg: rgba(129, 140, 248, 0.16);
+  --rs-tono-indigo: #a5b4fc;
+  --rs-tono-violet-bg: rgba(167, 139, 250, 0.16);
+  --rs-tono-violet: #c4b5fd;
+  --rs-tono-pink-bg: rgba(244, 114, 182, 0.15);
+  --rs-tono-pink: #f9a8d4;
+  --rs-tono-red-bg: rgba(255, 80, 80, 0.15);
+  --rs-tono-red: #ff8a8a;
+  --rs-tono-amber-bg: rgba(255, 185, 40, 0.15);
+  --rs-tono-amber: #ffcb5c;
+  --rs-tono-green-bg: rgba(0, 220, 130, 0.14);
+  --rs-tono-green: #4ee8a6;
+  --rs-tono-gris-bg: rgba(161, 161, 170, 0.15);
+  --rs-tono-gris: #d4d4d8;
+}
+
+/* ---------- Bootstrap 5.3 a partir de los tokens ---------- */
+:root,
+[data-bs-theme] {
+  --bs-body-bg: var(--rs-bg);
+  --bs-body-color: var(--rs-text);
+  --bs-emphasis-color: var(--rs-text);
+  --bs-heading-color: var(--rs-text);
+  --bs-secondary-color: var(--rs-muted);
+  --bs-secondary-bg: var(--rs-surface-alt);
+  --bs-tertiary-bg: var(--rs-surface-alt);
+  --bs-border-color: var(--rs-border);
+  --bs-primary: var(--rs-accent);
+  --bs-primary-rgb: var(--rs-accent-rgb);
+  --bs-link-color: var(--rs-accent);
+  --bs-link-color-rgb: var(--rs-accent-rgb);
+  --bs-link-hover-color: var(--rs-accent-hover);
+  --bs-link-hover-color-rgb: var(--rs-accent-rgb);
+  --bs-border-radius: 0.5rem;
+  --bs-border-radius-sm: 0.375rem;
+  --bs-border-radius-lg: 0.75rem;
+  --bs-border-radius-xl: 1rem;
 }
 
 body {
-  background-color: var(--repairos-abyss);
-  color: var(--repairos-snow);
+  background-color: var(--rs-bg);
+  color: var(--rs-text);
   font-family:
-    'Space Grotesk',
+    'Inter',
     system-ui,
     -apple-system,
     sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
 
 h1,
@@ -52,10 +135,10 @@ h2,
 h3,
 h4,
 h5,
-h6,
-.navbar-brand {
-  font-family: 'Space Grotesk', sans-serif;
+h6 {
+  font-family: 'Space Grotesk', 'Inter', sans-serif;
   font-weight: 700;
+  letter-spacing: -0.01em;
 }
 
 /* Identificadores técnicos: números de orden, modelos, series, códigos */
@@ -64,228 +147,490 @@ h6,
   letter-spacing: 0.02em;
 }
 
-a {
-  color: var(--repairos-cyan-core);
-}
-a:hover {
-  color: var(--repairos-cyan-deep);
-}
-
 .text-muted {
-  color: var(--repairos-muted) !important;
+  color: var(--rs-muted) !important;
 }
-/* El verde y el rojo de Bootstrap quedan apagados sobre el fondo oscuro: los de la marca se leen mejor. */
+/* Los de Bootstrap quedan apagados en oscuro o chillones en claro: los de la marca se leen en los dos. */
 .text-success {
-  color: var(--repairos-status-green) !important;
+  color: var(--rs-success) !important;
 }
 .text-danger {
-  color: var(--repairos-status-red) !important;
+  color: var(--rs-danger) !important;
 }
 .text-warning {
-  color: var(--repairos-status-amber) !important;
+  color: var(--rs-warning) !important;
 }
 
-/* ---------- Navbar ---------- */
-.navbar {
-  background-color: var(--repairos-surface) !important;
-  border-bottom: 1px solid var(--repairos-border);
-}
-.navbar .nav-link {
-  color: var(--repairos-snow) !important;
-  opacity: 0.75;
-}
-.navbar .nav-link.active,
-.navbar .nav-link:hover {
-  opacity: 1;
-  color: var(--repairos-cyan-core) !important;
+/* ---------- Encabezado de página ---------- */
+.pagina-subtitulo {
+  color: var(--rs-muted);
+  margin: 0.25rem 0 0;
 }
 
 /* ---------- Cards / Paneles ---------- */
 .card {
-  background-color: var(--repairos-surface);
-  border: 1px solid var(--repairos-border);
-  color: var(--repairos-snow);
+  --bs-card-bg: var(--rs-surface);
+  --bs-card-border-color: var(--rs-border);
+  --bs-card-border-radius: 0.875rem;
+  --bs-card-inner-border-radius: calc(0.875rem - 1px);
+  --bs-card-cap-bg: transparent;
+  --bs-card-cap-padding-y: 0.85rem;
+  --bs-card-cap-padding-x: 1.25rem;
+  --bs-card-spacer-x: 1.25rem;
+  --bs-card-spacer-y: 1.1rem;
+  color: var(--rs-text);
+  box-shadow: var(--rs-shadow);
 }
 .card-header {
-  background-color: var(--repairos-surface-alt);
-  border-bottom: 1px solid var(--repairos-border);
+  font-weight: 600;
+  border-bottom: 1px solid var(--rs-border);
+}
+
+/* ---------- Tarjetas de un número (inicio, reportes) ---------- */
+.dato-valor {
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+/* ---------- Tonos e íconos con chip de color ---------- */
+.tono-cyan {
+  --tono: var(--rs-tono-cyan);
+  --tono-bg: var(--rs-tono-cyan-bg);
+}
+.tono-blue {
+  --tono: var(--rs-tono-blue);
+  --tono-bg: var(--rs-tono-blue-bg);
+}
+.tono-indigo {
+  --tono: var(--rs-tono-indigo);
+  --tono-bg: var(--rs-tono-indigo-bg);
+}
+.tono-violet {
+  --tono: var(--rs-tono-violet);
+  --tono-bg: var(--rs-tono-violet-bg);
+}
+.tono-pink {
+  --tono: var(--rs-tono-pink);
+  --tono-bg: var(--rs-tono-pink-bg);
+}
+.tono-red {
+  --tono: var(--rs-tono-red);
+  --tono-bg: var(--rs-tono-red-bg);
+}
+.tono-amber {
+  --tono: var(--rs-tono-amber);
+  --tono-bg: var(--rs-tono-amber-bg);
+}
+.tono-green {
+  --tono: var(--rs-tono-green);
+  --tono-bg: var(--rs-tono-green-bg);
+}
+.tono-gris {
+  --tono: var(--rs-tono-gris);
+  --tono-bg: var(--rs-tono-gris-bg);
+}
+.chip-icono {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 0.625rem;
+  background-color: var(--tono-bg);
+  color: var(--tono);
+}
+.chip-icono-sm {
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 0.5rem;
+}
+.icono-tono {
+  color: var(--tono);
 }
 
 /* ---------- Tablas ---------- */
 .table {
-  --bs-table-bg: var(--repairos-surface);
-  --bs-table-color: var(--repairos-snow);
-  --bs-table-striped-bg: var(--repairos-surface-alt);
-  --bs-table-striped-color: var(--repairos-snow);
-  --bs-table-hover-bg: var(--repairos-surface-alt);
-  --bs-table-hover-color: var(--repairos-snow);
-  --bs-table-border-color: var(--repairos-border);
+  --bs-table-bg: var(--rs-surface);
+  --bs-table-color: var(--rs-text);
+  --bs-table-striped-bg: var(--rs-surface-alt);
+  --bs-table-striped-color: var(--rs-text);
+  --bs-table-hover-bg: var(--rs-surface-alt);
+  --bs-table-hover-color: var(--rs-text);
+  --bs-table-border-color: var(--rs-border);
+}
+.table > thead th {
+  color: var(--rs-muted);
+  font-weight: 500;
+  font-size: 0.8125rem;
+}
+/* Tabla a todo el ancho de una tarjeta: el texto no queda pegado al borde. */
+.card .table > :not(caption) > * > :first-child {
+  padding-left: var(--bs-card-spacer-x);
+}
+.card .table > :not(caption) > * > :last-child {
+  padding-right: var(--bs-card-spacer-x);
 }
 
 /* ---------- Modales ---------- */
-.modal-content {
-  background-color: var(--repairos-surface);
-  color: var(--repairos-snow);
-  border: 1px solid var(--repairos-border);
+.modal {
+  --bs-modal-bg: var(--rs-surface);
+  --bs-modal-border-color: var(--rs-border);
+  --bs-modal-border-radius: 1rem;
+  --bs-modal-inner-border-radius: calc(1rem - 1px);
+  --bs-modal-header-border-color: var(--rs-border);
+  --bs-modal-footer-border-color: var(--rs-border);
+  --bs-modal-box-shadow: var(--rs-shadow-lg);
 }
-.modal-header,
-.modal-footer {
-  border-color: var(--repairos-border);
-}
-.btn-close {
-  filter: invert(1) grayscale(100%) brightness(200%);
+.offcanvas {
+  --bs-offcanvas-bg: var(--rs-surface);
+  --bs-offcanvas-border-color: var(--rs-border);
 }
 
 /* ---------- Formularios ---------- */
 .form-control,
 .form-select {
-  background-color: var(--repairos-surface-alt);
-  border-color: var(--repairos-border);
-  color: var(--repairos-snow);
+  background-color: var(--rs-input-bg);
+  border-color: var(--rs-input-border);
 }
 .form-control:focus,
 .form-select:focus {
-  background-color: var(--repairos-surface-alt);
-  border-color: var(--repairos-cyan-core);
-  color: var(--repairos-snow);
-  box-shadow: 0 0 0 0.2rem rgba(0, 201, 255, 0.25);
+  background-color: var(--rs-input-bg);
+  border-color: var(--rs-accent);
+  box-shadow: 0 0 0 0.2rem var(--rs-accent-soft);
 }
 .form-control::placeholder {
-  color: var(--repairos-muted);
-}
-.form-control:disabled,
-.form-select:disabled {
-  background-color: var(--repairos-surface);
-  color: var(--repairos-muted);
+  color: var(--rs-muted);
 }
 .form-label {
-  color: var(--repairos-snow);
+  font-weight: 500;
 }
 .form-check-input {
-  background-color: var(--repairos-surface-alt);
-  border-color: var(--repairos-border);
+  border-color: var(--rs-input-border);
+}
+.form-check-input:checked {
+  background-color: var(--rs-accent);
+  border-color: var(--rs-accent);
+}
+.form-check-input:focus {
+  border-color: var(--rs-accent);
+  box-shadow: 0 0 0 0.2rem var(--rs-accent-soft);
 }
 
 /* ---------- Botones ---------- */
-.btn-primary {
-  --bs-btn-color: #04121a;
-  --bs-btn-bg: var(--repairos-cyan-core);
-  --bs-btn-border-color: var(--repairos-cyan-core);
-  --bs-btn-hover-color: #fff;
-  --bs-btn-hover-bg: var(--repairos-cyan-deep);
-  --bs-btn-hover-border-color: var(--repairos-cyan-deep);
-  --bs-btn-active-color: #fff;
-  --bs-btn-active-bg: var(--repairos-cyan-deep);
-  --bs-btn-active-border-color: var(--repairos-cyan-deep);
+.btn {
   font-weight: 500;
 }
-.btn-outline-light {
-  --bs-btn-color: var(--repairos-snow);
-  --bs-btn-border-color: var(--repairos-border);
-  --bs-btn-hover-bg: var(--repairos-surface-alt);
-  --bs-btn-hover-border-color: var(--repairos-border);
+.btn-primary {
+  --bs-btn-color: var(--rs-on-accent);
+  --bs-btn-bg: var(--rs-accent);
+  --bs-btn-border-color: var(--rs-accent);
+  --bs-btn-hover-color: var(--rs-on-accent);
+  --bs-btn-hover-bg: var(--rs-accent-hover);
+  --bs-btn-hover-border-color: var(--rs-accent-hover);
+  --bs-btn-active-color: var(--rs-on-accent);
+  --bs-btn-active-bg: var(--rs-accent-hover);
+  --bs-btn-active-border-color: var(--rs-accent-hover);
+  --bs-btn-disabled-color: var(--rs-on-accent);
+  --bs-btn-disabled-bg: var(--rs-accent);
+  --bs-btn-disabled-border-color: var(--rs-accent);
 }
-.btn-outline-secondary {
-  --bs-btn-color: var(--repairos-snow);
-  --bs-btn-border-color: var(--repairos-border);
-  --bs-btn-hover-bg: var(--repairos-surface-alt);
-  --bs-btn-hover-color: var(--repairos-snow);
+.btn-outline-primary {
+  --bs-btn-color: var(--rs-accent);
+  --bs-btn-border-color: var(--rs-accent);
+  --bs-btn-hover-color: var(--rs-on-accent);
+  --bs-btn-hover-bg: var(--rs-accent);
+  --bs-btn-hover-border-color: var(--rs-accent);
+  --bs-btn-active-color: var(--rs-on-accent);
+  --bs-btn-active-bg: var(--rs-accent-hover);
+  --bs-btn-active-border-color: var(--rs-accent-hover);
+  --bs-btn-disabled-color: var(--rs-accent);
+  --bs-btn-disabled-border-color: var(--rs-accent);
+}
+.btn-outline-secondary,
+.btn-outline-light {
+  --bs-btn-color: var(--rs-text);
+  --bs-btn-bg: var(--rs-surface);
+  --bs-btn-border-color: var(--rs-input-border);
+  --bs-btn-hover-color: var(--rs-text);
+  --bs-btn-hover-bg: var(--rs-surface-alt);
+  --bs-btn-hover-border-color: var(--rs-input-border);
+  --bs-btn-active-color: var(--rs-text);
+  --bs-btn-active-bg: var(--rs-surface-alt);
+  --bs-btn-active-border-color: var(--rs-input-border);
+  --bs-btn-disabled-color: var(--rs-muted);
+  --bs-btn-disabled-bg: var(--rs-surface);
+  --bs-btn-disabled-border-color: var(--rs-border);
+}
+/* Botones de solo ícono del encabezado. */
+.btn-icono {
+  display: inline-grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  padding: 0;
+  border: 0;
+  border-radius: 0.625rem;
+  background: transparent;
+  color: var(--rs-muted);
+}
+.btn-icono:hover,
+.btn-icono:focus-visible,
+.btn-icono.active {
+  background-color: var(--rs-surface-alt);
+  color: var(--rs-text);
 }
 
-/* ---------- Badges de estado ---------- */
+/* ---------- Badges ---------- */
 .badge {
-  font-family: 'DM Mono', ui-monospace, monospace;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
   font-weight: 500;
-  font-size: 0.72em;
+  font-size: 0.75em;
+  letter-spacing: 0.01em;
+  padding: 0.4em 0.7em;
+  border-radius: 999px;
 }
+/* Estados de orden (ver CLASE_BADGE_ESTADO): fondo pastel y texto del mismo tono. */
 .badge-cyan {
-  background-color: var(--repairos-status-cyan) !important;
-  color: #04121a !important;
+  background-color: var(--rs-tono-cyan-bg) !important;
+  color: var(--rs-tono-cyan) !important;
 }
 .badge-amber {
-  background-color: var(--repairos-status-amber) !important;
-  color: #241600 !important;
+  background-color: var(--rs-tono-amber-bg) !important;
+  color: var(--rs-tono-amber) !important;
 }
 .badge-green {
-  background-color: var(--repairos-status-green) !important;
-  color: #012616 !important;
+  background-color: var(--rs-tono-green-bg) !important;
+  color: var(--rs-tono-green) !important;
 }
 .badge-red {
-  background-color: var(--repairos-status-red) !important;
-  color: #2a0000 !important;
+  background-color: var(--rs-tono-red-bg) !important;
+  color: var(--rs-tono-red) !important;
 }
 .badge-violet {
-  background-color: var(--repairos-status-violet) !important;
-  color: #fff !important;
+  background-color: var(--rs-tono-violet-bg) !important;
+  color: var(--rs-tono-violet) !important;
 }
 .badge-violet-light {
-  background-color: var(--repairos-status-violet-light) !important;
-  color: #241246 !important;
+  background-color: var(--rs-tono-indigo-bg) !important;
+  color: var(--rs-tono-indigo) !important;
 }
 .badge-pink {
-  background-color: var(--repairos-status-pink) !important;
-  color: #3a0620 !important;
+  background-color: var(--rs-tono-pink-bg) !important;
+  color: var(--rs-tono-pink) !important;
 }
 .badge-gris {
-  background-color: #5b6475 !important;
-  color: #f2f3f7 !important;
-}
-
-/* ---------- Alerts ---------- */
-.alert {
-  border: 1px solid transparent;
+  background-color: var(--rs-tono-gris-bg) !important;
+  color: var(--rs-tono-gris) !important;
 }
 
 /* ---------- Listas ---------- */
-.list-group-item {
-  background-color: var(--repairos-surface);
-  border-color: var(--repairos-border);
-  color: var(--repairos-snow);
+.list-group {
+  --bs-list-group-bg: var(--rs-surface);
+  --bs-list-group-color: var(--rs-text);
+  --bs-list-group-border-color: var(--rs-border);
 }
 
 /* ---------- Notas internas del historial ---------- */
 .nota-interna {
-  /* Colores explícitos: no depende del tema de Bootstrap (con el claro quedaba blanco sobre blanco). */
-  background-color: rgba(255, 185, 40, 0.1) !important;
-  color: var(--repairos-snow) !important;
-  border-left: 3px solid var(--repairos-status-amber);
+  background-color: var(--rs-tono-amber-bg) !important;
+  color: var(--rs-text) !important;
+  border-left: 3px solid var(--rs-tono-amber);
 }
 .nota-interna .fw-semibold {
-  color: var(--repairos-status-amber);
+  color: var(--rs-tono-amber);
 }
 
-/* ---------- Menús desplegables (campanita) ---------- */
+/* ---------- Menús desplegables ---------- */
 .dropdown-menu {
-  --bs-dropdown-bg: var(--repairos-surface);
-  --bs-dropdown-color: var(--repairos-snow);
-  --bs-dropdown-border-color: var(--repairos-border);
-  --bs-dropdown-link-color: var(--repairos-snow);
-  --bs-dropdown-link-hover-bg: var(--repairos-surface-alt);
-  --bs-dropdown-link-hover-color: var(--repairos-snow);
-  --bs-dropdown-link-active-bg: var(--repairos-surface-alt);
-  --bs-dropdown-link-active-color: var(--repairos-snow);
+  --bs-dropdown-bg: var(--rs-surface);
+  --bs-dropdown-color: var(--rs-text);
+  --bs-dropdown-border-color: var(--rs-border);
+  --bs-dropdown-border-radius: 0.75rem;
+  --bs-dropdown-link-color: var(--rs-text);
+  --bs-dropdown-link-hover-bg: var(--rs-surface-alt);
+  --bs-dropdown-link-hover-color: var(--rs-text);
+  --bs-dropdown-link-active-bg: var(--rs-accent-soft);
+  --bs-dropdown-link-active-color: var(--rs-text);
+  --bs-dropdown-box-shadow: var(--rs-shadow-lg);
+  box-shadow: var(--rs-shadow-lg);
 }
 .campanita::after {
   display: none; /* sin la flechita del dropdown */
 }
 .notificacion-nueva {
-  background-color: rgba(0, 201, 255, 0.06);
+  background-color: var(--rs-accent-soft);
 }
 .punto-notificacion {
   flex: none;
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background-color: var(--repairos-cyan-core);
+  background-color: var(--rs-accent);
+}
+
+/* ---------- Estructura: menú lateral + encabezado ---------- */
+.app-sidebar {
+  position: fixed;
+  inset: 0 auto 0 0;
+  z-index: 1035;
+  width: 260px;
+  background-color: var(--rs-surface);
+  border-right: 1px solid var(--rs-border);
+}
+.app-shell.menu-oculto .app-sidebar {
+  display: none !important;
+}
+.app-contenido {
+  min-width: 0;
+}
+@media (min-width: 992px) {
+  .app-shell:not(.menu-oculto) .app-contenido {
+    margin-left: 260px;
+  }
+}
+.app-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 1020;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 60px;
+  padding: 0.5rem 1rem;
+  background-color: color-mix(in srgb, var(--rs-bg) 85%, transparent);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--rs-border);
+}
+.app-topbar-titulo {
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.app-main {
+  padding: 1.5rem 1rem 3rem;
+}
+@media (min-width: 992px) {
+  .app-topbar {
+    padding: 0.5rem 2rem;
+  }
+  .app-main {
+    padding: 2rem 2rem 3rem;
+  }
+}
+
+.menu-lateral {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+}
+.menu-lateral-logo {
+  display: flex;
+  align-items: center;
+  padding: 1.1rem 1.25rem 0.75rem;
+  color: var(--rs-text);
+  text-decoration: none;
+}
+.menu-lateral-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.25rem 0.75rem 1rem;
+}
+.menu-lateral-seccion {
+  font-size: 0.75rem;
+  color: var(--rs-muted);
+  padding: 1rem 0.65rem 0.4rem;
+}
+.menu-lateral-link {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  width: 100%;
+  padding: 0.5rem 0.65rem;
+  margin-bottom: 2px;
+  border: 0;
+  border-radius: 0.5rem;
+  background: transparent;
+  color: var(--rs-text);
+  font-size: 0.9375rem;
+  text-align: left;
+  text-decoration: none;
+}
+.menu-lateral-link:hover {
+  background-color: var(--rs-surface-alt);
+  color: var(--rs-text);
+}
+.menu-lateral-link.active {
+  background-color: var(--rs-accent-soft);
+  color: var(--rs-accent);
+  font-weight: 600;
+}
+.menu-lateral-link:focus-visible {
+  outline: 2px solid var(--rs-accent);
+  outline-offset: -2px;
+}
+.menu-lateral-link .flecha {
+  margin-left: auto;
+  color: var(--rs-muted);
+  transition: transform 0.15s ease;
+}
+.menu-lateral-link[aria-expanded='true'] .flecha {
+  transform: rotate(90deg);
+}
+.menu-lateral-sub {
+  margin: 0 0 0.25rem 1.3rem;
+  padding-left: 0.6rem;
+  border-left: 1px solid var(--rs-border);
+}
+.menu-lateral-sub .menu-lateral-link {
+  font-size: 0.875rem;
+  padding: 0.4rem 0.65rem;
+}
+/* Bloque de sucursal (arriba) y de usuario (abajo). */
+.menu-lateral-bloque {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  width: 100%;
+  padding: 0.55rem 0.65rem;
+  border: 0;
+  border-radius: 0.625rem;
+  background: transparent;
+  color: var(--rs-text);
+  text-align: left;
+}
+.menu-lateral-bloque:hover,
+.menu-lateral-bloque:focus-visible,
+.menu-lateral-bloque.show {
+  background-color: var(--rs-surface-alt);
+}
+.menu-lateral-bloque.dropdown-toggle::after {
+  display: none; /* sin la flechita del dropdown */
+}
+.menu-lateral-pie {
+  padding: 0.6rem 0.75rem;
+  border-top: 1px solid var(--rs-border);
+}
+.avatar-iniciales {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 50%;
+  background-color: var(--rs-accent-soft);
+  color: var(--rs-accent);
+  font-weight: 600;
+  font-size: 0.875rem;
 }
 
 /* ---------- Demo: llamada a crear el taller propio ---------- */
 .btn-crear-taller {
-  background-color: var(--repairos-status-amber);
-  border-color: var(--repairos-status-amber);
-  color: var(--repairos-abyss);
+  background-color: #ffb928;
+  border-color: #ffb928;
+  color: #241600;
   font-weight: 700;
   white-space: nowrap;
 }
@@ -293,7 +638,7 @@ a:hover {
 .btn-crear-taller:focus {
   background-color: #ffcb5c;
   border-color: #ffcb5c;
-  color: var(--repairos-abyss);
+  color: #241600;
 }
 
 /* ---------- Seguimiento público: pasos de la orden ---------- */
@@ -302,7 +647,7 @@ a:hover {
   text-align: center;
   position: relative;
   font-size: 0.7rem;
-  color: var(--repairos-muted);
+  color: var(--rs-muted);
 }
 .seguimiento-pasos li::before {
   content: '';
@@ -311,7 +656,7 @@ a:hover {
   left: -50%;
   width: 100%;
   height: 2px;
-  background: var(--repairos-border);
+  background: var(--rs-border);
 }
 .seguimiento-pasos li:first-child::before {
   display: none;
@@ -324,21 +669,21 @@ a:hover {
   height: 14px;
   margin: 0 auto 4px;
   border-radius: 50%;
-  background: var(--repairos-surface-alt);
-  border: 2px solid var(--repairos-border);
+  background: var(--rs-surface-alt);
+  border: 2px solid var(--rs-border);
 }
 .seguimiento-pasos li.hecho .punto,
 .seguimiento-pasos li.hecho::before,
 .seguimiento-pasos li.actual::before {
-  background: var(--repairos-cyan-core);
-  border-color: var(--repairos-cyan-core);
+  background: var(--rs-accent);
+  border-color: var(--rs-accent);
 }
 .seguimiento-pasos li.actual .punto {
-  border-color: var(--repairos-cyan-core);
-  box-shadow: 0 0 0 4px rgba(0, 201, 255, 0.25);
+  border-color: var(--rs-accent);
+  box-shadow: 0 0 0 4px var(--rs-accent-soft);
 }
 .seguimiento-pasos li.actual {
-  color: var(--repairos-snow);
+  color: var(--rs-text);
   font-weight: 600;
 }
 
@@ -358,26 +703,26 @@ a:hover {
   position: fixed;
   border-radius: 8px;
   box-shadow:
-    0 0 0 3px var(--repairos-cyan-core),
+    0 0 0 3px var(--rs-accent),
     0 0 0 9999px rgba(0, 0, 0, 0.6);
   pointer-events: none;
   transition: all 0.2s ease;
 }
 .guia-globo {
   position: fixed;
-  background: var(--repairos-surface);
-  color: var(--repairos-snow);
-  border: 1px solid var(--repairos-cyan-core);
-  border-radius: 10px;
+  background: var(--rs-surface);
+  color: var(--rs-text);
+  border: 1px solid var(--rs-accent);
+  border-radius: 12px;
   padding: 14px 16px;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+  box-shadow: var(--rs-shadow-lg);
 }
 .guia-flecha {
   position: absolute;
   width: 14px;
   height: 14px;
-  background: var(--repairos-surface);
-  border: 1px solid var(--repairos-cyan-core);
+  background: var(--rs-surface);
+  border: 1px solid var(--rs-accent);
   transform: translateX(-50%) rotate(45deg);
 }
 .guia-flecha-arriba {
@@ -391,21 +736,6 @@ a:hover {
   border-top: none;
 }
 
-/* Los ítems del menú nunca se parten en dos renglones. */
-.navbar .nav-link,
-.navbar .dropdown-toggle {
-  white-space: nowrap;
-}
-
-/* Botón "Elegir archivos" del input de fotos: con el tema oscuro quedaba blanco sobre blanco. */
-.form-control::file-selector-button {
-  background-color: var(--repairos-border);
-  color: var(--repairos-snow);
-}
-.form-control:hover:not(:disabled):not([readonly])::file-selector-button {
-  background-color: var(--repairos-surface);
-}
-
 /* ---------- Volver arriba ---------- */
 .volver-arriba {
   position: fixed;
@@ -415,15 +745,15 @@ a:hover {
   width: 46px;
   height: 46px;
   border-radius: 50%;
-  border: 1px solid var(--repairos-cyan-core);
-  background: var(--repairos-surface);
-  color: var(--repairos-cyan-core);
+  border: 1px solid var(--rs-border);
+  background: var(--rs-surface);
+  color: var(--rs-accent);
   display: grid;
   place-items: center;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+  box-shadow: var(--rs-shadow-lg);
 }
 .volver-arriba:hover {
-  background: var(--repairos-surface-alt);
+  background: var(--rs-surface-alt);
 }
 
 /* ---------- Filas que abren su detalle con un toque ---------- */
@@ -431,7 +761,7 @@ a:hover {
   cursor: pointer;
 }
 .fila-clickeable:focus-visible {
-  outline: 2px solid var(--repairos-cyan-core);
+  outline: 2px solid var(--rs-accent);
   outline-offset: -2px;
 }
 
@@ -448,9 +778,9 @@ a:hover {
     width: 100%;
   }
   .tabla-apilable tr {
-    background: var(--repairos-surface);
-    border: 1px solid var(--repairos-border);
-    border-radius: 10px;
+    background: var(--rs-surface);
+    border: 1px solid var(--rs-border);
+    border-radius: 12px;
     margin-bottom: 0.75rem;
     padding: 0.6rem 0.85rem;
   }
@@ -477,7 +807,7 @@ a:hover {
     content: attr(data-label);
     grid-column: 1;
     text-align: left;
-    color: var(--repairos-muted);
+    color: var(--rs-muted);
     font-size: 0.85rem;
   }
   /* Sin título (la columna de botones) o celda de "no hay nada": a todo el ancho. */
@@ -518,4 +848,12 @@ a:hover {
   .table-responsive:has(> .tabla-apilable) {
     overflow-x: visible;
   }
+}
+
+/* ---------- Utilidades ---------- */
+.min-w-0 {
+  min-width: 0;
+}
+.flex-none {
+  flex: none;
 }

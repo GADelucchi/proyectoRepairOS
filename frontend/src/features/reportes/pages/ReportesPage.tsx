@@ -1,9 +1,11 @@
 import { ReactNode, useState } from 'react';
 import { Badge, Button, Card, Col, Form, Row, Table } from 'react-bootstrap';
+import { ArrowDownToLine, CircleCheck, PackageCheck, Timer } from 'lucide-react';
 import { useAuth } from '@/features/auth/useAuth';
 import { AlertaError } from '@/shared/components/AlertaError';
 import { Cargando } from '@/shared/components/Cargando';
 import { FechaFiltro } from '@/shared/components/FechaFiltro';
+import { TarjetaDato } from '@/shared/components/TarjetaDato';
 import { useConsulta } from '@/shared/hooks/useConsulta';
 import { descargarCsv } from '@/shared/utils/csv';
 import { formatearMonto } from '@/shared/utils/dinero';
@@ -55,16 +57,6 @@ function Seccion({
         )}
       </Card.Header>
       <Card.Body className="p-0">{children}</Card.Body>
-    </Card>
-  );
-}
-
-function Dato({ titulo, valor, detalle }: { titulo: string; valor: ReactNode; detalle?: string }) {
-  return (
-    <Card body className="h-100">
-      <div className="text-muted small">{titulo}</div>
-      <div className="fs-3 fw-semibold">{valor}</div>
-      {detalle && <div className="text-muted small">{detalle}</div>}
     </Card>
   );
 }
@@ -168,29 +160,41 @@ export function ReportesPage() {
         <>
           <Row xs={2} md={4} className="g-3 mb-3">
             <Col>
-              <Dato titulo="Ingresaron" valor={r.ordenes.ingresadas} detalle="órdenes nuevas" />
-            </Col>
-            <Col>
-              <Dato
-                titulo="Entregados"
-                valor={r.ordenes.entregadas}
-                detalle={`${r.ordenes.canceladas} canceladas`}
+              <TarjetaDato
+                titulo="Ingresaron"
+                valor={r.ordenes.ingresadas}
+                detalle="órdenes nuevas"
+                icono={ArrowDownToLine}
+                tono="cyan"
               />
             </Col>
             <Col>
-              <Dato
+              <TarjetaDato
+                titulo="Entregados"
+                valor={r.ordenes.entregadas}
+                detalle={`${r.ordenes.canceladas} canceladas`}
+                icono={PackageCheck}
+                tono="green"
+              />
+            </Col>
+            <Col>
+              <TarjetaDato
                 titulo="Tiempo promedio"
                 valor={
                   r.ordenes.diasPromedioReparacion != null ? `${r.ordenes.diasPromedioReparacion} días` : '—'
                 }
                 detalle="del ingreso a la entrega"
+                icono={Timer}
+                tono="amber"
               />
             </Col>
             <Col>
-              <Dato
+              <TarjetaDato
                 titulo="Presupuestos aprobados"
                 valor={tasa != null ? `${tasa}%` : '—'}
                 detalle={`${r.presupuestos.aprobados} sí · ${r.presupuestos.rechazados} no · ${r.presupuestos.sinRespuesta} sin respuesta`}
+                icono={CircleCheck}
+                tono="violet"
               />
             </Col>
           </Row>

@@ -110,7 +110,7 @@ export function LoginPage() {
           </Form>
 
           {demoDisponible && (
-            <div className="border rounded bg-light p-3 mt-4">
+            <div className="border rounded bg-body-tertiary p-3 mt-4">
               <p className="small text-muted mb-2">
                 ¿Querés probarlo sin crear una cuenta? Entrá al taller de demostración.
               </p>
