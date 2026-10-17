@@ -37,7 +37,8 @@ const DEMO_PASSWORD = 'demo123';
  */
 const NUMERO_ORDEN_BASE = 0;
 
-const OPCIONES_SI_NO = [{ etiqueta: 'Sí' }, { etiqueta: 'No' }, { etiqueta: 'N/A' }];
+// "Sin chequear" primero: es la respuesta que queda marcada al crear una orden.
+const OPCIONES_CHEQUEO = [{ etiqueta: 'Sin chequear' }, { etiqueta: 'Sí' }, { etiqueta: 'No' }];
 
 const SUCURSALES = [
   {
@@ -582,7 +583,7 @@ async function crearDemo(queryInterface) {
         await insertarYObtenerId(sequelize, 'chequeo_personalizados', {
           tipo_equipo_personalizado_id: tipoId,
           texto,
-          opciones: JSON.stringify(OPCIONES_SI_NO),
+          opciones: JSON.stringify(OPCIONES_CHEQUEO),
           orden: orden++,
           created_at: ahora,
           updated_at: ahora
@@ -692,7 +693,7 @@ async function crearDemo(queryInterface) {
         orden_id: ordenId,
         item,
         resultado: fallados.includes(item) ? 'No' : 'Sí',
-        opciones: JSON.stringify(OPCIONES_SI_NO),
+        opciones: JSON.stringify(OPCIONES_CHEQUEO),
         orden: ordenItem++,
         created_at: ingreso,
         updated_at: ingreso

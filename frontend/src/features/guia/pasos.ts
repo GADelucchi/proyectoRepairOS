@@ -29,7 +29,7 @@ export const PASOS_GUIA: PasoGuia[] = [
     objetivo: 'nav-ajustes',
     titulo: 'Paso 2: configuración',
     texto:
-      'En Ajustes → Configuración revisá el país del taller (define la moneda de las órdenes) y armá los tipos de equipo con su checklist de recepción: lo que revisás cuando entra cada celular, notebook o consola.'
+      'En Ajustes → Configuración revisá el país del taller (define la moneda de las órdenes) y armá los tipos de equipo con su checklist de recepción: lo que revisás cuando entra cada celular, notebook o consola. La primera respuesta de cada chequeo queda marcada sola al crear una orden: conviene que sea "Sin chequear", así una orden cargada apurada no queda con respuestas que nadie verificó.'
   },
   {
     objetivo: 'nav-ajustes',

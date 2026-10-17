@@ -15,7 +15,7 @@ import { aNumero } from '@/shared/utils/dinero';
 import { convertirAFormatoBackend } from '@/shared/utils/fechas';
 import { nombreCompleto, textoONull } from '@/shared/utils/texto';
 import * as ordenesApi from '../api';
-import { ChequeoItem, OPCIONES_POR_DEFECTO } from '../checklist';
+import { ChequeoItem, chequeoConRespuestaPorDefecto } from '../checklist';
 import { ChecklistEditor } from '../components/ChecklistEditor';
 import { ImageUploader } from '../components/ImageUploader';
 import { EleccionCliente, SeleccionCliente } from '../components/nueva/SeleccionCliente';
@@ -41,7 +41,7 @@ function validar(
   return null;
 }
 
-/** Recepción de un equipo: cliente, equipo, estado estético, checklist y condiciones. */
+/** Recepción de un equipo: cliente, equipo, datos adicionales, checklist y condiciones. */
 export function OrdenNuevaPage() {
   const navigate = useNavigate();
   const { esAdmin } = useAuth();
@@ -84,15 +84,9 @@ export function OrdenNuevaPage() {
       .listarChequeos(tipoId)
       .then((data) => {
         if (!vigente) return;
-        // Las opciones se copian y quedan guardadas junto con la orden.
-        setChequeos(
-          data.map((c, i) => ({
-            item: c.texto,
-            resultado: null,
-            opciones: c.opciones?.length ? c.opciones : OPCIONES_POR_DEFECTO,
-            orden: i
-          }))
-        );
+        // Las opciones se copian y quedan guardadas junto con la orden. Cada
+        // chequeo arranca con su primera opción, la predeterminada.
+        setChequeos(data.map((c, i) => chequeoConRespuestaPorDefecto(c.texto, c.opciones, i)));
       })
       .catch(() => {
         if (vigente) setChequeos([]);
@@ -195,10 +189,10 @@ export function OrdenNuevaPage() {
 
           <Col md={12}>
             <Card>
-              <Card.Header>3. Estado estético e imágenes</Card.Header>
+              <Card.Header>3. Datos adicionales e imágenes</Card.Header>
               <Card.Body>
                 <Form.Group className="mb-3" controlId="nueva-esteticos">
-                  <Form.Label>Detalles estéticos (rayones, golpes, faltantes, etc.)</Form.Label>
+                  <Form.Label>Datos adicionales (estéticos, accesorios, etc.)</Form.Label>
                   <Form.Control
                     as="textarea"
                     rows={2}

@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useState } from 'react';
 import { Button, Card, Container, Form, Spinner } from 'react-bootstrap';
 import { Link, useNavigate, useLocation } from 'react-router';
 import { avisoLogin, ErrorApi, getApiErrorData } from '@/shared/api/client';
+import { CampoPassword } from '@/shared/components/CampoPassword';
 import { EnlacesLegales } from '@/shared/components/EnlacesLegales';
 import { Logo } from '@/shared/components/Logo';
 import { ErrorDeIngreso } from '../components/ErrorDeIngreso';
@@ -90,13 +91,13 @@ export function LoginPage() {
                 autoFocus
               />
             </Form.Group>
-            <Form.Group className="mb-4">
+            <Form.Group className="mb-4" controlId="login-password">
               <Form.Label>Contraseña</Form.Label>
-              <Form.Control
-                type="password"
+              <CampoPassword
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={setPassword}
                 required
+                autoComplete="current-password"
               />
             </Form.Group>
             <Button type="submit" className="w-100" disabled={cargando}>

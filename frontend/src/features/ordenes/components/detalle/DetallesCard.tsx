@@ -14,7 +14,7 @@ interface FormularioDatos {
   fechaPactada: string;
 }
 
-/** Reparación pedida, estado estético, notas internas y fecha pactada. */
+/** Reparación pedida, datos adicionales, notas internas y fecha pactada. */
 export function DetallesCard({ orden, puedeEditar, onActualizada, onError }: SeccionOrdenProps) {
   const [form, setForm] = useState<FormularioDatos | null>(null);
   const [errorFecha, setErrorFecha] = useState<string | null>(null);
@@ -91,7 +91,7 @@ export function DetallesCard({ orden, puedeEditar, onActualizada, onError }: Sec
             </Col>
             <Col md={12}>
               <Form.Group controlId="detalle-esteticos">
-                <Form.Label>Detalles estéticos</Form.Label>
+                <Form.Label>Datos adicionales (estéticos, accesorios, etc.)</Form.Label>
                 <Form.Control
                   as="textarea"
                   rows={2}
@@ -124,7 +124,7 @@ export function DetallesCard({ orden, puedeEditar, onActualizada, onError }: Sec
           <Row className="g-3">
             <Dato titulo="Reparación solicitada" valor={orden.reparacionSolicitada} />
             <Dato
-              titulo="Detalles estéticos"
+              titulo="Datos adicionales"
               valor={orden.detallesEsteticos}
               vacio="Sin detalles registrados"
             />

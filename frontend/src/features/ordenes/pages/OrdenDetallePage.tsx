@@ -157,7 +157,7 @@ export function OrdenDetallePage() {
           <ClienteCard cliente={orden.cliente} />
         </Col>
         <Col md={6}>
-          <EquipoCard orden={orden} onError={setError} />
+          <EquipoCard {...seccion} />
         </Col>
         <Col md={12}>
           <DetallesCard {...seccion} />

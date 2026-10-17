@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Button, Form, InputGroup, Table } from 'react-bootstrap';
-import { ChequeoItem, OPCIONES_POR_DEFECTO } from '../checklist';
+import { ChequeoItem, chequeoConRespuestaPorDefecto, OPCIONES_POR_DEFECTO } from '../checklist';
 
 interface ChecklistEditorProps {
   value: ChequeoItem[];
@@ -23,20 +23,14 @@ export function ChecklistEditor({ value, onChange, disabled, permitirAgregar = t
   function agregar() {
     const nombre = nuevoItem.trim();
     if (!nombre) return;
-    onChange([
-      ...value,
-      { item: nombre, resultado: null, opciones: OPCIONES_POR_DEFECTO, orden: value.length }
-    ]);
+    onChange([...value, chequeoConRespuestaPorDefecto(nombre, OPCIONES_POR_DEFECTO, value.length)]);
     setNuevoItem('');
   }
 
   function actualizarResultado(index: number, resultado: string) {
-    onChange(
-      value.map((c, i) =>
-        // Volver a tocar la opción elegida la deselecciona.
-        i === index ? { ...c, resultado: c.resultado === resultado ? null : resultado } : c
-      )
-    );
+    // Volver a tocar la elegida no la desmarca: cada chequeo queda siempre con
+    // una respuesta (la predeterminada, si nadie eligió otra).
+    onChange(value.map((c, i) => (i === index ? { ...c, resultado } : c)));
   }
 
   function eliminar(index: number) {

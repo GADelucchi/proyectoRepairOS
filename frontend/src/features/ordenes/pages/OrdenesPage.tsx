@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Badge, Col, Form, Row } from 'react-bootstrap';
+import { Col, Form, Row } from 'react-bootstrap';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { AlertaError } from '@/shared/components/AlertaError';
 import { Cargando } from '@/shared/components/Cargando';
@@ -92,7 +92,6 @@ export function OrdenesPage() {
               <th>Nº orden</th>
               <th>Cliente</th>
               <th>Equipo</th>
-              <th>Tipo</th>
               <th>Estado</th>
               <th>Fecha de ingreso</th>
               <th>Fecha pactada</th>
@@ -104,14 +103,17 @@ export function OrdenesPage() {
               <tr key={o.id} {...filaClickeable(() => navigate(`/ordenes/${o.id}`))}>
                 <td className="font-mono">{o.numeroOrden}</td>
                 <td>{nombreCompleto(o.cliente) || '-'}</td>
-                <td className="font-mono">
-                  {`${o.equipo?.marca ?? ''} ${o.equipo?.modelo ?? ''}`.trim() || '-'}
-                  {o.equipo?.numeroSerie && (
-                    <div className="text-muted small">S/N {o.equipo.numeroSerie}</div>
-                  )}
-                </td>
                 <td>
-                  <Badge bg="secondary">{o.equipo?.tipoEquipo?.nombre ?? 'Sin especificar'}</Badge>
+                  {/* El color va junto al modelo: es lo primero que se mira para reconocer el equipo. */}
+                  <span>
+                    <span className="font-mono">
+                      {`${o.equipo?.marca ?? ''} ${o.equipo?.modelo ?? ''}`.trim() || '-'}
+                    </span>
+                    {o.equipo?.color && <span className="text-muted"> · {o.equipo.color}</span>}
+                  </span>
+                  {o.equipo?.numeroSerie && (
+                    <div className="text-muted small font-mono">S/N {o.equipo.numeroSerie}</div>
+                  )}
                 </td>
                 <td>
                   <EstadoBadge estado={o.estado} />
@@ -127,7 +129,7 @@ export function OrdenesPage() {
             ))}
             {ordenes.length === 0 && (
               <tr>
-                <td colSpan={8} className="text-center text-muted">
+                <td colSpan={7} className="text-center text-muted">
                   {filtrando ? 'Ninguna orden coincide con la búsqueda' : 'No hay órdenes en esta sucursal'}
                 </td>
               </tr>

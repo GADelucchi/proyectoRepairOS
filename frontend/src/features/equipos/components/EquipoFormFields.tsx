@@ -18,6 +18,8 @@ interface EquipoFormFieldsProps {
   onSerieCompleta?: (numeroSerie: string) => void;
   /** Mientras se busca la serie en la base. */
   buscandoSerie?: boolean;
+  /** Sin las credenciales: el detalle de la orden las cambia aparte, con la consulta auditada. */
+  conCredenciales?: boolean;
 }
 
 /**
@@ -36,7 +38,8 @@ export function EquipoFormFields({
   generandoSerie,
   serieObligatoria = false,
   onSerieCompleta,
-  buscandoSerie = false
+  buscandoSerie = false,
+  conCredenciales = true
 }: EquipoFormFieldsProps) {
   const set = <K extends keyof EquipoFormData>(campo: K, valor: EquipoFormData[K]) =>
     onChange({ ...value, [campo]: valor });
@@ -124,12 +127,16 @@ export function EquipoFormFields({
       {campoTexto('marca', 'Marca')}
       {campoTexto('modelo', 'Modelo')}
       {campoTexto('color', 'Color')}
-      <Col md={12}>
-        <p className="text-muted small mb-0 mt-2">Los siguientes datos se guardan cifrados.</p>
-      </Col>
-      {campoTexto('claveDesbloqueo', 'Clave de desbloqueo', 12)}
-      {campoTexto('cuentaUsuario', 'Usuario de cuenta vinculada')}
-      {campoTexto('cuentaPassword', 'Contraseña de cuenta vinculada')}
+      {conCredenciales && (
+        <>
+          <Col md={12}>
+            <p className="text-muted small mb-0 mt-2">Los siguientes datos se guardan cifrados.</p>
+          </Col>
+          {campoTexto('claveDesbloqueo', 'Clave de desbloqueo', 12)}
+          {campoTexto('cuentaUsuario', 'Usuario de cuenta vinculada')}
+          {campoTexto('cuentaPassword', 'Contraseña de cuenta vinculada')}
+        </>
+      )}
     </Row>
   );
 }

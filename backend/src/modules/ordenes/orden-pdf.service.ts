@@ -145,9 +145,9 @@ export async function generarOrdenPdf(orden: Orden): Promise<Buffer> {
   if (equipo.numeroSerie) dato('Nº de serie', equipo.numeroSerie);
   // Las credenciales del equipo nunca se imprimen: el remito queda en manos del cliente.
 
-  // ---------- Estado estético ----------
+  // ---------- Datos adicionales (estéticos, accesorios) ----------
   if (orden.detallesEsteticos) {
-    seccion('Estado estético al ingreso');
+    seccion('Datos adicionales al ingreso');
     doc.fontSize(10).text(orden.detallesEsteticos, { align: 'justify' });
   }
 

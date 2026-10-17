@@ -1,11 +1,17 @@
 import { DataTypes, Model, Optional, Sequelize } from 'sequelize';
 import { OpcionChequeo } from './TipoEquipoPersonalizado';
 
-/** Opciones por defecto cuando el tipo de equipo no define las suyas. */
+/**
+ * Opciones por defecto cuando el tipo de equipo no define las suyas.
+ *
+ * La primera es la que queda marcada al crear una orden: "Sin chequear", así
+ * una orden cargada apurada no queda con respuestas que nadie verificó.
+ * El frontend tiene la misma lista en `features/ordenes/checklist.ts`.
+ */
 export const OPCIONES_CHEQUEO_POR_DEFECTO: OpcionChequeo[] = [
+  { etiqueta: 'Sin chequear' },
   { etiqueta: 'Sí' },
-  { etiqueta: 'No' },
-  { etiqueta: 'Sin revisar' }
+  { etiqueta: 'No' }
 ];
 
 export interface OrdenChequeoAttributes {

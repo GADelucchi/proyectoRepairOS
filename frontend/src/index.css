@@ -857,3 +857,17 @@ h6 {
 .flex-none {
   flex: none;
 }
+
+/* Campo de fecha nativo detrás del botón del almanaque (ver DateInput): el
+   selector se abre pegado al botón. */
+.almanaque-oculto {
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 2.5rem;
+  height: calc(1.5em + 0.75rem + 2px);
+  opacity: 0;
+  pointer-events: none;
+  border: 0;
+  padding: 0;
+}
