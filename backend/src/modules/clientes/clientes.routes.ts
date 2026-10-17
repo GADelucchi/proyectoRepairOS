@@ -8,6 +8,7 @@ clientesRoutes.use(authenticate);
 
 clientesRoutes.get('/', clientes.listarClientes);
 clientesRoutes.get('/:id', clientes.obtenerCliente);
+clientesRoutes.get('/:id/resumen', clientes.resumenCliente);
 clientesRoutes.post('/', clientes.crearCliente);
 clientesRoutes.put('/:id', clientes.actualizarCliente);
 clientesRoutes.delete('/:id', clientes.eliminarCliente);

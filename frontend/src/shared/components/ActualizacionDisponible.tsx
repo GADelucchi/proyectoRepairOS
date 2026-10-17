@@ -1,49 +1,56 @@
+import { useEffect, useRef } from 'react';
+import { useLocation } from 'react-router';
 import { useRegisterSW } from 'virtual:pwa-register/react';
-import { Alert, Button } from 'react-bootstrap';
+
+/** Cada cuánto se pregunta si se publicó una versión nueva. */
+const INTERVALO_MS = 30 * 60 * 1000;
+/** Si la versión nueva aparece apenas abierta la app, todavía no hay nada que perder. */
+const GRACIA_AL_ABRIR_MS = 15 * 1000;
 
 /**
- * Avisos del service worker.
+ * Mantiene la app al día con la última versión publicada, sin mostrar avisos.
  *
- * `offlineReady` confirma que la app quedó instalada y abre sin conexión.
- * `needRefresh` aparece cuando se publicó una versión nueva mientras la pestaña
- * estaba abierta; recargar la aplica.
+ * Busca versión nueva cada media hora y al volver a la pestaña (una pestaña
+ * abierta días enteros no se enteraba nunca). Cuando la encuentra, la aplica
+ * recargando la página, pero en un momento seguro:
+ *  - en seguida, si la app se acaba de abrir;
+ *  - si no, al pasar a otra pantalla, así no se pierde un formulario a medio cargar.
+ *
+ * Los archivos viejos los borra el service worker nuevo al activarse.
  */
 export function ActualizacionDisponible() {
+  const { pathname } = useLocation();
+  const abiertaEn = useRef(Date.now());
+  const pantallaAlDetectar = useRef<string | null>(null);
+
   const {
-    offlineReady: [offlineReady, setOfflineReady],
-    needRefresh: [needRefresh, setNeedRefresh],
+    needRefresh: [hayVersionNueva],
     updateServiceWorker
-  } = useRegisterSW();
+  } = useRegisterSW({
+    onRegisteredSW(_url, registro) {
+      if (!registro) return;
+      const buscar = () => {
+        if (navigator.onLine) registro.update().catch(() => undefined);
+      };
+      setInterval(buscar, INTERVALO_MS);
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') buscar();
+      });
+    }
+  });
 
-  if (!offlineReady && !needRefresh) return null;
+  useEffect(() => {
+    if (!hayVersionNueva) return;
+    if (Date.now() - abiertaEn.current < GRACIA_AL_ABRIR_MS) {
+      updateServiceWorker(true);
+      return;
+    }
+    if (pantallaAlDetectar.current === null) {
+      pantallaAlDetectar.current = pathname;
+      return;
+    }
+    if (pathname !== pantallaAlDetectar.current) updateServiceWorker(true);
+  }, [hayVersionNueva, pathname, updateServiceWorker]);
 
-  return (
-    <div
-      className="position-fixed bottom-0 end-0 p-3"
-      style={{ zIndex: 1080, maxWidth: 380 }}
-      role="status"
-      aria-live="polite"
-    >
-      <Alert
-        variant={needRefresh ? 'primary' : 'success'}
-        dismissible
-        onClose={() => {
-          setOfflineReady(false);
-          setNeedRefresh(false);
-        }}
-        className="shadow"
-      >
-        {needRefresh ? (
-          <>
-            <div className="mb-2">Hay una versión nueva de RepairOS.</div>
-            <Button size="sm" onClick={() => updateServiceWorker(true)}>
-              Actualizar ahora
-            </Button>
-          </>
-        ) : (
-          'RepairOS quedó disponible para usar sin conexión.'
-        )}
-      </Alert>
-    </div>
-  );
+  return null;
 }

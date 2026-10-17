@@ -17,6 +17,11 @@ export async function obtenerCliente(req: Request, res: Response): Promise<void>
   res.json(await clientes.conSaldos(await clienteDelTaller(req)));
 }
 
+/** Datos, saldo y órdenes del cliente en números (ver `clientes.resumenCliente`). */
+export async function resumenCliente(req: Request, res: Response): Promise<void> {
+  res.json(await clientes.resumenCliente(await clienteDelTaller(req)));
+}
+
 export async function crearCliente(req: Request, res: Response): Promise<void> {
   const data = clienteSchema.parse(req.body);
   res.status(201).json(await clientes.crearCliente(tallerIdDe(req), esAdmin(req), data));

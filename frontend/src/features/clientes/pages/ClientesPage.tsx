@@ -15,6 +15,7 @@ import { formatearFechaHora } from '@/shared/utils/fechas';
 import { nombreCompleto } from '@/shared/utils/texto';
 import * as clientesApi from '../api';
 import { ClienteModal } from '../components/ClienteModal';
+import { ClienteResumenModal } from '../components/ClienteResumenModal';
 
 const AVISO_ANONIMIZAR =
   'Se borran de forma irreversible sus datos de contacto, las claves de desbloqueo y credenciales de sus ' +
@@ -41,6 +42,8 @@ export function ClientesPage() {
 
   const [modalAbierto, setModalAbierto] = useState(false);
   const [editando, setEditando] = useState<Cliente | null>(null);
+  // Cliente cuya ficha (resumen) está abierta.
+  const [viendoId, setViendoId] = useState<number | null>(null);
 
   function abrirModal(cliente: Cliente | null) {
     setEditando(cliente);
@@ -100,7 +103,7 @@ export function ClientesPage() {
           </thead>
           <tbody>
             {clientes.map((c) => (
-              <tr key={c.id} {...(c.anonimizadoEn ? {} : filaClickeable(() => abrirModal(c)))}>
+              <tr key={c.id} {...(c.anonimizadoEn ? {} : filaClickeable(() => setViendoId(c.id)))}>
                 <td>{nombreCompleto(c)}</td>
                 <td>{c.dniCuit ?? '-'}</td>
                 <td>{c.telefono ?? '-'}</td>
@@ -164,6 +167,15 @@ export function ClientesPage() {
           </tbody>
         </TablaApilable>
       )}
+
+      <ClienteResumenModal
+        clienteId={viendoId}
+        onCerrar={() => setViendoId(null)}
+        onEditar={(cliente) => {
+          setViendoId(null);
+          abrirModal(cliente);
+        }}
+      />
 
       <ClienteModal
         show={modalAbierto}

@@ -1,10 +1,11 @@
-import { ForeignKeyConstraintError, Op, WhereOptions } from 'sequelize';
+import { ForeignKeyConstraintError, Op, QueryTypes, WhereOptions } from 'sequelize';
 import { z } from 'zod';
 import { sequelize, Cliente, Equipo, Orden } from '../../models';
 import { ClienteAttributes } from '../../models/Cliente';
 import { errores } from '../../shared/http/http-error';
 import { saldosDeCliente, saldosDeClientes } from '../cuentas/cuenta-corriente.service';
 import { actualizarClienteSchema, clienteSchema } from './clientes.schemas';
+import { contarOrdenes, FilaOrdenCliente } from './resumen';
 
 const LIMITE_LISTADO = 100;
 
@@ -58,6 +59,28 @@ export async function listarClientes(tallerId: number, search?: string) {
     clientes.map((c) => c.id)
   );
   return clientes.map((c) => ({ ...c.get({ plain: true }), saldos: saldos.get(c.id) ?? [] }));
+}
+
+/**
+ * Resumen de un cliente: sus datos, el saldo de la cuenta corriente y cuántas
+ * órdenes trajo y cómo terminaron. Cuenta las de todas las sucursales: el
+ * cliente es del taller.
+ */
+export async function resumenCliente(cliente: Cliente) {
+  const filas = await sequelize.query<FilaOrdenCliente & { fechaIngreso: Date }>(
+    `SELECT o.estado, o.presupuesto_aprobado AS presupuestoAprobado, o.fecha_ingreso AS fechaIngreso,
+            (SELECT h.estado_nuevo FROM orden_historial_estados h
+              WHERE h.orden_id = o.id AND h.estado_nuevo IN ('listo_para_retirar', 'no_reparado')
+              ORDER BY h.created_at DESC, h.id DESC LIMIT 1) AS resultado
+       FROM ordenes o
+      WHERE o.taller_id = :tallerId AND o.cliente_id = :clienteId`,
+    { replacements: { tallerId: cliente.tallerId, clienteId: cliente.id }, type: QueryTypes.SELECT }
+  );
+  const ultimaVisita = filas.reduce<Date | null>(
+    (ultima, f) => (!ultima || f.fechaIngreso > ultima ? f.fechaIngreso : ultima),
+    null
+  );
+  return { cliente: await conSaldos(cliente), ordenes: contarOrdenes(filas), ultimaVisita };
 }
 
 /** El cliente con sus saldos de cuenta corriente. */

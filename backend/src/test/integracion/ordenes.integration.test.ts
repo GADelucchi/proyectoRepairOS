@@ -97,6 +97,42 @@ describe('presupuesto y estados', () => {
   });
 });
 
+describe('resumen del cliente', () => {
+  it('cuenta las órdenes por cómo terminaron y trae el saldo', async () => {
+    const taller = await tallerConSucursal();
+    const reparada = await crearOrden(taller);
+    const clienteId = reparada.clienteId;
+    await api()
+      .put(`/api/clientes/${clienteId}`)
+      .set(taller.auth)
+      .send({ cuentaCorrienteHabilitada: true })
+      .expect(200);
+    const ruta = `/api/ordenes/${reparada.id}`;
+    await api().put(`${ruta}/presupuesto`).set(taller.auth).send({ monto: 1000, aprobado: true }).expect(200);
+    await api().put(`${ruta}/estado`).set(taller.auth).send({ estado: 'listo_para_retirar' }).expect(200);
+    await api()
+      .post(`${ruta}/entrega`)
+      .set(taller.auth)
+      .send({ montoTotal: 1000, montoAbonado: 400, medioPago: 'efectivo' })
+      .expect(200);
+
+    const { body } = await api().get(`/api/clientes/${clienteId}/resumen`).set(taller.auth).expect(200);
+    expect(body.cliente).toMatchObject({ id: clienteId, nombre: 'Juana' });
+    expect(body.ordenes).toEqual({
+      total: 1,
+      enCurso: 0,
+      reparadas: 1,
+      noReparadas: 0,
+      entregadas: 1,
+      canceladas: 0
+    });
+    expect(body.cliente.saldos).toEqual([{ moneda: 'ARS', saldo: 600 }]);
+
+    const ajeno = await tallerConSucursal();
+    await api().get(`/api/clientes/${clienteId}/resumen`).set(ajeno.auth).expect(404);
+  });
+});
+
 describe('buscador de órdenes', () => {
   it('encuentra por número, serie, nombre completo, teléfono, DNI, modelo y color', async () => {
     const taller = await tallerConSucursal();

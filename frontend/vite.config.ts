@@ -7,9 +7,10 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      // El service worker se actualiza solo: al publicar una versión nueva, la
-      // próxima vez que se abra la app ya está al día, sin pedirle nada al usuario.
-      registerType: 'autoUpdate',
+      // La versión nueva se aplica sin preguntar, pero en un momento seguro: al
+      // abrir la app o al cambiar de pantalla, nunca en medio de un formulario
+      // (ver `ActualizacionDisponible`). Con 'autoUpdate' recargaba en cualquier momento.
+      registerType: 'prompt',
       includeAssets: ['favicon.svg', 'apple-touch-icon.png', 'og-image.png', 'robots.txt'],
       manifest: {
         name: 'RepairOS — Gestión de taller',

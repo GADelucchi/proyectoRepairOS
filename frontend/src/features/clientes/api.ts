@@ -21,6 +21,28 @@ export async function listarClientes(search?: string): Promise<Cliente[]> {
   return data;
 }
 
+/** Las órdenes del cliente contadas por cómo terminaron, de todas las sucursales. */
+export interface ConteoOrdenesCliente {
+  total: number;
+  enCurso: number;
+  reparadas: number;
+  noReparadas: number;
+  entregadas: number;
+  canceladas: number;
+}
+
+export interface ResumenCliente {
+  cliente: Cliente;
+  ordenes: ConteoOrdenesCliente;
+  /** Ingreso de su última orden, o null si nunca trajo un equipo. */
+  ultimaVisita: string | null;
+}
+
+export async function obtenerResumen(id: number): Promise<ResumenCliente> {
+  const { data } = await apiClient.get<ResumenCliente>(`/clientes/${id}/resumen`);
+  return data;
+}
+
 export async function crearCliente(input: ClienteInput): Promise<Cliente> {
   const { data } = await apiClient.post<Cliente>('/clientes', input);
   return data;
