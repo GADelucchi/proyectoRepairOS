@@ -1,7 +1,9 @@
-import type { ReactNode } from 'react';
-import { Badge, Button, Col, Modal, Row } from 'react-bootstrap';
+import { type ReactNode, useState } from 'react';
+import { Badge, Button, Col, ListGroup, Modal, Row } from 'react-bootstrap';
 import { Link } from 'react-router';
 import { CircleCheck, CircleX, ClipboardList, PackageCheck, Wrench, type LucideIcon } from 'lucide-react';
+import { useAuth } from '@/features/auth/useAuth';
+import { EstadoBadge } from '@/features/ordenes/components/EstadoBadge';
 import { AlertaError } from '@/shared/components/AlertaError';
 import { Cargando } from '@/shared/components/Cargando';
 import type { Tono } from '@/shared/constants/tonos';
@@ -12,26 +14,80 @@ import { convertirDesdeBackend, formatearFecha } from '@/shared/utils/fechas';
 import { nombreCompleto } from '@/shared/utils/texto';
 import * as clientesApi from '../api';
 
+/** Un recuadro del resumen: tocarlo muestra (o esconde) sus órdenes. */
 function Numero({
   titulo,
   valor,
   icono: Icono,
-  tono
+  tono,
+  activo,
+  onClick
 }: {
   titulo: string;
   valor: number;
   icono: LucideIcon;
   tono: Tono;
+  activo: boolean;
+  onClick: () => void;
 }) {
   return (
-    <div className="d-flex align-items-center gap-2 p-2 rounded border h-100">
+    <button
+      type="button"
+      className={`recuadro-filtro d-flex align-items-center gap-2 p-2 rounded border h-100 ${activo ? 'active' : ''}`}
+      onClick={onClick}
+      disabled={valor === 0}
+      aria-pressed={activo}
+      title={valor === 0 ? undefined : `Ver las órdenes: ${titulo.toLowerCase()}`}
+    >
       <span className={`chip-icono chip-icono-sm tono-${tono}`}>
         <Icono size={16} aria-hidden="true" />
       </span>
-      <div className="lh-sm">
-        <div className="fw-bold fs-5">{valor}</div>
-        <div className="small text-muted">{titulo}</div>
-      </div>
+      <span className="lh-sm">
+        <span className="d-block fw-bold fs-5">{valor}</span>
+        <span className="d-block small text-muted">{titulo}</span>
+      </span>
+    </button>
+  );
+}
+
+/**
+ * Las órdenes de un recuadro. Las de la sucursal actual abren su detalle; las
+ * de otra se muestran sin link, porque el detalle solo se ve desde su sucursal.
+ */
+function ListaOrdenes({ ordenes, titulo }: { ordenes: clientesApi.OrdenDelCliente[]; titulo: string }) {
+  const { usuario } = useAuth();
+  return (
+    <div className="mt-3">
+      <div className="small text-muted mb-1">{titulo}</div>
+      <ListGroup>
+        {ordenes.map((o) => {
+          const equipo = `${o.equipo.marca ?? ''} ${o.equipo.modelo ?? ''}`.trim() || 'Equipo';
+          const deEstaSucursal = o.sucursal.id === usuario?.sucursalActualId;
+          const contenido = (
+            <div className="d-flex flex-wrap align-items-center gap-2 w-100">
+              <span className="font-mono fw-semibold">{o.numeroOrden}</span>
+              <span className="min-w-0">
+                {equipo}
+                {o.equipo.color && <span className="text-muted"> · {o.equipo.color}</span>}
+              </span>
+              <span className="ms-auto d-flex align-items-center gap-2">
+                {!deEstaSucursal && <span className="small text-muted">{o.sucursal.nombre}</span>}
+                <span className="small text-muted">{formatearFecha(o.fechaIngreso)}</span>
+                <EstadoBadge estado={o.estado} />
+              </span>
+            </div>
+          );
+          return deEstaSucursal ? (
+            <ListGroup.Item key={o.id} action as={Link} to={`/ordenes/${o.id}`}>
+              {contenido}
+            </ListGroup.Item>
+          ) : (
+            <ListGroup.Item key={o.id} title="Es de otra sucursal: su detalle se ve desde esa sucursal">
+              {contenido}
+            </ListGroup.Item>
+          );
+        })}
+      </ListGroup>
     </div>
   );
 }
@@ -71,6 +127,28 @@ function CuentaCorriente({ cliente }: { cliente: Cliente }) {
   );
 }
 
+const RECUADROS: {
+  clave: Exclude<clientesApi.CategoriaOrdenes, 'canceladas'>;
+  titulo: string;
+  icono: LucideIcon;
+  tono: Tono;
+}[] = [
+  { clave: 'total', titulo: 'En total', icono: ClipboardList, tono: 'violet' },
+  { clave: 'reparadas', titulo: 'Reparadas', icono: CircleCheck, tono: 'green' },
+  { clave: 'noReparadas', titulo: 'No reparadas', icono: CircleX, tono: 'red' },
+  { clave: 'entregadas', titulo: 'Entregadas', icono: PackageCheck, tono: 'cyan' },
+  { clave: 'enCurso', titulo: 'En curso', icono: Wrench, tono: 'amber' }
+];
+
+const TITULO_LISTA: Record<clientesApi.CategoriaOrdenes, string> = {
+  total: 'Todas sus órdenes',
+  reparadas: 'Órdenes reparadas',
+  noReparadas: 'Órdenes no reparadas',
+  entregadas: 'Órdenes entregadas',
+  enCurso: 'Órdenes en curso',
+  canceladas: 'Órdenes canceladas'
+};
+
 interface ClienteResumenModalProps {
   /** Cliente a mostrar; null con el modal cerrado. */
   clienteId: number | null;
@@ -80,7 +158,8 @@ interface ClienteResumenModalProps {
 
 /**
  * Ficha de un cliente: sus datos, cuántas órdenes trajo y cómo terminaron, y
- * el estado de su cuenta corriente. Desde acá se pasa a editarlo.
+ * el estado de su cuenta corriente. Tocar un recuadro lista esas órdenes, y
+ * desde acá se pasa a editar al cliente.
  */
 export function ClienteResumenModal({ clienteId, onCerrar, onEditar }: ClienteResumenModalProps) {
   const { datos, cargando, error } = useConsulta(
@@ -91,6 +170,25 @@ export function ClienteResumenModal({ clienteId, onCerrar, onEditar }: ClienteRe
   const resumen = datos && datos.cliente.id === clienteId ? datos : null;
   const c = resumen?.cliente;
   const o = resumen?.ordenes;
+
+  // El recuadro elegido vale para el cliente en que se eligió: al abrir otro arranca sin ninguno.
+  const [eleccion, setEleccion] = useState<{
+    clienteId: number;
+    categoria: clientesApi.CategoriaOrdenes;
+  } | null>(null);
+  const categoria = eleccion?.clienteId === clienteId ? eleccion.categoria : null;
+
+  function alternar(nueva: clientesApi.CategoriaOrdenes) {
+    if (clienteId === null) return;
+    setEleccion(categoria === nueva ? null : { clienteId, categoria: nueva });
+  }
+
+  /** Props de cada recuadro según su categoría. */
+  const recuadro = (clave: clientesApi.CategoriaOrdenes) => ({
+    valor: o?.[clave] ?? 0,
+    activo: categoria === clave,
+    onClick: () => alternar(clave)
+  });
 
   return (
     <Modal show={clienteId !== null} onHide={onCerrar} size="lg">
@@ -121,26 +219,34 @@ export function ClienteResumenModal({ clienteId, onCerrar, onEditar }: ClienteRe
               <h6 className="mb-2">Órdenes</h6>
               <div className="mb-4">
                 <Row xs={2} md={3} lg={5} className="g-2">
-                  <Col>
-                    <Numero titulo="En total" valor={o.total} icono={ClipboardList} tono="violet" />
-                  </Col>
-                  <Col>
-                    <Numero titulo="Reparadas" valor={o.reparadas} icono={CircleCheck} tono="green" />
-                  </Col>
-                  <Col>
-                    <Numero titulo="No reparadas" valor={o.noReparadas} icono={CircleX} tono="red" />
-                  </Col>
-                  <Col>
-                    <Numero titulo="Entregadas" valor={o.entregadas} icono={PackageCheck} tono="cyan" />
-                  </Col>
-                  <Col>
-                    <Numero titulo="En curso" valor={o.enCurso} icono={Wrench} tono="amber" />
-                  </Col>
+                  {RECUADROS.map(({ clave, titulo, icono, tono }) => (
+                    <Col key={clave}>
+                      <Numero titulo={titulo} icono={icono} tono={tono} {...recuadro(clave)} />
+                    </Col>
+                  ))}
                 </Row>
                 {o.canceladas > 0 && (
                   <p className="small text-muted mt-2 mb-0">
-                    {o.canceladas === 1 ? '1 orden cancelada.' : `${o.canceladas} órdenes canceladas.`}
+                    {o.canceladas === 1 ? '1 orden cancelada' : `${o.canceladas} órdenes canceladas`} ·{' '}
+                    <Button
+                      variant="link"
+                      size="sm"
+                      className="p-0 align-baseline"
+                      onClick={() => alternar('canceladas')}
+                    >
+                      {categoria === 'canceladas' ? 'Ocultar' : 'Ver'}
+                    </Button>
                   </p>
+                )}
+                {categoria ? (
+                  <ListaOrdenes
+                    titulo={TITULO_LISTA[categoria]}
+                    ordenes={clientesApi.ordenesDeCategoria(resumen.listado, categoria)}
+                  />
+                ) : (
+                  o.total > 0 && (
+                    <p className="small text-muted mt-2 mb-0">Tocá un recuadro para ver esas órdenes.</p>
+                  )
                 )}
               </div>
 

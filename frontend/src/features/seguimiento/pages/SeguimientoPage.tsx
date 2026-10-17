@@ -14,7 +14,7 @@ const PASOS: { estados: EstadoOrden[]; etiqueta: string }[] = [
   { estados: ['recibido'], etiqueta: 'Recibido' },
   { estados: ['en_diagnostico'], etiqueta: 'En revisión' },
   { estados: ['presupuestado', 'rechazado'], etiqueta: 'Presupuesto' },
-  { estados: ['aprobado'], etiqueta: 'En reparación' },
+  { estados: ['aprobado', 'en_reparacion'], etiqueta: 'En reparación' },
   { estados: ['listo_para_retirar', 'no_reparado'], etiqueta: 'Listo' },
   { estados: ['entregado'], etiqueta: 'Entregado' }
 ];
@@ -26,6 +26,8 @@ const QUE_SIGUE: Partial<Record<EstadoOrden, string>> = {
   presupuestado: 'Ya tenemos el presupuesto: esperamos tu respuesta para seguir.',
   aprobado: 'Aprobaste el presupuesto. Empezamos con la reparación.',
   rechazado: 'No vas a seguir con la reparación. Podés pasar a retirar el equipo.',
+  en_reparacion: 'Estamos reparando tu equipo.',
+  en_espera: 'Tu orden quedó en espera. Te avisamos apenas podamos seguir.',
   listo_para_retirar: '¡Tu equipo está listo! Ya podés pasar a retirarlo.',
   no_reparado: 'No pudimos reparar tu equipo. Ya podés pasar a retirarlo.',
   entregado: 'Ya retiraste tu equipo. ¡Gracias por confiar en nosotros!',

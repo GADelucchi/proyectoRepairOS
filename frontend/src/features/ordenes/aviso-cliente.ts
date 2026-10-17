@@ -38,6 +38,8 @@ export function mensajeParaCliente(d: DatosAviso, taller: string): string {
       : `Ya tenemos el presupuesto para tu ${equipo} (orden ${d.numeroOrden}). ¿Te lo pasamos?`,
     aprobado: `Gracias por aprobar el presupuesto. Ya empezamos con la reparación de tu ${equipo} (orden ${d.numeroOrden}).`,
     rechazado: `Registramos que no vas a seguir con la reparación de tu ${equipo} (orden ${d.numeroOrden}). Podés pasar a retirarlo por ${lugar}.`,
+    en_reparacion: `Estamos reparando tu ${equipo} (orden ${d.numeroOrden}). Te avisamos cuando esté listo.`,
+    en_espera: `Tu ${equipo} (orden ${d.numeroOrden}) quedó en espera. Te avisamos apenas podamos seguir.`,
     listo_para_retirar: `¡Tu ${equipo} ya está listo para retirar! Te esperamos en ${lugar}. Orden ${d.numeroOrden}${monto ? `, total ${monto}` : ''}.`,
     no_reparado: `No pudimos reparar tu ${equipo} (orden ${d.numeroOrden}). Ya podés pasar a retirarlo por ${lugar}.`,
     entregado: `Gracias por confiar en ${taller}. Si tenés cualquier consulta sobre la reparación de tu ${equipo}, escribinos.`,

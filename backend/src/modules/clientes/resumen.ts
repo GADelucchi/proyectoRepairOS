@@ -20,13 +20,37 @@ export interface ConteoOrdenesCliente {
 const TERMINADAS = new Set(['listo_para_retirar', 'no_reparado', 'entregado']);
 
 /**
- * Cuenta las órdenes de un cliente por cómo terminaron.
+ * En qué recuadros del resumen cuenta una orden. Las claves son las de
+ * `ConteoOrdenesCliente`, así la pantalla filtra la lista con la misma clave.
+ */
+export interface ClasificacionOrden {
+  grupo: 'enCurso' | 'entregadas' | 'canceladas';
+  resultado: 'reparadas' | 'noReparadas' | null;
+}
+
+/**
+ * Cómo terminó una orden.
  *
  * Reparada o no sale del último paso a "listo para retirar" del historial, solo
  * si la orden ya terminó (una que volvió a "aprobado" todavía no tiene resultado).
  * Antes de existir "No reparado", un presupuesto rechazado también pasaba a
  * "Listo para retirar": esas cuentan como no reparadas.
  */
+export function clasificarOrden({
+  estado,
+  presupuestoAprobado,
+  resultado
+}: FilaOrdenCliente): ClasificacionOrden {
+  const grupo = estado === 'entregado' ? 'entregadas' : estado === 'cancelado' ? 'canceladas' : 'enCurso';
+  if (!TERMINADAS.has(estado)) return { grupo, resultado: null };
+  const rechazado = presupuestoAprobado === false || presupuestoAprobado === 0;
+  if (resultado === 'no_reparado' || (resultado === 'listo_para_retirar' && rechazado)) {
+    return { grupo, resultado: 'noReparadas' };
+  }
+  return { grupo, resultado: resultado === 'listo_para_retirar' ? 'reparadas' : null };
+}
+
+/** Cuenta las órdenes de un cliente por cómo terminaron (ver `clasificarOrden`). */
 export function contarOrdenes(filas: FilaOrdenCliente[]): ConteoOrdenesCliente {
   const conteo: ConteoOrdenesCliente = {
     total: filas.length,
@@ -36,18 +60,10 @@ export function contarOrdenes(filas: FilaOrdenCliente[]): ConteoOrdenesCliente {
     entregadas: 0,
     canceladas: 0
   };
-  for (const { estado, presupuestoAprobado, resultado } of filas) {
-    if (estado === 'entregado') conteo.entregadas++;
-    else if (estado === 'cancelado') conteo.canceladas++;
-    else conteo.enCurso++;
-
-    if (!TERMINADAS.has(estado)) continue;
-    const rechazado = presupuestoAprobado === false || presupuestoAprobado === 0;
-    if (resultado === 'no_reparado' || (resultado === 'listo_para_retirar' && rechazado)) {
-      conteo.noReparadas++;
-    } else if (resultado === 'listo_para_retirar') {
-      conteo.reparadas++;
-    }
+  for (const fila of filas) {
+    const { grupo, resultado } = clasificarOrden(fila);
+    conteo[grupo]++;
+    if (resultado) conteo[resultado]++;
   }
   return conteo;
 }

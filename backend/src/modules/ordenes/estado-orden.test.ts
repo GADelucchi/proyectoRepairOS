@@ -12,6 +12,11 @@ describe('máquina de estados de la orden', () => {
     expect(origenes).toEqual(['listo_para_retirar', 'no_reparado']);
   });
 
+  it('desde "recibido" se pasa a cualquier estado menos entregado', () => {
+    const destinos = ESTADOS_ORDEN.filter((e) => e !== 'recibido' && e !== 'entregado');
+    expect([...TRANSICIONES_ORDEN.recibido].sort()).toEqual(destinos.sort());
+  });
+
   it('desde "aprobado" se pasa a reparado o no reparado', () => {
     expect(esTransicionValida('aprobado', 'listo_para_retirar')).toBe(true);
     expect(esTransicionValida('aprobado', 'no_reparado')).toBe(true);
@@ -23,8 +28,8 @@ describe('máquina de estados de la orden', () => {
     expect(esEstadoFinal('recibido')).toBe(false);
   });
 
-  it('no permite aprobar algo que no se presupuestó', () => {
-    expect(esTransicionValida('recibido', 'aprobado')).toBe(false);
+  it('no permite aprobar algo que no se presupuestó (salvo desde la recepción)', () => {
+    expect(esTransicionValida('en_diagnostico', 'aprobado')).toBe(false);
     expect(esTransicionValida('presupuestado', 'aprobado')).toBe(true);
   });
 });

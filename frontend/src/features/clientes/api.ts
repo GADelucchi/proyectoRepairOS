@@ -1,5 +1,5 @@
 import { apiClient } from '@/shared/api/client';
-import type { Cliente } from '@/shared/types';
+import type { Cliente, EstadoOrden } from '@/shared/types';
 
 /** Cuerpo que acepta la API para crear o editar un cliente. */
 export interface ClienteInput {
@@ -31,11 +31,37 @@ export interface ConteoOrdenesCliente {
   canceladas: number;
 }
 
+/** Cada recuadro del resumen: las claves del conteo. */
+export type CategoriaOrdenes = keyof ConteoOrdenesCliente;
+
+/** Una orden del cliente, con los recuadros en los que cuenta. */
+export interface OrdenDelCliente {
+  id: number;
+  numeroOrden: string;
+  estado: EstadoOrden;
+  fechaIngreso: string;
+  sucursal: { id: number; nombre: string };
+  equipo: { marca: string | null; modelo: string | null; color: string | null };
+  grupo: 'enCurso' | 'entregadas' | 'canceladas';
+  resultado: 'reparadas' | 'noReparadas' | null;
+}
+
 export interface ResumenCliente {
   cliente: Cliente;
   ordenes: ConteoOrdenesCliente;
   /** Ingreso de su última orden, o null si nunca trajo un equipo. */
   ultimaVisita: string | null;
+  /** Sus órdenes de todas las sucursales, la más nueva primero. */
+  listado: OrdenDelCliente[];
+}
+
+/** Las órdenes del listado que cuentan en un recuadro. */
+export function ordenesDeCategoria(
+  listado: OrdenDelCliente[],
+  categoria: CategoriaOrdenes
+): OrdenDelCliente[] {
+  if (categoria === 'total') return listado;
+  return listado.filter((o) => o.grupo === categoria || o.resultado === categoria);
 }
 
 export async function obtenerResumen(id: number): Promise<ResumenCliente> {

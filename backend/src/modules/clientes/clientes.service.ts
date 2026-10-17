@@ -5,7 +5,7 @@ import { ClienteAttributes } from '../../models/Cliente';
 import { errores } from '../../shared/http/http-error';
 import { saldosDeCliente, saldosDeClientes } from '../cuentas/cuenta-corriente.service';
 import { actualizarClienteSchema, clienteSchema } from './clientes.schemas';
-import { contarOrdenes, FilaOrdenCliente } from './resumen';
+import { clasificarOrden, contarOrdenes, FilaOrdenCliente } from './resumen';
 
 const LIMITE_LISTADO = 100;
 
@@ -61,26 +61,53 @@ export async function listarClientes(tallerId: number, search?: string) {
   return clientes.map((c) => ({ ...c.get({ plain: true }), saldos: saldos.get(c.id) ?? [] }));
 }
 
+/** Una orden del cliente tal como sale de la consulta del resumen. */
+interface FilaResumen extends FilaOrdenCliente {
+  id: number;
+  numeroOrden: string;
+  fechaIngreso: Date;
+  sucursalId: number;
+  sucursal: string;
+  marca: string | null;
+  modelo: string | null;
+  color: string | null;
+}
+
 /**
- * Resumen de un cliente: sus datos, el saldo de la cuenta corriente y cuántas
- * órdenes trajo y cómo terminaron. Cuenta las de todas las sucursales: el
- * cliente es del taller.
+ * Resumen de un cliente: sus datos, el saldo de la cuenta corriente, cuántas
+ * órdenes trajo y cómo terminaron, y la lista de esas órdenes (la más nueva
+ * primero) para ver las de cada recuadro. Incluye las de todas las sucursales:
+ * el cliente es del taller.
  */
 export async function resumenCliente(cliente: Cliente) {
-  const filas = await sequelize.query<FilaOrdenCliente & { fechaIngreso: Date }>(
-    `SELECT o.estado, o.presupuesto_aprobado AS presupuestoAprobado, o.fecha_ingreso AS fechaIngreso,
+  const filas = await sequelize.query<FilaResumen>(
+    `SELECT o.id, o.numero_orden AS numeroOrden, o.estado, o.fecha_ingreso AS fechaIngreso,
+            o.presupuesto_aprobado AS presupuestoAprobado, o.sucursal_id AS sucursalId,
+            s.nombre AS sucursal, e.marca, e.modelo, e.color,
             (SELECT h.estado_nuevo FROM orden_historial_estados h
               WHERE h.orden_id = o.id AND h.estado_nuevo IN ('listo_para_retirar', 'no_reparado')
               ORDER BY h.created_at DESC, h.id DESC LIMIT 1) AS resultado
        FROM ordenes o
-      WHERE o.taller_id = :tallerId AND o.cliente_id = :clienteId`,
+       JOIN sucursales s ON s.id = o.sucursal_id
+       JOIN equipos e ON e.id = o.equipo_id
+      WHERE o.taller_id = :tallerId AND o.cliente_id = :clienteId
+      ORDER BY o.fecha_ingreso DESC, o.id DESC`,
     { replacements: { tallerId: cliente.tallerId, clienteId: cliente.id }, type: QueryTypes.SELECT }
   );
-  const ultimaVisita = filas.reduce<Date | null>(
-    (ultima, f) => (!ultima || f.fechaIngreso > ultima ? f.fechaIngreso : ultima),
-    null
-  );
-  return { cliente: await conSaldos(cliente), ordenes: contarOrdenes(filas), ultimaVisita };
+  return {
+    cliente: await conSaldos(cliente),
+    ordenes: contarOrdenes(filas),
+    ultimaVisita: filas[0]?.fechaIngreso ?? null,
+    listado: filas.map((f) => ({
+      id: f.id,
+      numeroOrden: f.numeroOrden,
+      estado: f.estado,
+      fechaIngreso: f.fechaIngreso,
+      sucursal: { id: f.sucursalId, nombre: f.sucursal },
+      equipo: { marca: f.marca, modelo: f.modelo, color: f.color },
+      ...clasificarOrden(f)
+    }))
+  };
 }
 
 /** El cliente con sus saldos de cuenta corriente. */

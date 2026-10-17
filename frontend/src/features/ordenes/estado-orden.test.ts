@@ -27,7 +27,8 @@ describe('estado de la orden (frontend)', () => {
     );
   });
 
-  it('el historial viejo con "en reparación" sigue teniendo etiqueta', () => {
+  it('"en reparación" y "en espera" tienen etiqueta', () => {
     expect(etiquetaEstado('en_reparacion')).toBe('En reparación');
+    expect(etiquetaEstado('en_espera')).toBe('En espera');
   });
 });

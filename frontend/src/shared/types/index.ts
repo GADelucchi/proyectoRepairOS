@@ -161,6 +161,8 @@ export type EstadoOrden =
   | 'presupuestado'
   | 'aprobado'
   | 'rechazado'
+  | 'en_reparacion'
+  | 'en_espera'
   | 'listo_para_retirar'
   | 'no_reparado'
   | 'entregado'

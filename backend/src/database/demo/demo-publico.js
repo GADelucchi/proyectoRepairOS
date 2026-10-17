@@ -294,7 +294,7 @@ const ORDENES = [
     sucursal: 'central',
     tecnico: 'tecnico',
     diasAtras: 8,
-    historial: ['recibido', 'en_diagnostico', 'presupuestado', 'aprobado'],
+    historial: ['recibido', 'en_diagnostico', 'presupuestado', 'aprobado', 'en_reparacion'],
     reparacion: 'Teclado con varias teclas que no responden.',
     esteticos: 'Equipo en buen estado general.',
     presupuesto: 96000,

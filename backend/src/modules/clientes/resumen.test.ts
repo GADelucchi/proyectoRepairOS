@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { contarOrdenes, FilaOrdenCliente } from './resumen';
+import { clasificarOrden, contarOrdenes, FilaOrdenCliente } from './resumen';
 
 const fila = (
   estado: string,
@@ -37,5 +37,13 @@ describe('resumen de órdenes del cliente', () => {
       reparadas: 0,
       noReparadas: 0
     });
+  });
+
+  it('clasifica cada orden con las mismas claves que el conteo', () => {
+    expect(clasificarOrden(fila('entregado', 'no_reparado'))).toEqual({
+      grupo: 'entregadas',
+      resultado: 'noReparadas'
+    });
+    expect(clasificarOrden(fila('recibido', null))).toEqual({ grupo: 'enCurso', resultado: null });
   });
 });

@@ -127,6 +127,16 @@ describe('resumen del cliente', () => {
       canceladas: 0
     });
     expect(body.cliente.saldos).toEqual([{ moneda: 'ARS', saldo: 600 }]);
+    expect(body.listado).toEqual([
+      expect.objectContaining({
+        id: reparada.id,
+        numeroOrden: reparada.numeroOrden,
+        estado: 'entregado',
+        grupo: 'entregadas',
+        resultado: 'reparadas',
+        equipo: expect.objectContaining({ marca: 'Motorola', modelo: 'G54' })
+      })
+    ]);
 
     const ajeno = await tallerConSucursal();
     await api().get(`/api/clientes/${clienteId}/resumen`).set(ajeno.auth).expect(404);
