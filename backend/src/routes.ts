@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, Request, Response } from 'express';
 import { authRoutes } from './modules/auth/auth.routes';
 import { clientesRoutes } from './modules/clientes/clientes.routes';
 import { configuracionRoutes } from './modules/configuracion/configuracion.routes';
@@ -19,7 +19,7 @@ import { usuariosRoutes } from './modules/usuarios/usuarios.routes';
 export const apiRoutes = Router();
 
 /** Ruta simple de ping. */
-apiRoutes.get('/ping', (_req, res) => {
+apiRoutes.get('/ping', (_req: Request, res: Response) => {
   res.status(200).json({ message: 'pong' })
 })
 
