@@ -18,6 +18,11 @@ import { usuariosRoutes } from './modules/usuarios/usuarios.routes';
 /** Todas las rutas de la API, montadas bajo `/api`. */
 export const apiRoutes = Router();
 
+/** Ruta simple de ping. */
+apiRoutes.get('/ping', (_req, res) => {
+  res.status(200).json({ message: 'pong' })
+})
+
 apiRoutes.use('/auth', authRoutes);
 apiRoutes.use('/usuarios', usuariosRoutes);
 apiRoutes.use('/sucursales', sucursalesRoutes);
