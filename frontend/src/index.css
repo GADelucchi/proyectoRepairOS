@@ -726,12 +726,19 @@ h6 {
 }
 .guia-globo {
   position: fixed;
+  display: flex;
+  flex-direction: column;
   background: var(--rs-surface);
   color: var(--rs-text);
   border: 1px solid var(--rs-accent);
   border-radius: 12px;
   padding: 14px 16px;
   box-shadow: var(--rs-shadow-lg);
+}
+/* El texto se desplaza si el globo no entra en la pantalla; el pie con los botones no. */
+.guia-contenido {
+  min-height: 0;
+  overflow-y: auto;
 }
 .guia-flecha {
   position: absolute;
@@ -750,6 +757,12 @@ h6 {
   bottom: -8px;
   border-left: none;
   border-top: none;
+}
+.guia-flecha-izquierda {
+  left: -8px;
+  border-right: none;
+  border-top: none;
+  transform: translateY(-50%) rotate(45deg);
 }
 
 /* ---------- Volver arriba ---------- */
