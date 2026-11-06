@@ -1,5 +1,7 @@
 'use strict';
 
+const { agregarColumna, agregarIndice, crearTabla } = require('../migraciones-seguras');
+
 /**
  * Venta de equipos del stock.
  *
@@ -50,7 +52,7 @@ module.exports = {
     };
     const ahora = { type: Sequelize.DATE, allowNull: false, defaultValue: Sequelize.fn('now') };
 
-    await queryInterface.createTable('ventas', {
+    await crearTabla(queryInterface, 'ventas', {
       id: { type: Sequelize.INTEGER, primaryKey: true, autoIncrement: true },
       taller_id: ref('talleres'),
       sucursal_id: ref('sucursales'),
@@ -80,16 +82,16 @@ module.exports = {
       created_at: ahora,
       updated_at: ahora
     });
-    await queryInterface.addIndex('ventas', ['taller_id', 'numero'], {
+    await agregarIndice(queryInterface, 'ventas', ['taller_id', 'numero'], {
       unique: true,
       name: 'ventas_taller_numero'
     });
-    await queryInterface.addIndex('ventas', ['taller_id', 'estado'], { name: 'ventas_taller_estado' });
-    await queryInterface.addIndex('ventas', ['taller_id', 'completada_en'], {
+    await agregarIndice(queryInterface, 'ventas', ['taller_id', 'estado'], { name: 'ventas_taller_estado' });
+    await agregarIndice(queryInterface, 'ventas', ['taller_id', 'completada_en'], {
       name: 'ventas_taller_completada'
     });
 
-    await queryInterface.createTable('venta_items', {
+    await crearTabla(queryInterface, 'venta_items', {
       id: { type: Sequelize.INTEGER, primaryKey: true, autoIncrement: true },
       venta_id: ref('ventas'),
       equipo_stock_id: ref('equipos_stock'),
@@ -98,7 +100,7 @@ module.exports = {
       updated_at: ahora
     });
 
-    await queryInterface.createTable('venta_partes_pago', {
+    await crearTabla(queryInterface, 'venta_partes_pago', {
       id: { type: Sequelize.INTEGER, primaryKey: true, autoIncrement: true },
       venta_id: ref('ventas'),
       ...datosDeEquipo,
@@ -109,7 +111,7 @@ module.exports = {
       updated_at: ahora
     });
 
-    await queryInterface.createTable('venta_pagos', {
+    await crearTabla(queryInterface, 'venta_pagos', {
       id: { type: Sequelize.INTEGER, primaryKey: true, autoIncrement: true },
       taller_id: ref('talleres'),
       sucursal_id: ref('sucursales'),
@@ -124,7 +126,7 @@ module.exports = {
       updated_at: ahora
     });
     // La caja filtra por taller y fecha, igual que `cuenta_movimientos`.
-    await queryInterface.addIndex('venta_pagos', ['taller_id', 'created_at'], {
+    await agregarIndice(queryInterface, 'venta_pagos', ['taller_id', 'created_at'], {
       name: 'venta_pagos_taller_fecha'
     });
 
@@ -133,14 +135,17 @@ module.exports = {
       allowNull: false,
       defaultValue: 'disponible'
     });
-    await queryInterface.addColumn('equipos_stock', 'baja_en', { type: Sequelize.DATE, allowNull: true });
-    await queryInterface.addColumn('equipos_stock', 'baja_por_id', usuario());
-    await queryInterface.addColumn('equipos_stock', 'motivo_baja', {
+    await agregarColumna(queryInterface, 'equipos_stock', 'baja_en', {
+      type: Sequelize.DATE,
+      allowNull: true
+    });
+    await agregarColumna(queryInterface, 'equipos_stock', 'baja_por_id', usuario());
+    await agregarColumna(queryInterface, 'equipos_stock', 'motivo_baja', {
       type: Sequelize.STRING(255),
       allowNull: true
     });
     // El equipo entró como parte de pago de esta venta.
-    await queryInterface.addColumn('equipos_stock', 'recibido_en_venta_id', {
+    await agregarColumna(queryInterface, 'equipos_stock', 'recibido_en_venta_id', {
       type: Sequelize.INTEGER,
       allowNull: true,
       references: { model: 'ventas', key: 'id' },
@@ -148,7 +153,10 @@ module.exports = {
       onDelete: 'RESTRICT'
     });
 
-    await queryInterface.addColumn('talleres', 'terminos_venta', { type: Sequelize.TEXT, allowNull: true });
+    await agregarColumna(queryInterface, 'talleres', 'terminos_venta', {
+      type: Sequelize.TEXT,
+      allowNull: true
+    });
   },
 
   async down(queryInterface, Sequelize) {

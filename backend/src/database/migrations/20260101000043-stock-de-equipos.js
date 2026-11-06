@@ -1,5 +1,7 @@
 'use strict';
 
+const { agregarColumna, agregarIndice, crearTabla } = require('../migraciones-seguras');
+
 /**
  * Stock de equipos para la venta.
  *
@@ -16,7 +18,7 @@
  */
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.createTable('equipos_stock', {
+    await crearTabla(queryInterface, 'equipos_stock', {
       id: { type: Sequelize.INTEGER, primaryKey: true, autoIncrement: true },
       taller_id: {
         type: Sequelize.INTEGER,
@@ -68,19 +70,21 @@ module.exports = {
       updated_at: { type: Sequelize.DATE, allowNull: false, defaultValue: Sequelize.fn('now') }
     });
 
-    await queryInterface.addIndex('equipos_stock', ['taller_id', 'numero'], {
+    await agregarIndice(queryInterface, 'equipos_stock', ['taller_id', 'numero'], {
       unique: true,
       name: 'equipos_stock_taller_numero'
     });
-    await queryInterface.addIndex('equipos_stock', ['taller_id', 'sucursal_id', 'estado'], {
+    await agregarIndice(queryInterface, 'equipos_stock', ['taller_id', 'sucursal_id', 'estado'], {
       name: 'equipos_stock_sucursal_estado'
     });
-    await queryInterface.addIndex('equipos_stock', ['taller_id', 'imei'], { name: 'equipos_stock_imei' });
-    await queryInterface.addIndex('equipos_stock', ['taller_id', 'numero_serie'], {
+    await agregarIndice(queryInterface, 'equipos_stock', ['taller_id', 'imei'], {
+      name: 'equipos_stock_imei'
+    });
+    await agregarIndice(queryInterface, 'equipos_stock', ['taller_id', 'numero_serie'], {
       name: 'equipos_stock_numero_serie'
     });
 
-    await queryInterface.addColumn('talleres', 'stock_entre_sucursales', {
+    await agregarColumna(queryInterface, 'talleres', 'stock_entre_sucursales', {
       type: Sequelize.BOOLEAN,
       allowNull: false,
       defaultValue: false

@@ -1,5 +1,7 @@
 'use strict';
 
+const { agregarColumna } = require('../migraciones-seguras');
+
 /**
  * Datos para facturar. Cada taller carga los suyos en Configuración y factura con
  * su propio CUIT. La condición frente al IVA del cliente es obligatoria en cada
@@ -9,30 +11,33 @@
  */
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.addColumn('talleres', 'razon_social', {
+    await agregarColumna(queryInterface, 'talleres', 'razon_social', {
       type: Sequelize.STRING(150),
       allowNull: true
     });
-    await queryInterface.addColumn('talleres', 'cuit', { type: Sequelize.STRING(11), allowNull: true });
-    await queryInterface.addColumn('talleres', 'condicion_iva', {
+    await agregarColumna(queryInterface, 'talleres', 'cuit', { type: Sequelize.STRING(11), allowNull: true });
+    await agregarColumna(queryInterface, 'talleres', 'condicion_iva', {
       type: Sequelize.STRING(30),
       allowNull: true
     });
-    await queryInterface.addColumn('talleres', 'domicilio_fiscal', {
+    await agregarColumna(queryInterface, 'talleres', 'domicilio_fiscal', {
       type: Sequelize.STRING(255),
       allowNull: true
     });
-    await queryInterface.addColumn('talleres', 'inicio_actividades', {
+    await agregarColumna(queryInterface, 'talleres', 'inicio_actividades', {
       type: Sequelize.DATEONLY,
       allowNull: true
     });
-    await queryInterface.addColumn('talleres', 'ingresos_brutos', {
+    await agregarColumna(queryInterface, 'talleres', 'ingresos_brutos', {
       type: Sequelize.STRING(30),
       allowNull: true
     });
-    await queryInterface.addColumn('talleres', 'punto_venta', { type: Sequelize.INTEGER, allowNull: true });
+    await agregarColumna(queryInterface, 'talleres', 'punto_venta', {
+      type: Sequelize.INTEGER,
+      allowNull: true
+    });
 
-    await queryInterface.addColumn('clientes', 'condicion_iva', {
+    await agregarColumna(queryInterface, 'clientes', 'condicion_iva', {
       type: Sequelize.STRING(30),
       allowNull: false,
       defaultValue: 'consumidor_final'

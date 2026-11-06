@@ -1,5 +1,7 @@
 'use strict';
 
+const { agregarColumna } = require('../migraciones-seguras');
+
 /**
  * Detalle del presupuesto para el cliente: qué se va a hacer y qué incluye el
  * precio. Lo ve en el seguimiento, en el aviso y en el remito; las notas
@@ -9,7 +11,7 @@
  */
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.addColumn('ordenes', 'presupuesto_detalle', {
+    await agregarColumna(queryInterface, 'ordenes', 'presupuesto_detalle', {
       type: Sequelize.TEXT,
       allowNull: true
     });

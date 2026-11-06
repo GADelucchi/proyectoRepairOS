@@ -1,5 +1,7 @@
 'use strict';
 
+const { agregarColumna, crearTabla } = require('../migraciones-seguras');
+
 /**
  * Cobrar en una moneda distinta a la del presupuesto.
  *
@@ -16,7 +18,7 @@
  */
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.addColumn('ordenes', 'moneda_cobro', {
+    await agregarColumna(queryInterface, 'ordenes', 'moneda_cobro', {
       type: Sequelize.STRING(3),
       allowNull: true
     });
@@ -36,7 +38,7 @@ module.exports = {
       allowNull: false
     });
 
-    await queryInterface.createTable('orden_precios', {
+    await crearTabla(queryInterface, 'orden_precios', {
       id: { type: Sequelize.INTEGER, primaryKey: true, autoIncrement: true },
       orden_id: {
         type: Sequelize.INTEGER,
