@@ -53,6 +53,27 @@ export async function actualizarEquipoStock(id: number, input: EquipoStockInput)
   return data;
 }
 
-export async function eliminarEquipoStock(id: number): Promise<void> {
-  await apiClient.delete(`/stock/${id}`);
+/** Saca el equipo del stock sin borrarlo: queda dado de baja con el motivo (solo admin). */
+export async function darDeBajaEquipoStock(id: number, motivo: string): Promise<EquipoStock> {
+  const { data } = await apiClient.post<EquipoStock>(`/stock/${id}/baja`, { motivo });
+  return data;
+}
+
+export interface EquipoRepetido {
+  id: number;
+  numero: number;
+  etiqueta: string;
+  marca: string;
+  modelo: string;
+  estado: EstadoStock;
+}
+
+/** El equipo del stock que ya tiene ese IMEI o ese serial, o null. */
+export async function verificarRepetido(params: {
+  imei?: string;
+  numeroSerie?: string;
+  excluirId?: number;
+}): Promise<EquipoRepetido | null> {
+  const { data } = await apiClient.get<{ repetido: EquipoRepetido | null }>('/stock/verificar', { params });
+  return data.repetido;
 }

@@ -8,7 +8,8 @@ export const ETIQUETA_ESTADO_STOCK: Record<EstadoStock, string> = {
   disponible: 'Disponible',
   reservado: 'Reservado',
   senado: 'Señado',
-  vendido: 'Vendido'
+  vendido: 'Vendido',
+  baja: 'Dado de baja'
 };
 
 /** Color del badge de cada estado (variantes de Bootstrap). */
@@ -16,7 +17,8 @@ export const VARIANTE_ESTADO_STOCK: Record<EstadoStock, string> = {
   disponible: 'success',
   reservado: 'primary',
   senado: 'warning',
-  vendido: 'secondary'
+  vendido: 'secondary',
+  baja: 'dark'
 };
 
 /** Los tamaños más comunes, para elegir con un toque en vez de tipear. */
@@ -63,6 +65,16 @@ export function esImeiValido(imei: string): boolean {
 
 /** Saca espacios y guiones: el IMEI viene impreso así en las cajas. */
 export const soloDigitos = (valor: string) => valor.replace(/\D/g, '');
+
+/**
+ * El IMEI que trae un código leído con la cámara, o null si no trae ninguno.
+ * Un QR puede traer más datos ("IMEI1: 35… IMEI2: 35…"): se toma el primero
+ * válido que no sea `distintoDe` (el que ya está cargado en el otro campo).
+ */
+export function imeiLeido(texto: string, distintoDe?: string): string | null {
+  const candidatos = texto.match(/\d{15}/g) ?? [];
+  return candidatos.find((c) => esImeiValido(c) && c !== soloDigitos(distintoDe ?? '')) ?? null;
+}
 
 /** Lo que se tipea en el formulario, todo como texto. */
 export interface EquipoStockForm {
@@ -136,7 +148,7 @@ export function equipoAFormulario(e: EquipoStock): EquipoStockForm {
     fechaCompra: convertirDesdeBackend(e.fechaCompra),
     proveedor: e.proveedor ?? '',
     monedaCosto: e.monedaCosto,
-    costo: String(aNumero(e.costo)),
+    costo: e.costo != null ? String(aNumero(e.costo)) : '',
     cotizacionCosto: e.cotizacionCosto != null ? String(aNumero(e.cotizacionCosto)) : '',
     monedaPrecio: e.monedaPrecio ?? e.monedaCosto,
     precio: e.precio != null ? String(aNumero(e.precio)) : '',
@@ -144,8 +156,12 @@ export function equipoAFormulario(e: EquipoStock): EquipoStockForm {
   };
 }
 
-/** Lo que falta o está mal, en el orden en que aparece en pantalla. Null si se puede guardar. */
-export function validarFormulario(f: EquipoStockForm): string | null {
+/**
+ * Lo que falta o está mal, en el orden en que aparece en pantalla. Null si se
+ * puede guardar. Sin `conCostos` (quien no es admin, al editar) no se revisa el
+ * costo: no lo ve, y la API conserva el que tenía.
+ */
+export function validarFormulario(f: EquipoStockForm, conCostos = true): string | null {
   if (!f.marca.trim()) return 'Indicá la marca.';
   if (!f.modelo.trim()) return 'Indicá el modelo.';
   if (f.condicion === 'usado' && f.bateria.trim()) {
@@ -161,6 +177,7 @@ export function validarFormulario(f: EquipoStockForm): string | null {
     }
   }
   if (!convertirAFormatoBackend(f.fechaCompra)) return 'La fecha de compra no es válida.';
+  if (!conCostos) return null;
   if (!f.costo.trim() || aNumero(f.costo) < 0) return 'Indicá el valor de compra.';
   if (f.monedaCosto !== 'USD' && !(aNumero(f.cotizacionCosto) > 0)) {
     return 'Indicá cuánto valía el dólar el día de compra: el informe se calcula en US$.';

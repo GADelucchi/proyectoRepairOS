@@ -64,6 +64,7 @@ export const PASOS_GUIA: PasoGuia[] = [
   },
   {
     objetivo: 'nav-reportes',
+    soloAdmin: true,
     titulo: 'Reportes',
     texto:
       'Tiempo promedio de reparación, presupuestos aprobados, trabajo de cada técnico y equipos que nadie vino a buscar. Todo se puede bajar a Excel.'

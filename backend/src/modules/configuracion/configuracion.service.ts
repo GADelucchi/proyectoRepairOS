@@ -10,7 +10,7 @@ export function datosFiscalesDe(taller: Taller) {
   return Object.fromEntries(ATRIBUTOS_FISCALES.map((campo) => [campo, taller[campo] ?? null]));
 }
 
-/** Nombre, país, si comparte el stock entre sucursales y datos fiscales del taller. Las órdenes ya cargadas conservan su moneda. */
+/** Nombre, país, opciones del stock y la venta, y datos fiscales del taller. Las órdenes ya cargadas conservan su moneda. */
 export async function actualizarTaller(
   tallerId: number,
   { fiscal, ...datos }: z.infer<typeof actualizarTallerSchema>
@@ -24,6 +24,7 @@ export async function actualizarTaller(
     pais: taller.pais,
     moneda: monedaDePais(taller.pais),
     stockEntreSucursales: taller.stockEntreSucursales,
+    terminosVenta: taller.terminosVenta,
     fiscal: datosFiscalesDe(taller)
   };
 }

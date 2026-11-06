@@ -1,5 +1,6 @@
 import { ReactNode, useState } from 'react';
 import { Badge, Button, Card, Col, Form, Row, Table } from 'react-bootstrap';
+import { Link } from 'react-router';
 import { useAuth } from '@/features/auth/useAuth';
 import { AlertaError } from '@/shared/components/AlertaError';
 import { Cargando } from '@/shared/components/Cargando';
@@ -7,13 +8,21 @@ import { FechaFiltro } from '@/shared/components/FechaFiltro';
 import { TablaApilable } from '@/shared/components/TablaApilable';
 import { ETIQUETA_MEDIO_PAGO } from '@/shared/constants/pagos';
 import { useConsulta } from '@/shared/hooks/useConsulta';
-import type { GrupoCaja, MedioPago, TotalesCaja } from '@/shared/types';
+import type { GrupoCaja, MedioPago, MovimientoCaja, OrigenCobro, TotalesCaja } from '@/shared/types';
 import { formatearMonto } from '@/shared/utils/dinero';
 import { fechaLocalISO, formatearFechaHora, haceDias } from '@/shared/utils/fechas';
 import * as cajaApi from '../api';
 
+const ETIQUETA_ORIGEN: Record<OrigenCobro, string> = {
+  reparacion: 'Reparaciones',
+  venta: 'Ventas de equipos',
+  sena: 'Señas',
+  devolucion: 'Señas devueltas'
+};
+
 /**
- * Caja: qué plata entró en un período y por qué vía.
+ * Caja: qué plata entró en un período, por qué vía y de dónde (reparaciones,
+ * ventas de equipos, señas).
  *
  * Solo cuenta los cobros, que es lo que tiene que coincidir con el cajón. Lo
  * facturado y los ajustes se muestran aparte y en gris: son contexto, no caja.
@@ -111,7 +120,9 @@ export function CajaPage() {
                     <div className="fs-3 fw-semibold text-success">{formatearMonto(t.cobrado, t.moneda)}</div>
                   )}
                 />
-                <div className="text-muted small">Plata que entró en el período.</div>
+                <div className="text-muted small">
+                  Plata que entró en el período: reparaciones, ventas y señas.
+                </div>
               </Card>
             </Col>
             <Col>
@@ -123,7 +134,9 @@ export function CajaPage() {
                     <div className="fs-3 fw-semibold">{formatearMonto(t.facturado, t.moneda)}</div>
                   )}
                 />
-                <div className="text-muted small">Lo cargado a clientes, se haya cobrado o no.</div>
+                <div className="text-muted small">
+                  Reparaciones cargadas a clientes, se hayan cobrado o no.
+                </div>
               </Card>
             </Col>
             <Col>
@@ -144,7 +157,18 @@ export function CajaPage() {
             </Col>
           </Row>
 
-          <Row xs={1} md={verTodas ? 3 : 2} className="g-3 mb-3">
+          <Row xs={1} md={2} xl={verTodas ? 4 : 3} className="g-3 mb-3">
+            <Col>
+              <Card className="h-100">
+                <Card.Header>Por origen</Card.Header>
+                <Card.Body className="p-0">
+                  <TablaGrupos
+                    grupos={resumen.porOrigen}
+                    etiquetar={(clave) => ETIQUETA_ORIGEN[clave as OrigenCobro] ?? clave}
+                  />
+                </Card.Body>
+              </Card>
+            </Col>
             <Col>
               <Card className="h-100">
                 <Card.Header>Por medio de pago</Card.Header>
@@ -187,7 +211,7 @@ export function CajaPage() {
                     <tr>
                       <th>Fecha</th>
                       <th>Cliente</th>
-                      <th>Orden</th>
+                      <th>Origen</th>
                       <th>Medio</th>
                       <th>Cobró</th>
                       <th className="text-end">Monto</th>
@@ -195,10 +219,12 @@ export function CajaPage() {
                   </thead>
                   <tbody>
                     {movimientos.map((m) => (
-                      <tr key={m.id}>
+                      <tr key={`${m.origen}-${m.id}`}>
                         <td className="text-muted small">{formatearFechaHora(m.createdAt)}</td>
                         <td>{m.cliente}</td>
-                        <td className="text-muted small">{m.numeroOrden ?? '—'}</td>
+                        <td className="small">
+                          <OrigenMovimiento movimiento={m} />
+                        </td>
                         <td className="small">
                           {m.medioPago ? ETIQUETA_MEDIO_PAGO[m.medioPago] : 'Sin especificar'}
                         </td>
@@ -215,6 +241,24 @@ export function CajaPage() {
       ) : null}
     </div>
   );
+}
+
+/** De dónde vino la plata, con el link a la orden o a la venta. */
+function OrigenMovimiento({ movimiento: m }: { movimiento: MovimientoCaja }) {
+  if (m.ventaId && m.numeroVenta) {
+    return (
+      <>
+        <Link to={`/ventas/${m.ventaId}`} onClick={(e) => e.stopPropagation()}>
+          VTA-{String(m.numeroVenta).padStart(6, '0')}
+        </Link>
+        <div className="text-muted">{ETIQUETA_ORIGEN[m.origen]}</div>
+      </>
+    );
+  }
+  if (m.ordenId && m.numeroOrden) {
+    return <Link to={`/ordenes/${m.ordenId}`}>{m.numeroOrden}</Link>;
+  }
+  return <span className="text-muted">Cuenta corriente</span>;
 }
 
 /** Un renglón por moneda; sin movimientos, un cero en pesos. */

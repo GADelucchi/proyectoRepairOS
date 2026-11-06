@@ -69,15 +69,39 @@ const aGrupos = (filas: FilaAgrupada[]) =>
     cantidad: Number(f.cantidad)
   }));
 
-/** Cobrado, facturado y ajustes de una moneda. */
-function totalesPorMoneda(porTipo: FilaAgrupada[]) {
-  const monedas = [...new Set(porTipo.map((f) => f.moneda))].sort();
+/**
+ * Toda la plata que entró (o salió) en el período, venga de donde venga, con el
+ * mismo formato: los cobros de reparaciones y cuenta corriente (`pago` en
+ * `cuenta_movimientos`) y los de ventas de equipos (`venta_pagos`). Una seña
+ * devuelta resta. El filtro se aplica en cada tabla, así se usan sus índices.
+ */
+function cobros(filtro: FiltroCaja): string {
+  return `(
+    SELECT m.id, 'reparacion' AS origen, m.monto, m.moneda, m.medio_pago, m.usuario_id, m.sucursal_id,
+           m.created_at, m.cliente_id, m.orden_id, NULL AS venta_id, m.nota
+      FROM cuenta_movimientos m
+     WHERE ${filtro.condicion} AND m.tipo = 'pago'
+    UNION ALL
+    SELECT m.id, CASE m.tipo WHEN 'pago' THEN 'venta' WHEN 'sena' THEN 'sena' ELSE 'devolucion' END,
+           CASE WHEN m.tipo = 'devolucion' THEN -m.monto ELSE m.monto END, m.moneda, m.medio_pago,
+           m.usuario_id, m.sucursal_id, m.created_at, v.cliente_id, NULL, m.venta_id, m.nota
+      FROM venta_pagos m
+      JOIN ventas v ON v.id = m.venta_id
+     WHERE ${filtro.condicion}
+  ) AS cobro`;
+}
+
+/** Cobrado (de todos los orígenes), facturado y ajustes de una moneda. */
+function totalesPorMoneda(porTipo: FilaAgrupada[], porOrigen: FilaAgrupada[]) {
+  const monedas = [...new Set([...porTipo, ...porOrigen].map((f) => f.moneda))].sort();
   return monedas.map((moneda) => {
     const totalDe = (tipo: string) =>
       redondearMonto(Number(porTipo.find((f) => f.moneda === moneda && f.clave === tipo)?.total ?? 0));
     return {
       moneda,
-      cobrado: totalDe('pago'),
+      cobrado: redondearMonto(
+        porOrigen.filter((f) => f.moneda === moneda).reduce((t, f) => t + Number(f.total ?? 0), 0)
+      ),
       facturado: totalDe('cargo'),
       // Correcciones de saldo: no son plata, van aparte a propósito.
       ajustes: { debito: totalDe('ajuste_debito'), credito: totalDe('ajuste_credito') }
@@ -86,11 +110,13 @@ function totalesPorMoneda(porTipo: FilaAgrupada[]) {
 }
 
 /**
- * Caja del período: qué plata entró, por qué medio y quién la cobró.
+ * Caja del período: qué plata entró, por qué medio, quién la cobró y de dónde
+ * vino (reparaciones, ventas de equipos, señas).
  *
- * Solo cuenta los movimientos `pago`, que son plata real. Lo facturado y los
- * ajustes se informan aparte: mezclarlos daría un total que no coincide con lo
- * que hay en el cajón, que es justamente para lo que se usa este número.
+ * Solo cuenta plata real: los cobros de reparaciones y los pagos y señas de
+ * ventas, menos las señas devueltas. Lo facturado y los ajustes se informan
+ * aparte: mezclarlos daría un total que no coincide con lo que hay en el cajón,
+ * que es justamente para lo que se usa este número.
  *
  * Todo va separado por moneda: los pesos y los dólares están en el mismo cajón
  * pero no se suman.
@@ -98,8 +124,9 @@ function totalesPorMoneda(porTipo: FilaAgrupada[]) {
 export async function caja(filtro: FiltroCaja) {
   const consultar = (sql: string) =>
     sequelize.query<FilaAgrupada>(sql, { replacements: filtro.parametros, type: QueryTypes.SELECT });
+  const desdeCobros = cobros(filtro);
 
-  const [porTipo, porMedio, porUsuario, porSucursal] = await Promise.all([
+  const [porTipo, porOrigen, porMedio, porUsuario, porSucursal] = await Promise.all([
     consultar(
       `SELECT m.tipo AS clave, m.moneda, SUM(m.monto) AS total, COUNT(*) AS cantidad
          FROM cuenta_movimientos m
@@ -107,36 +134,40 @@ export async function caja(filtro: FiltroCaja) {
         GROUP BY m.tipo, m.moneda`
     ),
     consultar(
-      `SELECT COALESCE(m.medio_pago, 'sin_especificar') AS clave, m.moneda,
-              SUM(m.monto) AS total, COUNT(*) AS cantidad
-         FROM cuenta_movimientos m
-        WHERE ${filtro.condicion} AND m.tipo = 'pago'
-        GROUP BY m.medio_pago, m.moneda
-        ORDER BY m.moneda, total DESC`
+      `SELECT cobro.origen AS clave, cobro.moneda, SUM(cobro.monto) AS total, COUNT(*) AS cantidad
+         FROM ${desdeCobros}
+        GROUP BY cobro.origen, cobro.moneda
+        ORDER BY cobro.moneda, total DESC`
     ),
     consultar(
-      `SELECT u.id AS clave, CONCAT(u.nombre, ' ', u.apellido) AS etiqueta, m.moneda,
-              SUM(m.monto) AS total, COUNT(*) AS cantidad
-         FROM cuenta_movimientos m
-         JOIN users u ON u.id = m.usuario_id
-        WHERE ${filtro.condicion} AND m.tipo = 'pago'
-        GROUP BY u.id, etiqueta, m.moneda
-        ORDER BY m.moneda, total DESC`
+      `SELECT COALESCE(cobro.medio_pago, 'sin_especificar') AS clave, cobro.moneda,
+              SUM(cobro.monto) AS total, COUNT(*) AS cantidad
+         FROM ${desdeCobros}
+        GROUP BY cobro.medio_pago, cobro.moneda
+        ORDER BY cobro.moneda, total DESC`
     ),
     consultar(
-      `SELECT s.id AS clave, s.nombre AS etiqueta, m.moneda, SUM(m.monto) AS total, COUNT(*) AS cantidad
-         FROM cuenta_movimientos m
-         LEFT JOIN sucursales s ON s.id = m.sucursal_id
-        WHERE ${filtro.condicion} AND m.tipo = 'pago'
-        GROUP BY s.id, s.nombre, m.moneda
-        ORDER BY m.moneda, total DESC`
+      `SELECT u.id AS clave, CONCAT(u.nombre, ' ', u.apellido) AS etiqueta, cobro.moneda,
+              SUM(cobro.monto) AS total, COUNT(*) AS cantidad
+         FROM ${desdeCobros}
+         JOIN users u ON u.id = cobro.usuario_id
+        GROUP BY u.id, etiqueta, cobro.moneda
+        ORDER BY cobro.moneda, total DESC`
+    ),
+    consultar(
+      `SELECT s.id AS clave, s.nombre AS etiqueta, cobro.moneda, SUM(cobro.monto) AS total, COUNT(*) AS cantidad
+         FROM ${desdeCobros}
+         LEFT JOIN sucursales s ON s.id = cobro.sucursal_id
+        GROUP BY s.id, s.nombre, cobro.moneda
+        ORDER BY cobro.moneda, total DESC`
     )
   ]);
 
   return {
     rango: { desde: filtro.desde, hasta: filtro.hasta },
     alcance: filtro.sucursalId ? 'sucursal' : 'taller',
-    totales: totalesPorMoneda(porTipo),
+    totales: totalesPorMoneda(porTipo, porOrigen),
+    porOrigen: aGrupos(porOrigen),
     porMedioDePago: aGrupos(porMedio),
     porUsuario: aGrupos(porUsuario),
     porSucursal: aGrupos(porSucursal)
@@ -146,18 +177,20 @@ export async function caja(filtro: FiltroCaja) {
 /** Los cobros del período, uno por uno, para cuadrar la caja contra el cajón. */
 export function movimientosDeCaja(filtro: FiltroCaja) {
   return sequelize.query(
-    `SELECT m.id, m.tipo, m.monto, m.moneda, m.medio_pago AS medioPago, m.nota, m.created_at AS createdAt,
+    `SELECT cobro.id, cobro.origen, cobro.monto, cobro.moneda, cobro.medio_pago AS medioPago, cobro.nota,
+            cobro.created_at AS createdAt,
             c.id AS clienteId, CONCAT(c.nombre, ' ', c.apellido) AS cliente,
-            o.numero_orden AS numeroOrden,
+            o.numero_orden AS numeroOrden, o.id AS ordenId,
+            v.numero AS numeroVenta, v.id AS ventaId,
             CONCAT(u.nombre, ' ', u.apellido) AS usuario,
             s.nombre AS sucursal
-       FROM cuenta_movimientos m
-       JOIN clientes c ON c.id = m.cliente_id
-       JOIN users u ON u.id = m.usuario_id
-       LEFT JOIN ordenes o ON o.id = m.orden_id
-       LEFT JOIN sucursales s ON s.id = m.sucursal_id
-      WHERE ${filtro.condicion} AND m.tipo = 'pago'
-      ORDER BY m.created_at DESC
+       FROM ${cobros(filtro)}
+       JOIN clientes c ON c.id = cobro.cliente_id
+       JOIN users u ON u.id = cobro.usuario_id
+       LEFT JOIN ordenes o ON o.id = cobro.orden_id
+       LEFT JOIN ventas v ON v.id = cobro.venta_id
+       LEFT JOIN sucursales s ON s.id = cobro.sucursal_id
+      ORDER BY cobro.created_at DESC
       LIMIT ${LIMITE_MOVIMIENTOS}`,
     { replacements: filtro.parametros, type: QueryTypes.SELECT }
   );

@@ -12,6 +12,7 @@ import { DatosFiscalesCard } from '../components/DatosFiscalesCard';
 import { DatosTallerCard } from '../components/DatosTallerCard';
 import { PortalClientesCard } from '../components/PortalClientesCard';
 import { StockSucursalesCard } from '../components/StockSucursalesCard';
+import { TerminosVentaCard } from '../components/TerminosVentaCard';
 import { NombreTipoModal } from '../components/NombreTipoModal';
 
 /** Datos del taller (admin), tipos de equipo de la sucursal y el checklist de recepción de cada uno. */
@@ -72,6 +73,7 @@ export function ConfiguracionPage() {
       {esAdmin && <DatosTallerCard onError={setError} onGuardado={setExito} />}
       {esAdmin && <DatosFiscalesCard onError={setError} onGuardado={setExito} />}
       {esAdmin && <StockSucursalesCard onError={setError} onGuardado={setExito} />}
+      {esAdmin && <TerminosVentaCard onError={setError} onGuardado={setExito} />}
       <PortalClientesCard />
 
       <Card>

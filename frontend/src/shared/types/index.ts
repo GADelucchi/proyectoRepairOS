@@ -36,6 +36,8 @@ export interface Taller {
   fiscal?: DatosFiscales;
   /** Cada sucursal ve el stock de equipos de las demás. */
   stockEntreSucursales?: boolean;
+  /** Se imprimen en el comprobante de cada venta de equipos. */
+  terminosVenta?: string | null;
 }
 
 export type CondicionIvaEmisor = 'monotributo' | 'responsable_inscripto' | 'exento';
@@ -104,7 +106,7 @@ export interface Plan {
   precioMensual?: number | null;
 }
 
-export type TipoNotificacion = 'taller_nuevo' | 'usuario_nuevo' | 'autorizacion';
+export type TipoNotificacion = 'taller_nuevo' | 'usuario_nuevo' | 'autorizacion' | 'venta';
 
 /** Aviso de la campanita. */
 export interface Notificacion {
@@ -373,6 +375,8 @@ export interface ResumenCaja {
   alcance: 'sucursal' | 'taller';
   /** Un renglón por moneda que tuvo movimientos en el período. */
   totales: TotalesCaja[];
+  /** Reparaciones, ventas de equipos, señas y señas devueltas (que restan). */
+  porOrigen: GrupoCaja[];
   porMedioDePago: GrupoCaja[];
   porUsuario: GrupoCaja[];
   porSucursal: GrupoCaja[];
@@ -385,9 +389,13 @@ export interface TotalesCaja {
   ajustes: { debito: number; credito: number };
 }
 
+/** De dónde viene la plata de la caja. */
+export type OrigenCobro = 'reparacion' | 'venta' | 'sena' | 'devolucion';
+
 export interface MovimientoCaja {
   id: number;
-  tipo: TipoMovimiento;
+  origen: OrigenCobro;
+  /** Negativo en una seña devuelta. */
   monto: string;
   moneda: Moneda;
   medioPago: MedioPago | null;
@@ -396,6 +404,9 @@ export interface MovimientoCaja {
   clienteId: number;
   cliente: string;
   numeroOrden: string | null;
+  ordenId: number | null;
+  numeroVenta: number | null;
+  ventaId: number | null;
   usuario: string;
   sucursal: string | null;
 }
@@ -403,7 +414,7 @@ export interface MovimientoCaja {
 export type CondicionEquipo = 'nuevo' | 'usado';
 
 /** Disponible se puede vender; reservado es sin pago y señado con pago parcial. */
-export type EstadoStock = 'disponible' | 'reservado' | 'senado' | 'vendido';
+export type EstadoStock = 'disponible' | 'reservado' | 'senado' | 'vendido' | 'baja';
 
 /** Una unidad del stock de equipos para la venta, con su propio costo. */
 export interface EquipoStock {
@@ -426,14 +437,29 @@ export interface EquipoStock {
   fechaCompra: string;
   proveedor: string | null;
   monedaCosto: Moneda;
-  costo: Monto;
+  /** Null para quien no es admin: los costos no salen del servidor. */
+  costo: Monto | null;
   /** 1 US$ en la moneda del costo, el día de compra. */
   cotizacionCosto: Monto | null;
-  costoUsd: number;
+  costoUsd: number | null;
   monedaPrecio: Moneda | null;
   precio: Monto | null;
   estado: EstadoStock;
   observaciones: string | null;
+  bajaEn: string | null;
+  motivoBaja: string | null;
+  bajaPor?: { id: number; nombre: string; apellido: string } | null;
+  /** La venta en la que el cliente lo dejó como parte de pago. */
+  recibidoEnVentaId: number | null;
+  /** La venta en la que está, si está apartado o vendido (no siempre viene). */
+  venta?: {
+    id: number;
+    etiqueta: string;
+    estado: EstadoVenta;
+    precio: Monto;
+    moneda: Moneda;
+    fecha: string;
+  } | null;
   createdAt: string;
 }
 
@@ -442,8 +468,9 @@ export interface ResumenStock {
   reservados: number;
   senados: number;
   vendidos: number;
-  /** Lo que costó lo que queda sin vender, en US$. */
-  costoStockUsd: number;
+  bajas: number;
+  /** Lo que costó lo que queda sin vender, en US$. Null para quien no es admin. */
+  costoStockUsd: number | null;
   /** Lo que hay de cada modelo, con cada costo por separado. */
   porModelo: {
     marca: string;
@@ -451,5 +478,133 @@ export interface ResumenStock {
     almacenamientoGb: number | null;
     cantidad: number;
     costos: { moneda: Moneda; costo: number; cantidad: number }[];
+  }[];
+}
+
+export type EstadoVenta = 'reservada' | 'senada' | 'completada' | 'cancelada' | 'vencida';
+export type TipoDescuento = 'porcentaje' | 'monto';
+export type TipoPagoVenta = 'sena' | 'pago' | 'devolucion';
+
+export interface VentaItem {
+  id: number;
+  equipoStockId: number;
+  /** En la moneda de la venta. */
+  precio: Monto;
+  equipo: EquipoStock | null;
+}
+
+/** Un equipo que dejó el cliente como parte de pago. */
+export interface VentaPartePago {
+  id: number;
+  marca: string;
+  modelo: string;
+  color: string | null;
+  almacenamientoGb: number | null;
+  condicion: CondicionEquipo;
+  bateria: number | null;
+  numeroSerie: string | null;
+  imei: string | null;
+  imei2: string | null;
+  monto: Monto;
+  observaciones: string | null;
+  /** El equipo del stock en el que se convirtió al completar la venta. */
+  equipoStockId: number | null;
+}
+
+export interface VentaPago {
+  id: number;
+  tipo: TipoPagoVenta;
+  monto: Monto;
+  moneda: Moneda;
+  medioPago: MedioPago | null;
+  usuario?: { id: number; nombre: string; apellido: string };
+  createdAt: string;
+}
+
+export interface Venta {
+  id: number;
+  numero: number;
+  /** VTA-000042 */
+  etiqueta: string;
+  estado: EstadoVenta;
+  cliente: Cliente;
+  sucursalId: number;
+  sucursal?: { id: number; nombre: string };
+  vendedor?: { id: number; nombre: string; apellido: string } | null;
+  canceladaPor?: { id: number; nombre: string; apellido: string } | null;
+  moneda: Moneda;
+  cotizacion: Monto | null;
+  subtotal: Monto;
+  descuentoTipo: TipoDescuento | null;
+  descuentoValor: Monto | null;
+  descuento: Monto;
+  total: Monto;
+  partePago: Monto;
+  pagado: number;
+  saldo: number;
+  reservadaHasta: string | null;
+  comentarioCliente: string | null;
+  comentarioInterno: string | null;
+  completadaEn: string | null;
+  canceladaEn: string | null;
+  motivoCancelacion: string | null;
+  createdAt: string;
+  items: VentaItem[];
+  partesPago: VentaPartePago[];
+  pagos: VentaPago[];
+}
+
+/** Una venta en el listado: lo justo para encontrarla y saber qué falta. */
+export interface VentaEnLista {
+  id: number;
+  numero: number;
+  etiqueta: string;
+  estado: EstadoVenta;
+  cliente: Pick<Cliente, 'id' | 'nombre' | 'apellido' | 'telefono'>;
+  sucursal?: { id: number; nombre: string };
+  vendedor: string | null;
+  moneda: Moneda;
+  total: Monto;
+  partePago: Monto;
+  pagado: number;
+  saldo: number;
+  reservadaHasta: string | null;
+  senadaDesde: string | null;
+  createdAt: string;
+  completadaEn: string | null;
+  equipos: Pick<
+    EquipoStock,
+    'id' | 'numero' | 'marca' | 'modelo' | 'color' | 'almacenamientoGb' | 'condicion' | 'bateria'
+  >[];
+}
+
+export interface InformeVentas {
+  rango: { desde: string; hasta: string };
+  alcance: 'sucursal' | 'taller';
+  resumen: {
+    ventas: number;
+    equipos: number;
+    brutoUsd: number;
+    costoUsd: number;
+    gananciaUsd: number;
+    /** Ganancia sobre el bruto, en %. */
+    margen: number | null;
+    /** Lo que se recibió en equipos (entró al stock). */
+    partePagoUsd: number;
+  };
+  ventas: {
+    id: number;
+    etiqueta: string;
+    completadaEn: string;
+    cliente: string;
+    vendedor: string | null;
+    moneda: Moneda;
+    total: number;
+    cotizacion: number | null;
+    equipos: { numero: number | null; marca: string; modelo: string; almacenamientoGb: number | null }[];
+    brutoUsd: number;
+    costoUsd: number;
+    gananciaUsd: number;
+    partePagoUsd: number;
   }[];
 }

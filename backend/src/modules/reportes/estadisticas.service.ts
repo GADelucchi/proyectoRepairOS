@@ -111,10 +111,17 @@ export async function tablero(tallerId: number, sucursalId: number) {
         p
       ),
       consultar<{ moneda: string; total: string }>(
-        `SELECT m.moneda, SUM(m.monto) AS total FROM cuenta_movimientos m
-        WHERE m.taller_id = :tallerId AND m.sucursal_id = :sucursalId AND m.tipo = 'pago'
-          AND m.created_at >= :inicioHoy AND m.created_at < :finHoy
-        GROUP BY m.moneda`,
+        // Lo mismo que suma la caja: reparaciones y ventas de equipos (una seña devuelta resta).
+        `SELECT cobro.moneda, SUM(cobro.monto) AS total FROM (
+           SELECT m.moneda, m.monto FROM cuenta_movimientos m
+            WHERE m.taller_id = :tallerId AND m.sucursal_id = :sucursalId AND m.tipo = 'pago'
+              AND m.created_at >= :inicioHoy AND m.created_at < :finHoy
+           UNION ALL
+           SELECT m.moneda, CASE WHEN m.tipo = 'devolucion' THEN -m.monto ELSE m.monto END FROM venta_pagos m
+            WHERE m.taller_id = :tallerId AND m.sucursal_id = :sucursalId
+              AND m.created_at >= :inicioHoy AND m.created_at < :finHoy
+         ) AS cobro
+        GROUP BY cobro.moneda`,
         p
       ),
       // Para la guía de primeros pasos: qué le falta configurar al taller.

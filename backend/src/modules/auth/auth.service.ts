@@ -146,7 +146,15 @@ export async function perfil(usuarioId: number, sucursalIdDelToken?: number) {
       {
         model: Taller,
         as: 'taller',
-        attributes: ['id', 'nombre', 'pais', 'codigoPublico', 'stockEntreSucursales', ...ATRIBUTOS_FISCALES]
+        attributes: [
+          'id',
+          'nombre',
+          'pais',
+          'codigoPublico',
+          'stockEntreSucursales',
+          'terminosVenta',
+          ...ATRIBUTOS_FISCALES
+        ]
       }
     ]
   });
@@ -171,6 +179,7 @@ export async function perfil(usuarioId: number, sucursalIdDelToken?: number) {
           // Link para que sus clientes consulten sus datos y su cuenta.
           portalClientes: urlDelPortal(await codigoPublicoDe(user.taller)),
           stockEntreSucursales: user.taller.stockEntreSucursales,
+          terminosVenta: user.taller.terminosVenta,
           fiscal: datosFiscalesDe(user.taller)
         }
       : null,

@@ -21,6 +21,10 @@ import { Solicitud } from './Solicitud';
 import { Notificacion } from './Notificacion';
 import { TokenUsuario } from './TokenUsuario';
 import { EquipoStock } from './EquipoStock';
+import { Venta } from './Venta';
+import { VentaItem } from './VentaItem';
+import { VentaPartePago } from './VentaPartePago';
+import { VentaPago } from './VentaPago';
 
 Taller.initModel(sequelize);
 Plan.initModel(sequelize);
@@ -44,6 +48,10 @@ Solicitud.initModel(sequelize);
 Notificacion.initModel(sequelize);
 TokenUsuario.initModel(sequelize);
 EquipoStock.initModel(sequelize);
+Venta.initModel(sequelize);
+VentaItem.initModel(sequelize);
+VentaPartePago.initModel(sequelize);
+VentaPago.initModel(sequelize);
 
 // Taller -> todo lo que se consulta desde la raíz
 Taller.hasOne(Suscripcion, { foreignKey: 'tallerId', as: 'suscripcion' });
@@ -165,6 +173,20 @@ User.hasMany(Notificacion, { foreignKey: 'usuarioId', as: 'notificaciones' });
 Taller.hasMany(EquipoStock, { foreignKey: 'tallerId', as: 'stock' });
 EquipoStock.belongsTo(Sucursal, { foreignKey: 'sucursalId', as: 'sucursal' });
 EquipoStock.belongsTo(User, { foreignKey: 'cargadoPorId', as: 'cargadoPor' });
+EquipoStock.belongsTo(User, { foreignKey: 'bajaPorId', as: 'bajaPor' });
+
+// Ventas de equipos del stock
+Taller.hasMany(Venta, { foreignKey: 'tallerId', as: 'ventas' });
+Venta.belongsTo(Cliente, { foreignKey: 'clienteId', as: 'cliente' });
+Venta.belongsTo(Sucursal, { foreignKey: 'sucursalId', as: 'sucursal' });
+Venta.belongsTo(User, { foreignKey: 'vendedorId', as: 'vendedor' });
+Venta.belongsTo(User, { foreignKey: 'canceladaPorId', as: 'canceladaPor' });
+Venta.hasMany(VentaItem, { foreignKey: 'ventaId', as: 'items' });
+VentaItem.belongsTo(EquipoStock, { foreignKey: 'equipoStockId', as: 'equipo' });
+VentaItem.belongsTo(Venta, { foreignKey: 'ventaId', as: 'venta' });
+Venta.hasMany(VentaPartePago, { foreignKey: 'ventaId', as: 'partesPago' });
+Venta.hasMany(VentaPago, { foreignKey: 'ventaId', as: 'pagos' });
+VentaPago.belongsTo(User, { foreignKey: 'usuarioId', as: 'usuario' });
 
 export {
   sequelize,
@@ -189,5 +211,9 @@ export {
   Solicitud,
   Notificacion,
   TokenUsuario,
-  EquipoStock
+  EquipoStock,
+  Venta,
+  VentaItem,
+  VentaPartePago,
+  VentaPago
 };

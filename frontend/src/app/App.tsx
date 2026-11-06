@@ -78,6 +78,16 @@ const EquipoDetallePage = diferida(
 const EscanearQrPage = diferida(() => import('@/features/equipos/pages/EscanearQrPage'), 'EscanearQrPage');
 const StockPage = diferida(() => import('@/features/stock/pages/StockPage'), 'StockPage');
 const EquipoStockPage = diferida(() => import('@/features/stock/pages/EquipoStockPage'), 'EquipoStockPage');
+const VentasPage = diferida(() => import('@/features/ventas/pages/VentasPage'), 'VentasPage');
+const VentaNuevaPage = diferida(() => import('@/features/ventas/pages/VentaNuevaPage'), 'VentaNuevaPage');
+const VentaDetallePage = diferida(
+  () => import('@/features/ventas/pages/VentaDetallePage'),
+  'VentaDetallePage'
+);
+const InformeVentasPage = diferida(
+  () => import('@/features/ventas/pages/InformeVentasPage'),
+  'InformeVentasPage'
+);
 const CuentasPage = diferida(() => import('@/features/cuentas/pages/CuentasPage'), 'CuentasPage');
 const CajaPage = diferida(() => import('@/features/caja/pages/CajaPage'), 'CajaPage');
 const SolicitudesPage = diferida(
@@ -124,7 +134,11 @@ export function App() {
 
             <Route element={<RutaConSucursal />}>
               <Route path="/inicio" element={<InicioPage />} />
-              <Route path="/reportes" element={<ReportesPage />} />
+              {/* Informes y costos: solo admin (la API también lo exige). */}
+              <Route element={<RutaAdmin />}>
+                <Route path="/reportes" element={<ReportesPage />} />
+                <Route path="/ventas/informe" element={<InformeVentasPage />} />
+              </Route>
               <Route path="/ordenes" element={<OrdenesPage />} />
               <Route path="/ordenes/nueva" element={<OrdenNuevaPage />} />
               <Route path="/ordenes/:id" element={<OrdenDetallePage />} />
@@ -136,6 +150,9 @@ export function App() {
               <Route path="/stock" element={<StockPage />} />
               <Route path="/stock/nuevo" element={<EquipoStockPage />} />
               <Route path="/stock/:id" element={<EquipoStockPage />} />
+              <Route path="/ventas" element={<VentasPage />} />
+              <Route path="/ventas/nueva" element={<VentaNuevaPage />} />
+              <Route path="/ventas/:id" element={<VentaDetallePage />} />
               <Route path="/cuentas" element={<CuentasPage />} />
               <Route path="/caja" element={<CajaPage />} />
               <Route path="/autorizaciones" element={<SolicitudesPage />} />

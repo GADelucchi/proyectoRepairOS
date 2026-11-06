@@ -4,6 +4,7 @@ import {
   esImeiValido,
   formularioAInput,
   formularioVacio,
+  imeiLeido,
   otroIgual,
   textoAlmacenamiento,
   validarFormulario,
@@ -74,4 +75,24 @@ describe('formulario de stock', () => {
       describirEquipoStock({ marca: 'Apple', modelo: 'iPhone 13', almacenamientoGb: 128, color: 'Azul' })
     ).toBe('Apple iPhone 13 · 128 GB · Azul');
   });
+});
+
+describe('imeiLeido', () => {
+  it('toma el IMEI de un código de barras o de un QR con más datos', () => {
+    expect(imeiLeido('490154203237518')).toBe('490154203237518');
+    expect(imeiLeido('IMEI1:356789101234563 IMEI2:490154203237518')).toBe('356789101234563');
+    expect(imeiLeido('IMEI1:356789101234563 IMEI2:490154203237518', '356789101234563')).toBe(
+      '490154203237518'
+    );
+  });
+
+  it('un serial o un IMEI con el control mal no sirven', () => {
+    expect(imeiLeido('F2LXK9QWN1')).toBeNull();
+    expect(imeiLeido('490154203237519')).toBeNull();
+  });
+});
+
+it('quien no es admin edita sin ver el costo', () => {
+  expect(validarFormulario({ ...iphone, costo: '' }, false)).toBeNull();
+  expect(validarFormulario({ ...iphone, costo: '' })).toContain('valor de compra');
 });

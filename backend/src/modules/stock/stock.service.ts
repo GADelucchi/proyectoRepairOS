@@ -1,32 +1,83 @@
-import { Op, WhereOptions, col, fn, literal } from 'sequelize';
+import { Op, Transaction, WhereOptions, col, fn, literal } from 'sequelize';
 import { z } from 'zod';
 import { sequelize } from '../../config/database';
-import { Contador, EquipoStock, Sucursal, Taller } from '../../models';
-import { EquipoStockAttributes, EstadoStock } from '../../models/EquipoStock';
+import { Contador, EquipoStock, Sucursal, Taller, User, Venta, VentaItem } from '../../models';
+import { EquipoStockAttributes, EquipoStockCreationAttributes, EstadoStock } from '../../models/EquipoStock';
 import { errores } from '../../shared/http/http-error';
 import { aNumero, enDolares, redondearMonto } from '../../shared/utils/dinero';
+import { etiquetaVenta } from '../ventas/calculos';
 import { EquipoStockInput, listarStockQuery } from './stock.schemas';
 
-/** Quién opera: el stock se carga y se ve desde la sucursal elegida. */
+/** Quién opera: el stock se carga y se ve desde la sucursal elegida. Los costos los ve solo un admin. */
 export interface ContextoStock {
   tallerId: number;
   sucursalId: number;
   usuarioId: number;
+  esAdmin: boolean;
 }
+
+/** Lo que ya no está en el stock: no cuenta para el valor ni para los repetidos. */
+const FUERA_DEL_STOCK: EstadoStock[] = ['vendido', 'baja'];
 
 const LIMITE_LISTADO = 200;
 
-const INCLUDES = [{ model: Sucursal, as: 'sucursal', attributes: ['id', 'nombre'] }];
+const INCLUDES = [
+  { model: Sucursal, as: 'sucursal', attributes: ['id', 'nombre'] },
+  { model: User, as: 'bajaPor', attributes: ['id', 'nombre', 'apellido'] }
+];
 
 /** #0042: el número con el que se nombra al equipo en el mostrador. */
 export const etiquetaNumero = (numero: number) => `#${String(numero).padStart(4, '0')}`;
 
-/** Equipo tal como sale por la API, con el costo ya pasado a dólares para sumar. */
-export function serializarEquipoStock(equipo: EquipoStock) {
-  return {
-    ...equipo.get({ plain: true }),
-    costoUsd: enDolares(equipo.costo, equipo.monedaCosto, equipo.cotizacionCosto)
-  };
+/**
+ * Equipo tal como sale por la API, con el costo ya pasado a dólares para sumar.
+ * Sin `verCostos` (quien no es admin), el costo no sale del servidor.
+ */
+export function serializarEquipoStock(equipo: EquipoStock, verCostos: boolean) {
+  const datos = equipo.get({ plain: true });
+  if (!verCostos) return { ...datos, costo: null, cotizacionCosto: null, costoUsd: null };
+  return { ...datos, costoUsd: enDolares(equipo.costo, equipo.monedaCosto, equipo.cotizacionCosto) };
+}
+
+/**
+ * La venta en la que está cada equipo apartado o vendido: para mostrar a quién,
+ * cuándo y a cuánto. Las canceladas y vencidas no cuentan (el equipo volvió).
+ */
+async function ventasDe(equipos: EquipoStock[]) {
+  const ids = equipos.filter((e) => e.estado !== 'disponible' && e.estado !== 'baja').map((e) => e.id);
+  if (ids.length === 0) return new Map<number, Record<string, unknown>>();
+  const items = await VentaItem.findAll({
+    where: { equipoStockId: ids },
+    attributes: ['equipoStockId', 'precio'],
+    include: [
+      {
+        model: Venta,
+        as: 'venta',
+        required: true,
+        where: { estado: ['reservada', 'senada', 'completada'] },
+        attributes: ['id', 'numero', 'estado', 'moneda', 'createdAt', 'completadaEn']
+      }
+    ]
+  });
+  return new Map(
+    items.map((i) => [
+      i.equipoStockId,
+      {
+        id: i.venta!.id,
+        etiqueta: etiquetaVenta(i.venta!.numero),
+        estado: i.venta!.estado,
+        precio: i.precio,
+        moneda: i.venta!.moneda,
+        fecha: i.venta!.completadaEn ?? i.venta!.createdAt
+      }
+    ])
+  );
+}
+
+/** Con la venta de cada uno, si está apartado o vendido. */
+export async function serializarConVenta(equipos: EquipoStock[], verCostos: boolean) {
+  const ventas = await ventasDe(equipos);
+  return equipos.map((e) => ({ ...serializarEquipoStock(e, verCostos), venta: ventas.get(e.id) ?? null }));
 }
 
 async function veOtrasSucursales(tallerId: number): Promise<boolean> {
@@ -63,32 +114,58 @@ export async function equipoVisible(ctx: ContextoStock, id: number): Promise<Equ
   return equipo;
 }
 
+type Identificacion = Pick<EquipoStockInput, 'imei' | 'imei2' | 'numeroSerie'>;
+
 /**
- * Un IMEI o un serial no puede estar dos veces en el stock. Se compara solo con
- * lo no vendido: un equipo que se vendió puede volver (en parte de pago, por ejemplo).
+ * El equipo del stock que ya tiene alguno de estos IMEI o este serial. Se
+ * compara solo con lo que sigue en el stock: un equipo vendido puede volver (en
+ * parte de pago, por ejemplo).
  */
-async function exigirSinDuplicados(tallerId: number, datos: EquipoStockInput, excluirId?: number) {
+export async function buscarRepetido(
+  tallerId: number,
+  datos: Identificacion,
+  { excluirId, transaction }: { excluirId?: number; transaction?: Transaction } = {}
+) {
   const imeis = [datos.imei, datos.imei2].filter((v): v is string => Boolean(v));
   const condiciones: WhereOptions<EquipoStockAttributes>[] = [
     ...imeis.flatMap((imei) => [{ imei }, { imei2: imei }]),
     ...(datos.numeroSerie ? [{ numeroSerie: datos.numeroSerie }] : [])
   ];
-  if (condiciones.length === 0) return;
+  if (condiciones.length === 0) return null;
 
-  const otro = await EquipoStock.findOne({
+  return EquipoStock.findOne({
     where: {
       tallerId,
-      estado: { [Op.ne]: 'vendido' },
+      estado: { [Op.notIn]: FUERA_DEL_STOCK },
       [Op.or]: condiciones,
       ...(excluirId ? { id: { [Op.ne]: excluirId } } : {})
     },
-    attributes: ['numero', 'marca', 'modelo']
+    attributes: ['id', 'numero', 'marca', 'modelo', 'estado', 'sucursalId'],
+    transaction
   });
+}
+
+/** Un IMEI o un serial no puede estar dos veces en el stock. */
+export async function exigirSinRepetidos(
+  tallerId: number,
+  datos: Identificacion,
+  opciones: { excluirId?: number; transaction?: Transaction } = {}
+) {
+  const otro = await buscarRepetido(tallerId, datos, opciones);
   if (otro) {
     throw errores.conflicto(
       `Ese IMEI o número de serie ya está en el stock: ${etiquetaNumero(otro.numero)} (${otro.marca} ${otro.modelo}).`
     );
   }
+}
+
+/**
+ * Bloquea la fila del taller hasta el final de la transacción: dos cargas
+ * simultáneas del mismo IMEI se hacen una después de la otra, y la segunda ve
+ * a la primera al buscar repetidos.
+ */
+async function bloquearStockDelTaller(tallerId: number, transaction: Transaction) {
+  await Taller.findByPk(tallerId, { attributes: ['id'], lock: transaction.LOCK.UPDATE, transaction });
 }
 
 /** Los montos como los guarda la base: DECIMAL, que Sequelize maneja como string. */
@@ -101,25 +178,40 @@ function filaDe(datos: EquipoStockInput) {
   };
 }
 
-export async function crearEquipoStock(ctx: ContextoStock, datos: EquipoStockInput) {
-  await exigirSinDuplicados(ctx.tallerId, datos);
-  const creado = await sequelize.transaction(async (transaction) => {
-    const numero = await Contador.reservarSiguiente(`stock:${ctx.tallerId}`, transaction);
-    return EquipoStock.create(
-      {
-        ...filaDe(datos),
-        tallerId: ctx.tallerId,
-        sucursalId: ctx.sucursalId,
-        numero,
-        cargadoPorId: ctx.usuarioId
-      },
-      { transaction }
-    );
-  });
-  return serializarEquipoStock(await equipoVisible(ctx, creado.id));
+type FilaNueva = Omit<EquipoStockCreationAttributes, 'tallerId' | 'sucursalId' | 'numero' | 'cargadoPorId'>;
+
+/** Alta de un equipo dentro de una transacción ya abierta (la usa también la venta, con la parte de pago). */
+export async function ingresarAlStock(ctx: ContextoStock, fila: FilaNueva, transaction: Transaction) {
+  await bloquearStockDelTaller(ctx.tallerId, transaction);
+  await exigirSinRepetidos(ctx.tallerId, fila as Identificacion, { transaction });
+  const numero = await Contador.reservarSiguiente(`stock:${ctx.tallerId}`, transaction);
+  return EquipoStock.create(
+    { ...fila, tallerId: ctx.tallerId, sucursalId: ctx.sucursalId, numero, cargadoPorId: ctx.usuarioId },
+    { transaction }
+  );
 }
 
-/** Un vendido ya no se edita: sus datos son los de la venta. */
+export async function crearEquipoStock(ctx: ContextoStock, datos: EquipoStockInput) {
+  const creado = await sequelize.transaction((transaction) =>
+    ingresarAlStock(ctx, filaDe(datos), transaction)
+  );
+  return serializarEquipoStock(await equipoVisible(ctx, creado.id), ctx.esAdmin);
+}
+
+/**
+ * Quien no es admin no ve los costos, así que tampoco los cambia: al editar se
+ * conservan los que tenía el equipo.
+ */
+export function conCostosDe(equipo: EquipoStock, datos: Record<string, unknown>): Record<string, unknown> {
+  return {
+    ...datos,
+    monedaCosto: equipo.monedaCosto,
+    costo: aNumero(equipo.costo),
+    cotizacionCosto: equipo.cotizacionCosto == null ? null : aNumero(equipo.cotizacionCosto)
+  };
+}
+
+/** Un vendido o dado de baja ya no se edita: sus datos son los de ese momento. */
 export async function actualizarEquipoStock(
   ctx: ContextoStock,
   equipo: EquipoStock,
@@ -128,17 +220,28 @@ export async function actualizarEquipoStock(
   if (equipo.estado === 'vendido') {
     throw errores.conflicto('El equipo ya se vendió: sus datos no se pueden cambiar.');
   }
-  await exigirSinDuplicados(ctx.tallerId, datos, equipo.id);
-  await equipo.update(filaDe(datos));
-  return serializarEquipoStock(await equipoVisible(ctx, equipo.id));
+  if (equipo.estado === 'baja') throw errores.conflicto('El equipo está dado de baja.');
+  await sequelize.transaction(async (transaction) => {
+    await bloquearStockDelTaller(ctx.tallerId, transaction);
+    await exigirSinRepetidos(ctx.tallerId, datos, { excluirId: equipo.id, transaction });
+    await equipo.update(filaDe(datos), { transaction });
+  });
+  return serializarEquipoStock(await equipoVisible(ctx, equipo.id), ctx.esAdmin);
 }
 
-/** Para corregir una carga equivocada: solo un equipo que no está apartado ni vendido. */
-export async function eliminarEquipoStock(equipo: EquipoStock): Promise<void> {
+/**
+ * Sacar un equipo del stock (una carga equivocada, un equipo roto). Nunca se
+ * borra la fila: queda dado de baja con quién, cuándo y por qué. Solo un equipo
+ * que no está apartado ni vendido.
+ */
+export async function darDeBajaEquipoStock(ctx: ContextoStock, equipo: EquipoStock, motivo: string) {
   if (equipo.estado !== 'disponible') {
-    throw errores.conflicto('Solo se puede borrar un equipo disponible: este está apartado o vendido.');
+    throw errores.conflicto(
+      'Solo se puede dar de baja un equipo disponible: este está apartado, vendido o ya dado de baja.'
+    );
   }
-  await equipo.destroy();
+  await equipo.update({ estado: 'baja', bajaEn: new Date(), bajaPorId: ctx.usuarioId, motivoBaja: motivo });
+  return serializarEquipoStock(await equipoVisible(ctx, equipo.id), ctx.esAdmin);
 }
 
 /** Costo en dólares de una fila, en SQL, para sumar sin traer todo el stock. */
@@ -158,8 +261,8 @@ interface FilaPorModelo {
  * modelo con cada costo: "3 iPhone 13 de 128 GB, 1 a US$ 1.000 y 2 a US$ 900".
  * Mira la sucursal del listado, sin los demás filtros.
  */
-async function resumenDelStock(base: WhereOptions<EquipoStockAttributes>) {
-  const enStock = { ...base, estado: { [Op.ne]: 'vendido' as EstadoStock } };
+async function resumenDelStock(base: WhereOptions<EquipoStockAttributes>, verCostos: boolean) {
+  const enStock = { ...base, estado: { [Op.notIn]: FUERA_DEL_STOCK } };
 
   const [porEstado, costo, filas] = await Promise.all([
     EquipoStock.findAll({
@@ -213,11 +316,13 @@ async function resumenDelStock(base: WhereOptions<EquipoStockAttributes>) {
       costos: []
     };
     modelo.cantidad += Number(fila.cantidad);
-    modelo.costos.push({
-      moneda: fila.monedaCosto,
-      costo: aNumero(fila.costo),
-      cantidad: Number(fila.cantidad)
-    });
+    if (verCostos) {
+      modelo.costos.push({
+        moneda: fila.monedaCosto,
+        costo: aNumero(fila.costo),
+        cantidad: Number(fila.cantidad)
+      });
+    }
     modelos.set(clave, modelo);
   }
 
@@ -226,7 +331,8 @@ async function resumenDelStock(base: WhereOptions<EquipoStockAttributes>) {
     reservados: cantidades.reservado ?? 0,
     senados: cantidades.senado ?? 0,
     vendidos: cantidades.vendido ?? 0,
-    costoStockUsd: redondearMonto(aNumero(costo?.total)),
+    bajas: cantidades.baja ?? 0,
+    costoStockUsd: verCostos ? redondearMonto(aNumero(costo?.total)) : null,
     porModelo: [...modelos.values()]
   };
 }
@@ -243,7 +349,8 @@ export async function listarStock(ctx: ContextoStock, filtros: z.infer<typeof li
   const numero = search && /^#?\d{1,9}$/.test(search) ? Number(search.replace('#', '')) : null;
   const where: WhereOptions<EquipoStockAttributes> = {
     ...base,
-    ...(filtros.estado ? { estado: filtros.estado } : {}),
+    // Los dados de baja se ven solo si se los pide.
+    estado: filtros.estado ?? { [Op.ne]: 'baja' },
     ...(filtros.condicion ? { condicion: filtros.condicion } : {}),
     ...(search
       ? {
@@ -267,8 +374,8 @@ export async function listarStock(ctx: ContextoStock, filtros: z.infer<typeof li
       ],
       limit: LIMITE_LISTADO
     }),
-    resumenDelStock(base)
+    resumenDelStock(base, ctx.esAdmin)
   ]);
 
-  return { equipos: equipos.map(serializarEquipoStock), resumen };
+  return { equipos: await serializarConVenta(equipos, ctx.esAdmin), resumen };
 }

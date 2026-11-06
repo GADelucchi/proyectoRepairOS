@@ -7,6 +7,7 @@ import {
   LayoutDashboard,
   Package,
   ShieldCheck,
+  ShoppingBag,
   SlidersHorizontal,
   Smartphone,
   UserCog,
@@ -24,6 +25,8 @@ export interface ItemMenu {
   /** Marca para la guía de primeros pasos (`data-tour`). */
   tour?: string;
   title?: string;
+  /** Solo lo ve un admin (informes y costos). */
+  soloAdmin?: boolean;
 }
 
 export const ITEMS_MENU: ItemMenu[] = [
@@ -38,11 +41,30 @@ export const ITEMS_MENU: ItemMenu[] = [
     tono: 'orange',
     title: 'Stock de equipos para la venta'
   },
+  {
+    to: '/ventas',
+    etiqueta: 'Ventas',
+    icono: ShoppingBag,
+    tono: 'pink',
+    title: 'Ventas de equipos del stock'
+  },
   { to: '/cuentas', etiqueta: 'Cuentas', icono: Wallet, tono: 'amber', title: 'Cuenta corriente' },
   { to: '/caja', etiqueta: 'Caja', icono: Banknote, tono: 'green', tour: 'nav-caja' },
-  { to: '/reportes', etiqueta: 'Reportes', icono: ChartColumn, tono: 'indigo', tour: 'nav-reportes' },
+  {
+    to: '/reportes',
+    etiqueta: 'Reportes',
+    icono: ChartColumn,
+    tono: 'indigo',
+    tour: 'nav-reportes',
+    soloAdmin: true
+  },
   { to: '/autorizaciones', etiqueta: 'Autorizaciones', icono: ShieldCheck, tono: 'red' }
 ];
+
+/** Los ítems principales que ve este usuario. */
+export function itemsMenu(esAdmin: boolean): ItemMenu[] {
+  return ITEMS_MENU.filter((item) => esAdmin || !item.soloAdmin);
+}
 
 /** Los ítems de "Ajustes" que ve este usuario. */
 export function itemsAjustes(esAdmin: boolean, esAdminPlataforma: boolean): ItemMenu[] {

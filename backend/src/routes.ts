@@ -13,6 +13,7 @@ import { seguimientoRoutes } from './modules/seguimiento/seguimiento.routes';
 import { reportesRoutes } from './modules/reportes/reportes.routes';
 import { solicitudesRoutes } from './modules/solicitudes/solicitudes.routes';
 import { stockRoutes } from './modules/stock/stock.routes';
+import { ventasRoutes } from './modules/ventas/ventas.routes';
 import { sucursalesRoutes } from './modules/sucursales/sucursales.routes';
 import { usuariosRoutes } from './modules/usuarios/usuarios.routes';
 
@@ -32,6 +33,7 @@ apiRoutes.use('/equipos', equiposRoutes);
 apiRoutes.use('/ordenes', ordenesRoutes);
 apiRoutes.use('/cuentas', cuentasRoutes);
 apiRoutes.use('/stock', stockRoutes);
+apiRoutes.use('/ventas', ventasRoutes);
 apiRoutes.use('/solicitudes', solicitudesRoutes);
 apiRoutes.use('/reportes', reportesRoutes);
 apiRoutes.use('/configuracion', configuracionRoutes);

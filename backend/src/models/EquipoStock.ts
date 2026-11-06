@@ -8,9 +8,10 @@ export type CondicionEquipo = (typeof CONDICIONES_EQUIPO)[number];
 
 /**
  * Disponible se puede vender. Reservado: apartado sin pago hasta una fecha.
- * Señado: el cliente pagó una parte. Vendido: ya no está en el stock.
+ * Señado: el cliente pagó una parte. Vendido: ya no está en el stock. Baja: se
+ * sacó del stock (una carga equivocada, un equipo roto); nunca se borra la fila.
  */
-export const ESTADOS_STOCK = ['disponible', 'reservado', 'senado', 'vendido'] as const;
+export const ESTADOS_STOCK = ['disponible', 'reservado', 'senado', 'vendido', 'baja'] as const;
 export type EstadoStock = (typeof ESTADOS_STOCK)[number];
 
 /**
@@ -41,6 +42,10 @@ export interface EquipoStockAttributes {
   estado: EstadoStock;
   observaciones?: string | null;
   cargadoPorId?: number | null;
+  bajaEn?: Date | null;
+  bajaPorId?: number | null;
+  motivoBaja?: string | null;
+  recibidoEnVentaId?: number | null;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -61,6 +66,10 @@ export type EquipoStockCreationAttributes = Optional<
   | 'estado'
   | 'observaciones'
   | 'cargadoPorId'
+  | 'bajaEn'
+  | 'bajaPorId'
+  | 'motivoBaja'
+  | 'recibidoEnVentaId'
   | 'createdAt'
   | 'updatedAt'
 >;
@@ -99,6 +108,11 @@ export class EquipoStock
   declare estado: EstadoStock;
   declare observaciones: string | null;
   declare cargadoPorId: number | null;
+  declare bajaEn: Date | null;
+  declare bajaPorId: number | null;
+  declare motivoBaja: string | null;
+  /** La venta en la que el cliente lo dejó como parte de pago. */
+  declare recibidoEnVentaId: number | null;
   declare readonly createdAt: Date;
   declare readonly updatedAt: Date;
 
@@ -135,7 +149,11 @@ export class EquipoStock
           defaultValue: 'disponible'
         },
         observaciones: { type: DataTypes.TEXT, allowNull: true },
-        cargadoPorId: { type: DataTypes.INTEGER, allowNull: true, field: 'cargado_por_id' }
+        cargadoPorId: { type: DataTypes.INTEGER, allowNull: true, field: 'cargado_por_id' },
+        bajaEn: { type: DataTypes.DATE, allowNull: true, field: 'baja_en' },
+        bajaPorId: { type: DataTypes.INTEGER, allowNull: true, field: 'baja_por_id' },
+        motivoBaja: { type: DataTypes.STRING(255), allowNull: true, field: 'motivo_baja' },
+        recibidoEnVentaId: { type: DataTypes.INTEGER, allowNull: true, field: 'recibido_en_venta_id' }
       },
       {
         sequelize,

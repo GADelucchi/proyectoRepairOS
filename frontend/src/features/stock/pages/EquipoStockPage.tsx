@@ -1,4 +1,4 @@
-import { FormEvent, KeyboardEvent, useRef, useState } from 'react';
+import { FormEvent, useEffect, useRef, useState } from 'react';
 import {
   Alert,
   Badge,
@@ -8,19 +8,30 @@ import {
   Col,
   Form,
   InputGroup,
+  Modal,
   Row,
+  Table,
   ToggleButton
 } from 'react-bootstrap';
 import { Link, useNavigate, useParams } from 'react-router';
 import { useAuth } from '@/features/auth/useAuth';
 import { AlertaError } from '@/shared/components/AlertaError';
+import { CampoEscaneable } from '@/shared/components/CampoEscaneable';
 import { Cargando } from '@/shared/components/Cargando';
 import { DateInput } from '@/shared/components/DateInput';
 import { SelectorMoneda } from '@/shared/components/SelectorMoneda';
 import { useAccion } from '@/shared/hooks/useAccion';
 import { useConsulta } from '@/shared/hooks/useConsulta';
+import { useDebounce } from '@/shared/hooks/useDebounce';
 import type { CondicionEquipo, EquipoStock } from '@/shared/types';
-import { convertirDesdeBackend, fechaLocalISO } from '@/shared/utils/fechas';
+import { aNumero, formatearMonto } from '@/shared/utils/dinero';
+import {
+  convertirDesdeBackend,
+  fechaLocalISO,
+  formatearFecha,
+  formatearFechaHora
+} from '@/shared/utils/fechas';
+import { nombreCompleto } from '@/shared/utils/texto';
 import * as stockApi from '../api';
 import {
   ALMACENAMIENTOS_GB,
@@ -28,10 +39,13 @@ import {
   VARIANTE_ESTADO_STOCK,
   describirEquipoStock,
   equipoAFormulario,
+  esImeiValido,
   etiquetaNumero,
   formularioAInput,
   formularioVacio,
+  imeiLeido,
   otroIgual,
+  soloDigitos,
   textoAlmacenamiento,
   validarFormulario,
   type EquipoStockForm
@@ -53,8 +67,17 @@ export function EquipoStockPage() {
   return <FormularioEquipoStock key={id ?? 'nuevo'} equipo={equipo ?? null} />;
 }
 
-function FormularioEquipoStock({ equipo }: { equipo: EquipoStock | null }) {
+interface FormularioEquipoStockProps {
+  equipo: EquipoStock | null;
+  /** Dentro de otra pantalla (la venta): al guardar se avisa en vez de volver al stock. */
+  onGuardado?: (equipo: EquipoStock) => void;
+  onCancelar?: () => void;
+}
+
+/** El formulario de un equipo. Se usa en su página y, para cargar uno nuevo sin salir, dentro de la venta. */
+export function FormularioEquipoStock({ equipo, onGuardado, onCancelar }: FormularioEquipoStockProps) {
   const navigate = useNavigate();
+  const incrustado = Boolean(onGuardado);
   const { esAdmin } = useAuth();
   const [form, setForm] = useState<EquipoStockForm>(() =>
     equipo ? equipoAFormulario(equipo) : formularioVacio(convertirDesdeBackend(fechaLocalISO()))
@@ -62,15 +85,19 @@ function FormularioEquipoStock({ equipo }: { equipo: EquipoStock | null }) {
   const [error, setError] = useState<string | null>(null);
   const [cargado, setCargado] = useState<EquipoStock | null>(null);
   const { enCurso, ejecutar } = useAccion(setError);
+  const [darDeBaja, setDarDeBaja] = useState(false);
   const serialRef = useRef<HTMLInputElement>(null);
-  const editable = !equipo || equipo.estado !== 'vendido';
+  const editable = !equipo || (equipo.estado !== 'vendido' && equipo.estado !== 'baja');
+  // Los costos los ve solo un admin. Quien no lo es los carga al dar de alta, pero después no los ve.
+  const verCostos = esAdmin || !equipo;
+  const repetido = useRepetido(form, equipo?.id);
 
   function cambiar<K extends keyof EquipoStockForm>(campo: K, valor: EquipoStockForm[K]) {
     setForm((previo) => ({ ...previo, [campo]: valor }));
   }
 
   async function guardar(otro: boolean) {
-    const invalido = validarFormulario(form);
+    const invalido = validarFormulario(form, verCostos);
     if (invalido) {
       setError(invalido);
       return;
@@ -88,6 +115,8 @@ function FormularioEquipoStock({ equipo }: { equipo: EquipoStock | null }) {
       setCargado(guardado);
       setForm(otroIgual(form));
       serialRef.current?.focus();
+    } else if (onGuardado) {
+      onGuardado(guardado);
     } else {
       navigate('/stock');
     }
@@ -95,23 +124,22 @@ function FormularioEquipoStock({ equipo }: { equipo: EquipoStock | null }) {
 
   function enviar(e: FormEvent) {
     e.preventDefault();
+    // En un modal, el submit sube por el árbol de React hasta el formulario de la pantalla de atrás.
+    e.stopPropagation();
     guardar(false);
   }
 
-  async function eliminar() {
-    if (!equipo || !window.confirm(`¿Borrar ${etiquetaNumero(equipo.numero)} del stock?`)) return;
-    if (await ejecutar(() => stockApi.eliminarEquipoStock(equipo.id), 'No se pudo borrar el equipo')) {
-      navigate('/stock');
-    }
-  }
-
   return (
-    <div style={{ maxWidth: 960 }}>
-      <div className="small">
-        <Link to="/stock">Stock</Link>
-      </div>
+    <div style={incrustado ? undefined : { maxWidth: 960 }}>
+      {!incrustado && (
+        <div className="small">
+          <Link to="/stock">Stock</Link>
+        </div>
+      )}
       <div className="d-flex align-items-center gap-2 flex-wrap mb-3">
-        <h3 className="mb-0">{equipo ? `Equipo ${etiquetaNumero(equipo.numero)}` : 'Cargar equipo'}</h3>
+        {!incrustado && (
+          <h3 className="mb-0">{equipo ? `Equipo ${etiquetaNumero(equipo.numero)}` : 'Cargar equipo'}</h3>
+        )}
         {equipo && (
           <Badge bg={VARIANTE_ESTADO_STOCK[equipo.estado]}>{ETIQUETA_ESTADO_STOCK[equipo.estado]}</Badge>
         )}
@@ -124,8 +152,20 @@ function FormularioEquipoStock({ equipo }: { equipo: EquipoStock | null }) {
           siguiente.
         </Alert>
       )}
-      {!editable && (
+      {equipo?.estado === 'vendido' && (
         <Alert variant="secondary">El equipo ya se vendió: sus datos quedan como estaban en la venta.</Alert>
+      )}
+      {equipo?.estado === 'baja' && (
+        <Alert variant="dark">
+          Dado de baja el {formatearFechaHora(equipo.bajaEn)}
+          {equipo.bajaPor && ` por ${nombreCompleto(equipo.bajaPor)}`}: {equipo.motivoBaja}. Queda como
+          registro y ya no cuenta en el stock.
+        </Alert>
+      )}
+      {equipo?.recibidoEnVentaId && (
+        <Alert variant="info">
+          Entró como parte de pago en <Link to={`/ventas/${equipo.recibidoEnVentaId}`}>una venta</Link>.
+        </Alert>
       )}
       <AlertaError error={error} onCerrar={() => setError(null)} />
 
@@ -245,52 +285,58 @@ function FormularioEquipoStock({ equipo }: { equipo: EquipoStock | null }) {
             <Card.Body>
               <Row className="g-3">
                 <Col md={6}>
-                  <Form.Group controlId="stock-serial">
-                    <Form.Label>Número de serie</Form.Label>
-                    <Form.Control
-                      ref={serialRef}
-                      className="font-mono"
-                      autoCapitalize="characters"
-                      autoComplete="off"
-                      value={form.numeroSerie}
-                      maxLength={150}
-                      onKeyDown={sinEnviarConEnter}
-                      onChange={(e) => cambiar('numeroSerie', e.target.value)}
-                    />
-                  </Form.Group>
+                  <Form.Label htmlFor="stock-serial">Número de serie</Form.Label>
+                  <CampoEscaneable
+                    id="stock-serial"
+                    inputRef={serialRef}
+                    autoCapitalize="characters"
+                    value={form.numeroSerie}
+                    maxLength={150}
+                    tituloEscaner="Escanear número de serie"
+                    onChange={(v) => cambiar('numeroSerie', v)}
+                  />
                 </Col>
                 <Col md={6}>
-                  <Form.Group controlId="stock-imei">
-                    <Form.Label>IMEI</Form.Label>
-                    <Form.Control
-                      className="font-mono"
-                      inputMode="numeric"
-                      autoComplete="off"
-                      value={form.imei}
-                      onKeyDown={sinEnviarConEnter}
-                      onChange={(e) => cambiar('imei', e.target.value)}
-                    />
-                  </Form.Group>
+                  <Form.Label htmlFor="stock-imei">IMEI</Form.Label>
+                  <CampoEscaneable
+                    id="stock-imei"
+                    inputMode="numeric"
+                    value={form.imei}
+                    isInvalid={imeiInvalido(form.imei)}
+                    tituloEscaner="Escanear IMEI"
+                    esperado="un IMEI"
+                    aceptar={(texto) => imeiLeido(texto, form.imei2)}
+                    onChange={(v) => cambiar('imei', v)}
+                  />
                 </Col>
                 <Col md={6}>
-                  <Form.Group controlId="stock-imei2">
-                    <Form.Label>
-                      Segundo IMEI <span className="text-muted fw-normal">(equipos con dos SIM)</span>
-                    </Form.Label>
-                    <Form.Control
-                      className="font-mono"
-                      inputMode="numeric"
-                      autoComplete="off"
-                      value={form.imei2}
-                      onKeyDown={sinEnviarConEnter}
-                      onChange={(e) => cambiar('imei2', e.target.value)}
-                    />
-                  </Form.Group>
+                  <Form.Label htmlFor="stock-imei2">
+                    Segundo IMEI <span className="text-muted fw-normal">(equipos con dos SIM)</span>
+                  </Form.Label>
+                  <CampoEscaneable
+                    id="stock-imei2"
+                    inputMode="numeric"
+                    value={form.imei2}
+                    isInvalid={imeiInvalido(form.imei2)}
+                    tituloEscaner="Escanear segundo IMEI"
+                    esperado="un IMEI"
+                    aceptar={(texto) => imeiLeido(texto, form.imei)}
+                    onChange={(v) => cambiar('imei2', v)}
+                  />
                 </Col>
               </Row>
+              {repetido && (
+                <Alert variant="warning" className="mt-3 mb-0 py-2">
+                  Ya está en el stock como{' '}
+                  <Link to={`/stock/${repetido.id}`}>
+                    {repetido.etiqueta} ({repetido.marca} {repetido.modelo})
+                  </Link>
+                  , {ETIQUETA_ESTADO_STOCK[repetido.estado].toLowerCase()}. No se puede cargar dos veces.
+                </Alert>
+              )}
               <Form.Text className="text-muted d-block mt-2">
-                Con un lector de códigos USB o Bluetooth, hacé clic en el campo y escaneá la etiqueta de la
-                caja. Si el IMEI o el serial ya están en el stock, se avisa al guardar.
+                Escaneá la etiqueta de la caja con la cámara (el botón de cada campo) o con un lector USB o
+                Bluetooth, haciendo clic en el campo.
               </Form.Text>
             </Card.Body>
           </Card>
@@ -319,19 +365,25 @@ function FormularioEquipoStock({ equipo }: { equipo: EquipoStock | null }) {
                     />
                   </Form.Group>
                 </Col>
-                <Col md={6}>
-                  <Form.Label htmlFor="stock-costo">Valor de compra</Form.Label>
-                  <InputGroup>
-                    <SelectorMoneda value={form.monedaCosto} onChange={(m) => cambiar('monedaCosto', m)} />
-                    <Form.Control
-                      id="stock-costo"
-                      inputMode="decimal"
-                      value={form.costo}
-                      onChange={(e) => cambiar('costo', e.target.value)}
-                    />
-                  </InputGroup>
-                  <Form.Text className="text-muted">Cada equipo guarda su propio costo.</Form.Text>
-                </Col>
+                {verCostos && (
+                  <Col md={6}>
+                    <Form.Label htmlFor="stock-costo">Valor de compra</Form.Label>
+                    <InputGroup>
+                      <SelectorMoneda value={form.monedaCosto} onChange={(m) => cambiar('monedaCosto', m)} />
+                      <Form.Control
+                        id="stock-costo"
+                        inputMode="decimal"
+                        value={form.costo}
+                        onChange={(e) => cambiar('costo', e.target.value)}
+                      />
+                    </InputGroup>
+                    <Form.Text className="text-muted">
+                      {esAdmin
+                        ? 'Cada equipo guarda su propio costo.'
+                        : 'Después de guardar, el costo lo ve solo un administrador.'}
+                    </Form.Text>
+                  </Col>
+                )}
                 <Col md={6}>
                   <Form.Label htmlFor="stock-precio">Valor de venta</Form.Label>
                   <InputGroup>
@@ -345,7 +397,7 @@ function FormularioEquipoStock({ equipo }: { equipo: EquipoStock | null }) {
                   </InputGroup>
                   <Form.Text className="text-muted">Precio de lista. Se puede cambiar al vender.</Form.Text>
                 </Col>
-                {form.monedaCosto !== 'USD' && (
+                {verCostos && form.monedaCosto !== 'USD' && (
                   <Col md={6}>
                     <Form.Label htmlFor="stock-cotizacion">Cotización del día de compra</Form.Label>
                     <InputGroup>
@@ -379,16 +431,24 @@ function FormularioEquipoStock({ equipo }: { equipo: EquipoStock | null }) {
             </Card.Body>
           </Card>
 
+          {esAdmin && <MismoModeloEnStock form={form} excluirId={equipo?.id} />}
+
           <div className="d-flex flex-wrap gap-2 justify-content-end barra-acciones">
             {equipo && esAdmin && equipo.estado === 'disponible' && (
-              <Button variant="outline-danger" className="me-auto" onClick={eliminar}>
-                Borrar del stock
+              <Button variant="outline-danger" className="me-auto" onClick={() => setDarDeBaja(true)}>
+                Dar de baja
               </Button>
             )}
-            <Link className="btn btn-link" to="/stock">
-              Cancelar
-            </Link>
-            {!equipo && (
+            {incrustado ? (
+              <Button variant="link" onClick={onCancelar}>
+                Cancelar
+              </Button>
+            ) : (
+              <Link className="btn btn-link" to="/stock">
+                Cancelar
+              </Link>
+            )}
+            {!equipo && !incrustado && (
               <Button variant="outline-primary" onClick={() => guardar(true)}>
                 Guardar y cargar otro igual
               </Button>
@@ -397,14 +457,183 @@ function FormularioEquipoStock({ equipo }: { equipo: EquipoStock | null }) {
           </div>
         </fieldset>
       </Form>
+
+      {equipo && (
+        <DarDeBajaModal
+          show={darDeBaja}
+          equipo={equipo}
+          onCerrar={() => setDarDeBaja(false)}
+          onHecho={() => navigate('/stock')}
+        />
+      )}
     </div>
   );
 }
 
+const imeiInvalido = (imei: string) => soloDigitos(imei).length >= 15 && !esImeiValido(soloDigitos(imei));
+
 /**
- * Los lectores de código de barras "escriben" el número y mandan Enter: sin
- * esto, cada escaneo enviaría el formulario a medio llenar.
+ * Si el IMEI o el serial que se está cargando ya está en el stock. Se pregunta
+ * al terminar de escribir (o de escanear), así el aviso llega antes de guardar.
  */
-function sinEnviarConEnter(e: KeyboardEvent<HTMLInputElement>) {
-  if (e.key === 'Enter') e.preventDefault();
+function useRepetido(form: EquipoStockForm, excluirId?: number) {
+  const imeis = [form.imei, form.imei2].map(soloDigitos).filter(esImeiValido);
+  const serial = form.numeroSerie.trim();
+  const clave = useDebounce(`${imeis.join(',')}|${serial.length >= 5 ? serial : ''}`, 400);
+  const [repetido, setRepetido] = useState<stockApi.EquipoRepetido | null>(null);
+
+  useEffect(() => {
+    const [imeisClave, serialClave] = clave.split('|');
+    const consultas = [
+      ...imeisClave
+        .split(',')
+        .filter(Boolean)
+        .map((imei) => ({ imei })),
+      ...(serialClave ? [{ numeroSerie: serialClave }] : [])
+    ];
+    if (consultas.length === 0) {
+      setRepetido(null);
+      return;
+    }
+    let vigente = true;
+    Promise.all(consultas.map((q) => stockApi.verificarRepetido({ ...q, excluirId })))
+      .then((r) => vigente && setRepetido(r.find(Boolean) ?? null))
+      .catch(() => vigente && setRepetido(null));
+    return () => {
+      vigente = false;
+    };
+  }, [clave, excluirId]);
+
+  return repetido;
+}
+
+/**
+ * Lo que hay en el stock del mismo modelo, con lo que costó cada uno (solo
+ * admin): sirve para ver a cuánto se compró la última vez y poner el precio.
+ */
+function MismoModeloEnStock({ form, excluirId }: { form: EquipoStockForm; excluirId?: number }) {
+  const marca = useDebounce(form.marca.trim().toLowerCase(), 500);
+  const modelo = useDebounce(form.modelo.trim().toLowerCase(), 500);
+  const gb = formularioAInput({ ...form, fechaCompra: '01/01/2000' }).almacenamientoGb;
+  const { datos } = useConsulta(
+    () =>
+      modelo.length >= 2
+        ? stockApi.listarStock({ search: modelo }).then((r) => r.equipos)
+        : Promise.resolve([] as EquipoStock[]),
+    [modelo],
+    'No se pudo consultar el stock'
+  );
+  const iguales = (datos ?? []).filter(
+    (e) =>
+      e.id !== excluirId &&
+      e.estado !== 'vendido' &&
+      e.modelo.toLowerCase() === modelo &&
+      (!marca || e.marca.toLowerCase() === marca) &&
+      (!gb || e.almacenamientoGb === gb)
+  );
+  if (iguales.length === 0) return null;
+
+  return (
+    <Card className="mb-3">
+      <Card.Header>
+        Del mismo modelo en stock <span className="text-muted fw-normal">({iguales.length})</span>
+      </Card.Header>
+      <Card.Body className="p-0">
+        <Table size="sm" responsive className="mb-0 align-middle">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Equipo</th>
+              <th>Compra</th>
+              <th className="text-end">Costo</th>
+              <th className="text-end">Venta</th>
+            </tr>
+          </thead>
+          <tbody>
+            {iguales.map((e) => (
+              <tr key={e.id}>
+                <td className="font-mono small">
+                  <Link to={`/stock/${e.id}`}>{etiquetaNumero(e.numero)}</Link>
+                </td>
+                <td className="small">
+                  {describirEquipoStock(e)}{' '}
+                  <Badge bg={VARIANTE_ESTADO_STOCK[e.estado]}>{ETIQUETA_ESTADO_STOCK[e.estado]}</Badge>
+                </td>
+                <td className="small text-muted">{formatearFecha(e.fechaCompra)}</td>
+                <td className="text-end small">
+                  {e.costo != null ? formatearMonto(e.costo, e.monedaCosto) : '—'}
+                </td>
+                <td className="text-end small">
+                  {e.precio != null
+                    ? formatearMonto(aNumero(e.precio), e.monedaPrecio ?? e.monedaCosto)
+                    : '—'}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </Table>
+      </Card.Body>
+    </Card>
+  );
+}
+
+/** Sacar el equipo del stock sin borrarlo: queda con el motivo. */
+function DarDeBajaModal({
+  show,
+  equipo,
+  onCerrar,
+  onHecho
+}: {
+  show: boolean;
+  equipo: EquipoStock;
+  onCerrar: () => void;
+  onHecho: () => void;
+}) {
+  const [motivo, setMotivo] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const { enCurso, ejecutar } = useAccion(setError);
+
+  async function confirmar(e: FormEvent) {
+    e.preventDefault();
+    if (
+      await ejecutar(() => stockApi.darDeBajaEquipoStock(equipo.id, motivo.trim()), 'No se pudo dar de baja')
+    ) {
+      onHecho();
+    }
+  }
+
+  return (
+    <Modal show={show} onHide={onCerrar} centered>
+      <Form onSubmit={confirmar}>
+        <Modal.Header closeButton>
+          <Modal.Title as="h5">Dar de baja {etiquetaNumero(equipo.numero)}</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <p className="small text-muted">
+            Sale del stock pero no se borra: queda registrado quién lo dio de baja, cuándo y por qué.
+          </p>
+          <AlertaError error={error} onCerrar={() => setError(null)} />
+          <Form.Group controlId="baja-motivo">
+            <Form.Label>Motivo</Form.Label>
+            <Form.Control
+              value={motivo}
+              maxLength={255}
+              placeholder="Carga duplicada, equipo dañado, devuelto al proveedor…"
+              onChange={(e) => setMotivo(e.target.value)}
+              required
+              minLength={3}
+            />
+          </Form.Group>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={onCerrar}>
+            Volver
+          </Button>
+          <Button type="submit" variant="danger" disabled={enCurso || motivo.trim().length < 3}>
+            Dar de baja
+          </Button>
+        </Modal.Footer>
+      </Form>
+    </Modal>
+  );
 }

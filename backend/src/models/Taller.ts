@@ -21,6 +21,7 @@ export interface TallerAttributes {
   ingresosBrutos?: string | null;
   puntoVenta?: number | null;
   stockEntreSucursales?: boolean;
+  terminosVenta?: string | null;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -39,6 +40,7 @@ export type TallerCreationAttributes = Optional<
   | 'ingresosBrutos'
   | 'puntoVenta'
   | 'stockEntreSucursales'
+  | 'terminosVenta'
   | 'createdAt'
   | 'updatedAt'
 >;
@@ -73,6 +75,8 @@ export class Taller extends Model<TallerAttributes, TallerCreationAttributes> im
   declare puntoVenta: number | null;
   /** Cada sucursal ve el stock de las demás. Apagado, cada una ve solo lo suyo. */
   declare stockEntreSucursales: boolean;
+  /** Términos y condiciones que se imprimen en el comprobante de cada venta de equipos. */
+  declare terminosVenta: string | null;
   declare readonly createdAt: Date;
   declare readonly updatedAt: Date;
 
@@ -96,7 +100,8 @@ export class Taller extends Model<TallerAttributes, TallerCreationAttributes> im
           allowNull: false,
           defaultValue: false,
           field: 'stock_entre_sucursales'
-        }
+        },
+        terminosVenta: { type: DataTypes.TEXT, allowNull: true, field: 'terminos_venta' }
       },
       {
         sequelize,

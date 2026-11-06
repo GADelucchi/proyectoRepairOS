@@ -1,3 +1,4 @@
+import { expect } from 'vitest';
 import request from 'supertest';
 import { app } from '../../app';
 import { setEmailProvider } from '../../integrations/email';
@@ -102,3 +103,31 @@ export function capturarEmails(): EmailMessage[] {
 }
 
 export const restaurarEmails = () => setEmailProvider(null);
+
+/** Un técnico del taller con permiso en su sucursal, ya con la sesión en ella. */
+export async function tecnicoDe(taller: Sesion): Promise<Sesion> {
+  const email = `tec-${unico()}@test.local`;
+  const usuario = await api()
+    .post('/api/usuarios')
+    .set(taller.auth)
+    .send({ nombre: 'Téc', apellido: 'Nico', email, password: PASSWORD, rol: 'tecnico' })
+    .expect(201);
+  await api()
+    .post(`/api/sucursales/${taller.sucursalId}/permisos`)
+    .set(taller.auth)
+    .send({ usuarioId: usuario.body.id })
+    .expect((r) => expect([200, 201, 204]).toContain(r.status));
+  const login = await api().post('/api/auth/login').send({ email, password: PASSWORD }).expect(200);
+  const sesion = await api()
+    .post('/api/auth/seleccionar-sucursal')
+    .set({ Authorization: `Bearer ${login.body.token}` })
+    .send({ sucursalId: taller.sucursalId })
+    .expect(200);
+  return {
+    token: sesion.body.token,
+    email,
+    tallerId: taller.tallerId,
+    sucursalId: taller.sucursalId,
+    auth: { Authorization: `Bearer ${sesion.body.token}` }
+  };
+}

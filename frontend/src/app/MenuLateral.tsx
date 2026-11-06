@@ -5,7 +5,7 @@ import { ChevronRight, ChevronsUpDown, LogOut, Settings, Store } from 'lucide-re
 import { useAuth } from '@/features/auth/useAuth';
 import { AvisoAutorizaciones } from '@/features/solicitudes/components/AvisoAutorizaciones';
 import { Logo } from '@/shared/components/Logo';
-import { ITEMS_MENU, itemsAjustes, type ItemMenu } from './menu';
+import { itemsAjustes, itemsMenu, type ItemMenu } from './menu';
 
 function Enlace({ item, extra, onNavegar }: { item: ItemMenu; extra?: ReactNode; onNavegar: () => void }) {
   const Icono = item.icono;
@@ -65,7 +65,7 @@ export function MenuLateral({ onNavegar, onCambiarSucursal, onSalir }: MenuLater
 
       <div className="menu-lateral-scroll">
         <div className="menu-lateral-seccion">Menú</div>
-        {ITEMS_MENU.map((item) => (
+        {itemsMenu(esAdmin).map((item) => (
           <Enlace
             key={item.to}
             item={item}

@@ -28,7 +28,8 @@ const FILTROS_ESTADO: { valor: EstadoStock | ''; etiqueta: string }[] = [
   { valor: 'disponible', etiqueta: 'Disponibles' },
   { valor: 'reservado', etiqueta: 'Reservados' },
   { valor: 'senado', etiqueta: 'Señados' },
-  { valor: 'vendido', etiqueta: 'Vendidos' }
+  { valor: 'vendido', etiqueta: 'Vendidos' },
+  { valor: 'baja', etiqueta: 'Dados de baja' }
 ];
 
 /**
@@ -67,9 +68,14 @@ export function StockPage() {
     <div>
       <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
         <h3 className="mb-0">Stock de equipos</h3>
-        <Link className="btn btn-primary" to="/stock/nuevo">
-          + Cargar equipo
-        </Link>
+        <div className="d-flex gap-2">
+          <Link className="btn btn-outline-primary" to="/ventas/nueva">
+            Vender
+          </Link>
+          <Link className="btn btn-primary" to="/stock/nuevo">
+            + Cargar equipo
+          </Link>
+        </div>
       </div>
 
       {resumen && (
@@ -86,15 +92,18 @@ export function StockPage() {
               tono="amber"
             />
           </Col>
-          <Col>
-            <TarjetaDato
-              titulo="Costo del stock"
-              valor={formatearMonto(resumen.costoStockUsd, 'USD')}
-              detalle="Lo que queda sin vender, en US$"
-              icono={CircleDollarSign}
-              tono="blue"
-            />
-          </Col>
+          {/* El costo lo ve solo un admin: para el resto la API no lo manda. */}
+          {resumen.costoStockUsd != null && (
+            <Col>
+              <TarjetaDato
+                titulo="Costo del stock"
+                valor={formatearMonto(resumen.costoStockUsd, 'USD')}
+                detalle="Lo que queda sin vender, en US$"
+                icono={CircleDollarSign}
+                tono="blue"
+              />
+            </Col>
+          )}
           <Col>
             <TarjetaDato titulo="Vendidos" valor={resumen.vendidos} icono={Archive} tono="gris" />
           </Col>
@@ -218,8 +227,9 @@ export function StockPage() {
                     .join(' · ')}
                 </strong>
                 <span>
-                  {m.cantidad} {m.cantidad === 1 ? 'unidad' : 'unidades'}:{' '}
-                  {m.costos.map((c) => `${c.cantidad} × ${formatearMonto(c.costo, c.moneda)}`).join(' · ')}
+                  {m.cantidad} {m.cantidad === 1 ? 'unidad' : 'unidades'}
+                  {m.costos.length > 0 &&
+                    `: ${m.costos.map((c) => `${c.cantidad} × ${formatearMonto(c.costo, c.moneda)}`).join(' · ')}`}
                 </span>
               </div>
             ))}
@@ -230,27 +240,37 @@ export function StockPage() {
   );
 }
 
+/** Fecha y valor de compra. Sin el costo (quien no es admin no lo recibe), solo la fecha. */
 function CeldaCompra({ equipo: e }: { equipo: EquipoStock }) {
   return (
     <>
-      <div>{formatearMonto(e.costo, e.monedaCosto)}</div>
+      {e.costo != null && <div>{formatearMonto(e.costo, e.monedaCosto)}</div>}
       <div className="small text-muted">
         {formatearFecha(e.fechaCompra)}
-        {e.monedaCosto !== 'USD' && ` · ${formatearMonto(e.costoUsd, 'USD')}`}
+        {e.costoUsd != null && e.monedaCosto !== 'USD' && ` · ${formatearMonto(e.costoUsd, 'USD')}`}
       </div>
     </>
   );
 }
 
-/** Mientras no se vende, el precio de lista. La fecha y el valor de venta llegan con las ventas. */
+/** Vendido o apartado: la venta, cuándo y a cuánto. Si no, el precio de lista. */
 function CeldaVenta({ equipo: e }: { equipo: EquipoStock }) {
   return (
     <>
       <Badge bg={VARIANTE_ESTADO_STOCK[e.estado]}>{ETIQUETA_ESTADO_STOCK[e.estado]}</Badge>
       <div className="small mt-1">
-        {e.precio != null && e.monedaPrecio
-          ? `Lista ${formatearMonto(e.precio, e.monedaPrecio)}`
-          : 'Sin precio de lista'}
+        {e.venta ? (
+          <>
+            {formatearMonto(e.venta.precio, e.venta.moneda)}
+            <span className="text-muted"> · {formatearFecha(e.venta.fecha)}</span>
+          </>
+        ) : e.estado === 'baja' ? (
+          <span className="text-muted">{e.motivoBaja}</span>
+        ) : e.precio != null && e.monedaPrecio ? (
+          `Lista ${formatearMonto(e.precio, e.monedaPrecio)}`
+        ) : (
+          'Sin precio de lista'
+        )}
       </div>
     </>
   );
