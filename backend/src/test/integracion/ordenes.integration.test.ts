@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { api, crearOrden, tallerConSucursal } from './helpers';
+import { api, crearOrden, tallerConSucursal, type Sesion } from './helpers';
 
 describe('moneda', () => {
   it('una orden sin moneda toma la del país del taller', async () => {
@@ -63,6 +63,201 @@ describe('moneda', () => {
     ).toBe(true);
     const publico = await api().get(`/api/seguimiento/${detalle.body.codigoSeguimiento}`).expect(200);
     expect(JSON.stringify(publico.body)).not.toContain('nota aprobado');
+  });
+
+  /** Una orden lista para retirar, de un cliente con cuenta corriente. */
+  async function ordenLista(taller: Sesion, datos: { moneda: string; presupuestoMonto: number }) {
+    const orden = await crearOrden(taller, datos);
+    await api()
+      .put(`/api/clientes/${orden.clienteId}`)
+      .set(taller.auth)
+      .send({ cuentaCorrienteHabilitada: true })
+      .expect(200);
+    for (const estado of ['en_diagnostico', 'presupuestado', 'aprobado', 'listo_para_retirar']) {
+      await api().put(`/api/ordenes/${orden.id}/estado`).set(taller.auth).send({ estado }).expect(200);
+    }
+    return orden;
+  }
+
+  it('una orden presupuestada en dólares se puede cobrar en pesos', async () => {
+    const taller = await tallerConSucursal();
+    const orden = await ordenLista(taller, { moneda: 'USD', presupuestoMonto: 100 });
+
+    const entrega = await api()
+      .post(`/api/ordenes/${orden.id}/entrega`)
+      .set(taller.auth)
+      .send({ montoTotal: 120000, montoAbonado: 100000, moneda: 'ARS', medioPago: 'efectivo' })
+      .expect(200);
+    expect(entrega.body).toMatchObject({ moneda: 'USD', monedaCobro: 'ARS', saldoCliente: 20000 });
+
+    // La deuda y la caja quedan en la moneda en que se cobró.
+    const cuenta = await api().get(`/api/cuentas/${orden.clienteId}`).set(taller.auth).expect(200);
+    expect(cuenta.body.saldos).toEqual([{ moneda: 'ARS', saldo: 20000 }]);
+    const caja = await api().get('/api/reportes/caja').set(taller.auth).expect(200);
+    expect(caja.body.totales).toEqual([
+      expect.objectContaining({ moneda: 'ARS', cobrado: 100000, facturado: 120000 })
+    ]);
+
+    // El presupuesto de lista no se pierde.
+    const detalle = await api().get(`/api/ordenes/${orden.id}`).set(taller.auth).expect(200);
+    expect(detalle.body.moneda).toBe('USD');
+    expect(
+      detalle.body.historialEstados.some((h: { comentario: string }) =>
+        h.comentario?.includes('Presupuestado en USD 100.00')
+      )
+    ).toBe(true);
+  });
+
+  it('el saldo a favor en otra moneda no cubre el cobro', async () => {
+    const taller = await tallerConSucursal();
+    const orden = await ordenLista(taller, { moneda: 'USD', presupuestoMonto: 100 });
+    await api()
+      .post(`/api/cuentas/${orden.clienteId}/ajustes`)
+      .set(taller.auth)
+      .send({ monto: 50, moneda: 'USD', direccion: 'credito', motivo: 'Devolución' })
+      .expect(201);
+
+    const entrega = await api()
+      .post(`/api/ordenes/${orden.id}/entrega`)
+      .set(taller.auth)
+      .send({ montoTotal: 1000, montoAbonado: 0, moneda: 'ARS' })
+      .expect(200);
+    expect(entrega.body).toMatchObject({ creditoAplicado: 0, pendiente: 1000, saldoCliente: 1000 });
+  });
+
+  it('una deuda en dólares se puede pagar en pesos', async () => {
+    const taller = await tallerConSucursal();
+    const orden = await ordenLista(taller, { moneda: 'USD', presupuestoMonto: 100 });
+    await api()
+      .post(`/api/ordenes/${orden.id}/entrega`)
+      .set(taller.auth)
+      .send({ montoTotal: 100, montoAbonado: 0 })
+      .expect(200);
+
+    const pagos = `/api/cuentas/${orden.clienteId}/pagos`;
+    const pagoEnPesos = (monto: number, montoDeuda: number) => ({
+      monto,
+      moneda: 'ARS',
+      monedaDeuda: 'USD',
+      montoDeuda,
+      medioPago: 'efectivo'
+    });
+
+    // No se puede cancelar más de lo que debe.
+    await api().post(pagos).set(taller.auth).send(pagoEnPesos(132000, 110)).expect(409);
+
+    const cobro = await api().post(pagos).set(taller.auth).send(pagoEnPesos(60000, 50)).expect(201);
+    expect(cobro.body.saldo).toBe(50);
+
+    // Baja la deuda en dólares y en pesos no queda nada.
+    const cuenta = await api().get(`/api/cuentas/${orden.clienteId}`).set(taller.auth).expect(200);
+    expect(cuenta.body.saldos).toEqual([{ moneda: 'USD', saldo: 50 }]);
+    const notas = cuenta.body.movimientos.map((m: { nota: string }) => m.nota).join(' ');
+    expect(notas).toContain('1 USD = 1200 ARS');
+
+    // A la caja entraron pesos, y no dólares.
+    const caja = await api().get('/api/reportes/caja').set(taller.auth).expect(200);
+    const enMoneda = (moneda: string) =>
+      caja.body.totales.find((t: { moneda: string }) => t.moneda === moneda);
+    expect(enMoneda('ARS').cobrado).toBe(60000);
+    expect(enMoneda('USD').cobrado).toBe(0);
+
+    await api().post(pagos).set(taller.auth).send(pagoEnPesos(65000, 50)).expect(201);
+    const alDia = await api().get(`/api/cuentas/${orden.clienteId}`).set(taller.auth).expect(200);
+    expect(alDia.body.saldos).toEqual([]);
+  });
+
+  it('el detalle del presupuesto lo ve el cliente en el seguimiento', async () => {
+    const taller = await tallerConSucursal();
+    const orden = await crearOrden(taller);
+
+    const res = await api()
+      .put(`/api/ordenes/${orden.id}/presupuesto`)
+      .set(taller.auth)
+      .send({ monto: 50000, detalle: 'Cambio de pantalla original, 90 días de garantía' })
+      .expect(200);
+    expect(res.body.estado).toBe('presupuestado');
+
+    const detalle = await api().get(`/api/ordenes/${orden.id}`).set(taller.auth).expect(200);
+    const publico = await api().get(`/api/seguimiento/${detalle.body.codigoSeguimiento}`).expect(200);
+    expect(publico.body.presupuesto.detalle).toBe('Cambio de pantalla original, 90 días de garantía');
+  });
+
+  it('guarda los precios alternativos y los muestra en el seguimiento', async () => {
+    const taller = await tallerConSucursal();
+    const orden = await crearOrden(taller, { moneda: 'USD', presupuestoMonto: 100 });
+    const precios = [{ medioPago: 'efectivo', moneda: 'ARS', monto: 120000 }];
+
+    await api()
+      .put(`/api/ordenes/${orden.id}/presupuesto`)
+      .set(taller.auth)
+      .send({ monto: 100, moneda: 'USD', preciosAlternativos: precios })
+      .expect(200);
+
+    const detalle = await api().get(`/api/ordenes/${orden.id}`).set(taller.auth).expect(200);
+    expect(detalle.body.precios).toEqual([
+      expect.objectContaining({ medioPago: 'efectivo', moneda: 'ARS', monto: '120000.00' })
+    ]);
+    const publico = await api().get(`/api/seguimiento/${detalle.body.codigoSeguimiento}`).expect(200);
+    expect(publico.body.presupuesto.alternativos).toEqual([
+      { medioPago: 'efectivo', moneda: 'ARS', monto: '120000.00' }
+    ]);
+
+    // Una lista vacía los borra.
+    await api()
+      .put(`/api/ordenes/${orden.id}/presupuesto`)
+      .set(taller.auth)
+      .send({ preciosAlternativos: [] })
+      .expect(200);
+    const sinPrecios = await api().get(`/api/ordenes/${orden.id}`).set(taller.auth).expect(200);
+    expect(sinPrecios.body.precios).toEqual([]);
+  });
+});
+
+describe('datos fiscales', () => {
+  it('cada taller guarda los suyos y guardar el nombre no los borra', async () => {
+    const taller = await tallerConSucursal();
+
+    await api()
+      .put('/api/configuracion/taller')
+      .set(taller.auth)
+      .send({ fiscal: { cuit: '20-12345678-6', condicionIva: 'monotributo', puntoVenta: 3 } })
+      .expect(200);
+    await api().put('/api/configuracion/taller').set(taller.auth).send({ nombre: 'Otro nombre' }).expect(200);
+
+    const me = await api().get('/api/auth/me').set(taller.auth).expect(200);
+    expect(me.body.taller.fiscal).toMatchObject({
+      cuit: '20123456786',
+      condicionIva: 'monotributo',
+      puntoVenta: 3
+    });
+
+    const otro = await tallerConSucursal();
+    const meOtro = await api().get('/api/auth/me').set(otro.auth).expect(200);
+    expect(meOtro.body.taller.fiscal.cuit).toBeNull();
+  });
+
+  it('rechaza un CUIT con el verificador equivocado', async () => {
+    const taller = await tallerConSucursal();
+    await api()
+      .put('/api/configuracion/taller')
+      .set(taller.auth)
+      .send({ fiscal: { cuit: '20123456787' } })
+      .expect(400);
+  });
+
+  it('un cliente sin condición cargada es consumidor final', async () => {
+    const taller = await tallerConSucursal();
+    const orden = await crearOrden(taller);
+    const cliente = await api().get(`/api/clientes/${orden.clienteId}`).set(taller.auth).expect(200);
+    expect(cliente.body.condicionIva).toBe('consumidor_final');
+
+    const editado = await api()
+      .put(`/api/clientes/${orden.clienteId}`)
+      .set(taller.auth)
+      .send({ condicionIva: 'responsable_inscripto' })
+      .expect(200);
+    expect(editado.body.condicionIva).toBe('responsable_inscripto');
   });
 });
 

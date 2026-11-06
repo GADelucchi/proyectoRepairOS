@@ -7,6 +7,7 @@ import {
   OrdenChequeo,
   OrdenHistorialEstado,
   OrdenImagen,
+  OrdenPrecio,
   Sucursal,
   Taller,
   TipoEquipoPersonalizado,
@@ -30,7 +31,7 @@ import {
   listarOrdenesQuery,
   presupuestoSchema
 } from './ordenes.schemas';
-import { saldoDeCliente } from '../cuentas/cuenta-corriente.service';
+import { saldoDeCliente, saldosDeCliente } from '../cuentas/cuenta-corriente.service';
 import { notificarCambioEstadoOrden, ResultadoNotificacion } from '../notificaciones/notificaciones.service';
 import type { z } from 'zod';
 
@@ -48,6 +49,7 @@ export const INCLUDES_DETALLE: Includeable[] = [
   { model: User, as: 'tecnico', attributes: USUARIO_RESUMIDO },
   { model: OrdenChequeo, as: 'chequeos', separate: true, order: [['orden', 'ASC']] },
   { model: OrdenImagen, as: 'imagenes', separate: true, order: [['createdAt', 'ASC']] },
+  { model: OrdenPrecio, as: 'precios', separate: true, order: [['id', 'ASC']] },
   {
     model: OrdenHistorialEstado,
     as: 'historialEstados',
@@ -233,6 +235,24 @@ async function resolverEquipo(
   return nuevo.id;
 }
 
+/** Reemplaza los precios alternativos al de lista. */
+async function guardarPrecios(
+  ordenId: number,
+  precios: NonNullable<z.infer<typeof presupuestoSchema>['preciosAlternativos']>,
+  transaction: Transaction
+): Promise<void> {
+  await OrdenPrecio.destroy({ where: { ordenId }, transaction });
+  await OrdenPrecio.bulkCreate(
+    precios.map((p) => ({
+      ordenId,
+      medioPago: p.medioPago ?? null,
+      moneda: p.moneda,
+      monto: p.monto.toFixed(2)
+    })),
+    { transaction }
+  );
+}
+
 /**
  * Alta de una orden con su cliente y equipo (existentes o nuevos), su checklist
  * y el primer renglón del historial, todo en una transacción. El número de orden
@@ -262,12 +282,14 @@ export async function crearOrden(data: NuevaOrden, ctx: ContextoAlta): Promise<O
         notasInternas: data.notasInternas ?? null,
         fechaPactada: data.fechaPactada,
         presupuestoMonto: data.presupuestoMonto ?? null,
+        presupuestoDetalle: data.presupuestoDetalle ?? null,
         moneda: data.moneda ?? monedaPorDefecto
       },
       { transaction }
     );
 
     await OrdenChequeo.bulkCreate(filasDeChequeo(orden.id, data.chequeos), { transaction });
+    await guardarPrecios(orden.id, data.preciosAlternativos ?? [], transaction);
     await registrarCambioDeEstado(
       {
         ordenId: orden.id,
@@ -305,13 +327,20 @@ export function listarOrdenes(
   });
 }
 
-/** Saldo del cliente en la moneda de la orden: es el único que la entrega puede usar. */
+/** Saldo del cliente en la moneda en que se cobró la orden o, si falta entregarla, la del presupuesto. */
 export const saldoEnMonedaDe = (orden: Orden) =>
-  saldoDeCliente(orden.tallerId, orden.clienteId, orden.moneda);
+  saldoDeCliente(orden.tallerId, orden.clienteId, orden.monedaCobro ?? orden.moneda);
 
-/** Va con el saldo del cliente, para que la entrega pueda ofrecer aplicar el saldo a favor. */
+/**
+ * Va con los saldos del cliente, para que la entrega pueda ofrecer aplicar el
+ * saldo a favor de la moneda en que se termine cobrando.
+ */
 export async function conSaldoCliente(orden: Orden) {
-  return { ...orden.get({ plain: true }), saldoCliente: await saldoEnMonedaDe(orden) };
+  const [saldoCliente, saldosCliente] = await Promise.all([
+    saldoEnMonedaDe(orden),
+    saldosDeCliente(orden.tallerId, orden.clienteId)
+  ]);
+  return { ...orden.get({ plain: true }), saldoCliente, saldosCliente };
 }
 
 export function actualizarOrden(orden: Orden, data: z.infer<typeof actualizarOrdenSchema>): Promise<Orden> {
@@ -386,21 +415,25 @@ export async function cambiarEstado(
  * no lo hace aparte.
  *
  * La moneda se elige junto con el monto. Una vez entregada la orden no se
- * cambia: lo cobrado ya quedó asentado en la cuenta en esa moneda.
+ * cambia: el presupuesto queda como constancia de lo que se le pasó al cliente.
+ * El detalle es el texto que acompaña al monto y que el cliente lee.
  */
 export async function actualizarPresupuesto(
   orden: Orden,
-  { monto, moneda, aprobado }: z.infer<typeof presupuestoSchema>,
+  { monto, moneda, detalle, preciosAlternativos, aprobado }: z.infer<typeof presupuestoSchema>,
   usuarioId: number
 ) {
   const estadoAnterior = orden.estado;
 
-  const cambios: Partial<Pick<Orden, 'presupuestoMonto' | 'presupuestoAprobado' | 'estado' | 'moneda'>> = {};
+  const cambios: Partial<
+    Pick<Orden, 'presupuestoMonto' | 'presupuestoAprobado' | 'presupuestoDetalle' | 'estado' | 'moneda'>
+  > = {};
+  if (detalle !== undefined) cambios.presupuestoDetalle = detalle;
 
   if (moneda !== undefined && moneda !== orden.moneda) {
     if (orden.montoTotal != null) {
       throw errores.conflicto(
-        `La orden ya se cobró en ${orden.moneda}: la moneda no se puede cambiar después de la entrega.`
+        `La orden ya se entregó: la moneda del presupuesto (${orden.moneda}) no se puede cambiar.`
       );
     }
     cambios.moneda = moneda;
@@ -431,6 +464,7 @@ export async function actualizarPresupuesto(
 
   await sequelize.transaction(async (transaction) => {
     await orden.update(cambios, { transaction });
+    if (preciosAlternativos) await guardarPrecios(orden.id, preciosAlternativos, transaction);
     if (orden.estado !== estadoAnterior) {
       await registrarCambioDeEstado(
         {

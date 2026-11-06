@@ -2,6 +2,7 @@ import { Cliente, Notificacion, Orden, User } from '../../models';
 import type { TipoNotificacion } from '../../models/Notificacion';
 import { getEmailProvider } from '../../integrations/email';
 import { getWhatsAppProvider } from '../../integrations/whatsapp';
+import { formatearMonto } from '../../shared/utils/dinero';
 import { escaparHtml } from '../../shared/utils/texto';
 import { etiquetaEstado } from '../ordenes/estado-orden';
 
@@ -28,6 +29,15 @@ function describir(canales: Canales, cliente: Cliente): string {
   }
 }
 
+/** Con la orden recién presupuestada, el monto y el detalle que tiene que aprobar el cliente. */
+function presupuestoEnHtml(orden: Orden): string {
+  if (orden.estado !== 'presupuestado' || orden.presupuestoMonto == null) return '';
+  const detalle = orden.presupuestoDetalle
+    ? `<p style="white-space: pre-line">${escaparHtml(orden.presupuestoDetalle)}</p>`
+    : '';
+  return `<p>Presupuesto: <strong>${escaparHtml(formatearMonto(orden.presupuestoMonto, orden.moneda))}</strong></p>${detalle}`;
+}
+
 async function avisarPorEmail(orden: Orden, cliente: Cliente): Promise<Canales['email']> {
   if (!cliente.email) return 'sin_direccion';
   const proveedor = getEmailProvider();
@@ -41,6 +51,7 @@ async function avisarPorEmail(orden: Orden, cliente: Cliente): Promise<Canales['
         <p>Hola ${escaparHtml(cliente.nombre)},</p>
         <p>El estado de tu orden <strong>${escaparHtml(orden.numeroOrden)}</strong> cambió a:
            <strong>${escaparHtml(etiquetaEstado(orden.estado))}</strong>.</p>
+        ${presupuestoEnHtml(orden)}
         <p>Ante cualquier consulta, contactanos respondiendo este email.</p>`
     });
     return 'enviado';

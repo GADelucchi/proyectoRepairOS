@@ -2,10 +2,9 @@ import { z } from 'zod';
 import { Orden, User } from '../../models';
 import { errores } from '../../shared/http/http-error';
 import { nombreCompleto } from '../../shared/utils/texto';
-import { repartirEntrega } from '../cuentas/cuenta-corriente.service';
+import { repartirEntrega, saldoDeCliente } from '../cuentas/cuenta-corriente.service';
 import { fiarComoAdmin, pedirFiado } from '../solicitudes/solicitudes.service';
 import { solicitarFiadoSchema } from './ordenes.schemas';
-import { saldoEnMonedaDe } from './ordenes.service';
 
 /**
  * Pide autorización para entregar dejando deuda en un cliente sin cuenta
@@ -17,10 +16,12 @@ import { saldoEnMonedaDe } from './ordenes.service';
  */
 export async function solicitarFiado(
   orden: Orden,
-  { montoTotal, montoAbonado, medioPago, motivo }: z.infer<typeof solicitarFiadoSchema>,
+  { montoTotal, montoAbonado, moneda, medioPago, motivo }: z.infer<typeof solicitarFiadoSchema>,
   quien: { usuarioId: number; sucursalId: number; esAdmin: boolean }
 ) {
   const cliente = orden.cliente!;
+  const monedaCobro = moneda ?? orden.moneda;
+  const saldoEnMonedaCobro = () => saldoDeCliente(orden.tallerId, orden.clienteId, monedaCobro);
 
   if (orden.estado === 'entregado') throw errores.conflicto('La orden ya fue entregada');
   if (cliente.cuentaCorrienteHabilitada) {
@@ -30,7 +31,7 @@ export async function solicitarFiado(
   }
 
   // Con el saldo a favor descontado puede no quedar deuda: no hay nada que autorizar.
-  const { pendiente } = repartirEntrega(await saldoEnMonedaDe(orden), montoTotal, montoAbonado);
+  const { pendiente } = repartirEntrega(await saldoEnMonedaCobro(), montoTotal, montoAbonado);
   if (pendiente <= 0) throw errores.solicitudInvalida('No hace falta autorización: la orden queda cubierta');
 
   const pedido = {
@@ -40,7 +41,7 @@ export async function solicitarFiado(
     cliente,
     ordenId: orden.id,
     pendiente,
-    moneda: orden.moneda,
+    moneda: monedaCobro,
     motivo,
     datos: { montoTotal, montoAbonado, medioPago: medioPago ?? null }
   };
@@ -57,6 +58,6 @@ export async function solicitarFiado(
     autorizada: true,
     notificacion: entrega.notificacion,
     creditoAplicado: entrega.creditoAplicado,
-    saldoCliente: await saldoEnMonedaDe(orden)
+    saldoCliente: await saldoEnMonedaCobro()
   };
 }

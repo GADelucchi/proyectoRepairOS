@@ -22,8 +22,11 @@ export const ETIQUETA_MOVIMIENTO: Record<TipoMovimiento, string> = {
   cargo: 'Cargo',
   pago: 'Cobro',
   ajuste_debito: 'Ajuste (suma deuda)',
-  ajuste_credito: 'Ajuste (a favor)'
+  ajuste_credito: 'Ajuste (a favor)',
+  conversion_debito: 'Pago de deuda en otra moneda',
+  conversion_credito: 'Pagado en otra moneda'
 };
 
 /** Los movimientos que suman deuda van en la columna "Debe". */
-export const esDebito = (tipo: TipoMovimiento) => tipo === 'cargo' || tipo === 'ajuste_debito';
+export const esDebito = (tipo: TipoMovimiento) =>
+  tipo === 'cargo' || tipo === 'ajuste_debito' || tipo === 'conversion_debito';

@@ -3,6 +3,7 @@ import QRCode from 'qrcode';
 import { PassThrough } from 'stream';
 import { env } from '../../config/env';
 import { Orden } from '../../models';
+import { ETIQUETA_MEDIO_PAGO } from '../../models/CuentaMovimiento';
 import { Sucursal } from '../../models/Sucursal';
 import { decryptBuffer } from '../../shared/security/encryption';
 import { aNumero, formatearMonto, redondearMonto } from '../../shared/utils/dinero';
@@ -169,6 +170,17 @@ export async function generarOrdenPdf(orden: Orden): Promise<Buffer> {
   if (orden.presupuestoMonto != null) {
     seccion('Presupuesto');
     dato('Monto', formatearMonto(orden.presupuestoMonto, orden.moneda));
+    for (const precio of orden.precios ?? []) {
+      dato(
+        precio.medioPago ? ETIQUETA_MEDIO_PAGO[precio.medioPago] : 'Otro precio',
+        formatearMonto(precio.monto, precio.moneda)
+      );
+    }
+    if (orden.presupuestoDetalle) {
+      doc.moveDown(0.2);
+      doc.fontSize(10).text(orden.presupuestoDetalle, { align: 'justify' });
+      doc.moveDown(0.2);
+    }
     dato(
       'Respuesta del cliente',
       orden.presupuestoAprobado === true
@@ -187,16 +199,17 @@ export async function generarOrdenPdf(orden: Orden): Promise<Buffer> {
     const abonado = aNumero(orden.montoAbonado);
     const credito = aNumero(orden.creditoAplicado);
     const adeudado = redondearMonto(total - abonado - credito);
+    const monedaCobro = orden.monedaCobro ?? orden.moneda;
 
     seccion('Entrega y cobro');
     if (orden.fechaEntrega) dato('Fecha de entrega', formatearFechaHora(orden.fechaEntrega));
-    dato('Total', formatearMonto(total, orden.moneda));
-    dato('Abonado', formatearMonto(abonado, orden.moneda));
+    dato('Total', formatearMonto(total, monedaCobro));
+    dato('Abonado', formatearMonto(abonado, monedaCobro));
     if (credito > 0) {
-      dato('Saldo a favor aplicado', formatearMonto(credito, orden.moneda));
+      dato('Saldo a favor aplicado', formatearMonto(credito, monedaCobro));
     }
     if (adeudado > 0) {
-      dato('Saldo en cuenta corriente', formatearMonto(adeudado, orden.moneda));
+      dato('Saldo en cuenta corriente', formatearMonto(adeudado, monedaCobro));
     }
   }
 

@@ -5,6 +5,7 @@ import {
   ClipboardList,
   Globe,
   LayoutDashboard,
+  Package,
   ShieldCheck,
   SlidersHorizontal,
   Smartphone,
@@ -30,6 +31,13 @@ export const ITEMS_MENU: ItemMenu[] = [
   { to: '/ordenes', etiqueta: 'Órdenes', icono: ClipboardList, tono: 'violet', tour: 'nav-ordenes' },
   { to: '/clientes', etiqueta: 'Clientes', icono: Users, tono: 'green' },
   { to: '/equipos', etiqueta: 'Equipos', icono: Smartphone, tono: 'cyan' },
+  {
+    to: '/stock',
+    etiqueta: 'Stock',
+    icono: Package,
+    tono: 'orange',
+    title: 'Stock de equipos para la venta'
+  },
   { to: '/cuentas', etiqueta: 'Cuentas', icono: Wallet, tono: 'amber', title: 'Cuenta corriente' },
   { to: '/caja', etiqueta: 'Caja', icono: Banknote, tono: 'green', tour: 'nav-caja' },
   { to: '/reportes', etiqueta: 'Reportes', icono: ChartColumn, tono: 'indigo', tour: 'nav-reportes' },

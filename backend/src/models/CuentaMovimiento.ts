@@ -10,8 +10,18 @@ import { MONEDA_POR_DEFECTO, Moneda } from '../shared/utils/dinero';
  * - `ajuste_debito` / `ajuste_credito`: corrección del saldo autorizada por un
  *   admin. No es plata que se movió, y por eso los informes de caja no la
  *   cuentan como cobro.
+ * - `conversion_credito` / `conversion_debito`: pagar una deuda en otra moneda.
+ *   Baja la deuda en su moneda y suma lo mismo en la moneda del pago, donde el
+ *   `pago` que los acompaña lo cancela. La plata que entró es ese `pago`.
  */
-export const TIPOS_MOVIMIENTO = ['cargo', 'pago', 'ajuste_debito', 'ajuste_credito'] as const;
+export const TIPOS_MOVIMIENTO = [
+  'cargo',
+  'pago',
+  'ajuste_debito',
+  'ajuste_credito',
+  'conversion_debito',
+  'conversion_credito'
+] as const;
 export type TipoMovimiento = (typeof TIPOS_MOVIMIENTO)[number];
 
 /**
@@ -28,6 +38,15 @@ export const MEDIOS_PAGO = [
   'tarjeta'
 ] as const;
 export type MedioPago = (typeof MEDIOS_PAGO)[number];
+
+export const ETIQUETA_MEDIO_PAGO: Record<MedioPago, string> = {
+  efectivo: 'Efectivo',
+  transferencia: 'Transferencia',
+  tarjeta_debito: 'Tarjeta de débito',
+  tarjeta_credito: 'Tarjeta de crédito',
+  otro: 'Otro',
+  tarjeta: 'Tarjeta'
+};
 
 /**
  * Un asiento de la cuenta corriente del cliente.

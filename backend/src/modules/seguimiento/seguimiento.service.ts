@@ -2,6 +2,7 @@ import {
   Equipo,
   Orden,
   OrdenHistorialEstado,
+  OrdenPrecio,
   Sucursal,
   Taller,
   TipoEquipoPersonalizado,
@@ -32,6 +33,13 @@ export async function seguimientoPublico(codigo: string) {
       { model: Sucursal, as: 'sucursal', attributes: ['nombre', 'direccion', 'telefono'] },
       { model: Taller, as: 'taller', attributes: ['nombre', 'codigoPublico'] },
       {
+        model: OrdenPrecio,
+        as: 'precios',
+        attributes: ['medioPago', 'moneda', 'monto'],
+        separate: true,
+        order: [['id', 'ASC']]
+      },
+      {
         model: OrdenHistorialEstado,
         as: 'historialEstados',
         attributes: ['estadoNuevo', 'comentario', 'createdAt'],
@@ -58,7 +66,17 @@ export async function seguimientoPublico(codigo: string) {
     },
     presupuesto:
       orden.presupuestoMonto != null
-        ? { monto: orden.presupuestoMonto, moneda: orden.moneda, aprobado: orden.presupuestoAprobado }
+        ? {
+            monto: orden.presupuestoMonto,
+            moneda: orden.moneda,
+            detalle: orden.presupuestoDetalle,
+            aprobado: orden.presupuestoAprobado,
+            alternativos: (orden.precios ?? []).map((p) => ({
+              medioPago: p.medioPago,
+              moneda: p.moneda,
+              monto: p.monto
+            }))
+          }
         : null,
     taller: orden.taller?.nombre ?? null,
     // Para ir de la orden a "mis datos y mi cuenta" en el portal del taller.

@@ -18,6 +18,8 @@ import * as ordenesApi from '../api';
 import { ChequeoItem, chequeoConRespuestaPorDefecto } from '../checklist';
 import { ChecklistEditor } from '../components/ChecklistEditor';
 import { ImageUploader } from '../components/ImageUploader';
+import { PreciosAlternativos } from '../components/PreciosAlternativos';
+import { formularioAPrecios, type PrecioForm } from '../precios-form';
 import { EleccionCliente, SeleccionCliente } from '../components/nueva/SeleccionCliente';
 import { EleccionEquipo, SeleccionEquipo } from '../components/nueva/SeleccionEquipo';
 
@@ -66,7 +68,9 @@ export function OrdenNuevaPage() {
   const [notasInternas, setNotasInternas] = useState('');
   const [fechaPactada, setFechaPactada] = useState('');
   const [presupuestoMonto, setPresupuestoMonto] = useState('');
+  const [presupuestoDetalle, setPresupuestoDetalle] = useState('');
   const [moneda, setMoneda] = useState<Moneda>(useMonedaDelTaller());
+  const [precios, setPrecios] = useState<PrecioForm[]>([]);
 
   // El checklist sale del tipo del equipo, sea uno existente o uno que se está cargando.
   const tipoId = equipo.existente?.tipoEquipoPersonalizadoId ?? equipo.nuevo?.tipoEquipoPersonalizadoId ?? 0;
@@ -136,7 +140,9 @@ export function OrdenNuevaPage() {
         notasInternas: textoONull(notasInternas),
         fechaPactada: convertirAFormatoBackend(fechaPactada),
         presupuestoMonto: presupuestoMonto.trim() ? aNumero(presupuestoMonto) : null,
+        presupuestoDetalle: textoONull(presupuestoDetalle),
         moneda,
+        preciosAlternativos: formularioAPrecios(precios),
         chequeos
       });
     } catch (err) {
@@ -271,9 +277,21 @@ export function OrdenNuevaPage() {
                           onChange={(e) => setPresupuestoMonto(e.target.value)}
                         />
                       </InputGroup>
-                      <Form.Text className="text-muted">
-                        El cobro al entregar se hace en esta moneda.
+                      <PreciosAlternativos value={precios} onChange={setPrecios} disabled={enviando} />
+                      <Form.Text className="text-muted d-block">
+                        Este es el precio de lista. Al entregar se puede cobrar otro monto o en otra moneda.
                       </Form.Text>
+                    </Form.Group>
+                    <Form.Group className="mt-2" controlId="nueva-presupuesto-detalle">
+                      <Form.Label>Detalle para el cliente</Form.Label>
+                      <Form.Control
+                        as="textarea"
+                        rows={2}
+                        maxLength={2000}
+                        value={presupuestoDetalle}
+                        onChange={(e) => setPresupuestoDetalle(e.target.value)}
+                      />
+                      <Form.Text className="text-muted">Lo ve en el seguimiento y en el remito.</Form.Text>
                     </Form.Group>
                   </Col>
                 </Row>

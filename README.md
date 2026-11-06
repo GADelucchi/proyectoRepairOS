@@ -29,7 +29,7 @@ database/        migrations, seeders, demo, scripts (init-db, reset-demo, rotate
 ```
 
 Módulos: `auth`, `usuarios`, `sucursales`, `clientes`, `equipos`, `ordenes`, `cuentas`,
-`solicitudes`, `reportes`, `configuracion`, `suscripciones`, `notificaciones`.
+`stock`, `solicitudes`, `reportes`, `configuracion`, `suscripciones`, `notificaciones`.
 
 ### Frontend (`frontend/src`)
 
@@ -111,9 +111,18 @@ cambiar esas contraseñas apenas se crea la base.
 - **Cuenta corriente como libro de movimientos.** El saldo es la suma de
   `cuenta_movimientos` (`cargo`, `pago`, `ajuste_debito`, `ajuste_credito`), nunca una
   columna guardada. La caja solo suma `pago`.
-- **Multimoneda.** Cada orden se presupuesta y se cobra en una moneda (ARS, USD, EUR, CLP,
-  UYU…) y sus movimientos la heredan. Saldos, totales adeudados y caja van por moneda:
-  nunca se suman pesos con dólares.
+- **Multimoneda.** Una orden se presupuesta en una moneda (ARS, USD, EUR, CLP, UYU…), con
+  precios alternativos opcionales, y se puede cobrar en otra (`moneda_cobro`): sus
+  movimientos quedan en la cobrada. Saldos, totales adeudados y caja van por moneda: nunca
+  se suman pesos con dólares. Pagar una deuda en otra moneda asienta `conversion_credito`
+  en la moneda de la deuda, y `conversion_debito` + `pago` en la del pago.
+- **Datos fiscales por taller.** Cada taller carga su CUIT y su punto de venta en
+  Configuración; cada cliente tiene su condición frente al IVA (por defecto, consumidor final).
+- **Stock de equipos por unidad.** `equipos_stock` guarda cada equipo para la venta con su propio
+  costo (sin promedios) y numeración por taller (#0042). Un costo que no es en dólares lleva la
+  cotización del día de compra, porque los informes se hacen en US$. Cada equipo vive en una
+  sucursal; `talleres.stock_entre_sucursales` deja ver el de las demás. No es la tabla `equipos`,
+  que son los de los clientes que entran a reparar.
 - **Fiar y ajustar saldos requieren autorización.** El mostrador pide, un admin aprueba;
   aprobar ejecuta la entrega o el ajuste en la misma transacción.
 - **Suscripción aplicada en cada request.** Prueba hasta `gracia_hasta`, plan activo hasta

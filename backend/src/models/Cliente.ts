@@ -1,4 +1,5 @@
 import { DataTypes, Model, Optional, Sequelize } from 'sequelize';
+import { CONDICION_IVA_POR_DEFECTO, CondicionIvaReceptor } from '../shared/utils/fiscal';
 
 export interface ClienteAttributes {
   id: number;
@@ -6,6 +7,7 @@ export interface ClienteAttributes {
   nombre: string;
   apellido: string;
   dniCuit?: string | null;
+  condicionIva: CondicionIvaReceptor;
   telefono?: string | null;
   email?: string | null;
   fechaNacimiento?: string | null;
@@ -23,6 +25,7 @@ export type ClienteCreationAttributes = Optional<
   ClienteAttributes,
   | 'id'
   | 'dniCuit'
+  | 'condicionIva'
   | 'telefono'
   | 'email'
   | 'fechaNacimiento'
@@ -45,6 +48,8 @@ export class Cliente
   declare nombre: string;
   declare apellido: string;
   declare dniCuit: string | null;
+  /** Va en cada pedido de CAE (RG 5616). */
+  declare condicionIva: CondicionIvaReceptor;
   declare telefono: string | null;
   declare email: string | null;
   declare fechaNacimiento: string | null;
@@ -66,6 +71,12 @@ export class Cliente
         nombre: { type: DataTypes.STRING(100), allowNull: false },
         apellido: { type: DataTypes.STRING(100), allowNull: false },
         dniCuit: { type: DataTypes.STRING(20), allowNull: true, field: 'dni_cuit' },
+        condicionIva: {
+          type: DataTypes.STRING(30),
+          allowNull: false,
+          defaultValue: CONDICION_IVA_POR_DEFECTO,
+          field: 'condicion_iva'
+        },
         telefono: { type: DataTypes.STRING(50), allowNull: true },
         email: { type: DataTypes.STRING(150), allowNull: true },
         fechaNacimiento: { type: DataTypes.DATEONLY, allowNull: true, field: 'fecha_nacimiento' },

@@ -923,3 +923,24 @@ h6 {
   outline: 2px solid var(--rs-accent);
   outline-offset: 2px;
 }
+
+/* ---------- Pantallas táctiles ---------- */
+/* Con letra de menos de 16 px, Safari en el iPhone agranda la página al tocar un campo. */
+@media (pointer: coarse) {
+  .form-control,
+  .form-select {
+    font-size: 16px;
+  }
+}
+
+/* Los botones de guardar quedan a mano del pulgar en el celular, sobre la barra de inicio. */
+@media (max-width: 767.98px) {
+  .barra-acciones {
+    position: sticky;
+    bottom: 0;
+    z-index: 5;
+    background: var(--rs-bg);
+    border-top: 1px solid var(--rs-border);
+    padding: 0.75rem 0 calc(0.75rem + env(safe-area-inset-bottom));
+  }
+}

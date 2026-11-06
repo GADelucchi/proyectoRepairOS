@@ -1,13 +1,29 @@
 import { z } from 'zod';
 import { Taller } from '../../models';
+import { ATRIBUTOS_FISCALES } from '../../models/Taller';
 import { errores } from '../../shared/http/http-error';
 import { monedaDePais } from '../../shared/utils/paises';
 import { actualizarTallerSchema } from './configuracion.schemas';
 
-/** Nombre y país del taller. Las órdenes ya cargadas conservan su moneda. */
-export async function actualizarTaller(tallerId: number, datos: z.infer<typeof actualizarTallerSchema>) {
+/** Solo los datos con los que factura el taller. */
+export function datosFiscalesDe(taller: Taller) {
+  return Object.fromEntries(ATRIBUTOS_FISCALES.map((campo) => [campo, taller[campo] ?? null]));
+}
+
+/** Nombre, país, si comparte el stock entre sucursales y datos fiscales del taller. Las órdenes ya cargadas conservan su moneda. */
+export async function actualizarTaller(
+  tallerId: number,
+  { fiscal, ...datos }: z.infer<typeof actualizarTallerSchema>
+) {
   const taller = await Taller.findByPk(tallerId);
   if (!taller) throw errores.noEncontrado('Taller');
-  await taller.update(datos);
-  return { id: taller.id, nombre: taller.nombre, pais: taller.pais, moneda: monedaDePais(taller.pais) };
+  await taller.update({ ...datos, ...fiscal });
+  return {
+    id: taller.id,
+    nombre: taller.nombre,
+    pais: taller.pais,
+    moneda: monedaDePais(taller.pais),
+    stockEntreSucursales: taller.stockEntreSucursales,
+    fiscal: datosFiscalesDe(taller)
+  };
 }

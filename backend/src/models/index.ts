@@ -11,6 +11,7 @@ import { Orden } from './Orden';
 import { OrdenChequeo } from './OrdenChequeo';
 import { OrdenImagen } from './OrdenImagen';
 import { OrdenHistorialEstado } from './OrdenHistorialEstado';
+import { OrdenPrecio } from './OrdenPrecio';
 import { TipoEquipoPersonalizado } from './TipoEquipoPersonalizado';
 import { ChequeoPersonalizado } from './ChequeoPersonalizado';
 import { Contador } from './Contador';
@@ -19,6 +20,7 @@ import { CuentaMovimiento } from './CuentaMovimiento';
 import { Solicitud } from './Solicitud';
 import { Notificacion } from './Notificacion';
 import { TokenUsuario } from './TokenUsuario';
+import { EquipoStock } from './EquipoStock';
 
 Taller.initModel(sequelize);
 Plan.initModel(sequelize);
@@ -32,6 +34,7 @@ Orden.initModel(sequelize);
 OrdenChequeo.initModel(sequelize);
 OrdenImagen.initModel(sequelize);
 OrdenHistorialEstado.initModel(sequelize);
+OrdenPrecio.initModel(sequelize);
 TipoEquipoPersonalizado.initModel(sequelize);
 ChequeoPersonalizado.initModel(sequelize);
 Contador.initModel(sequelize);
@@ -40,6 +43,7 @@ CuentaMovimiento.initModel(sequelize);
 Solicitud.initModel(sequelize);
 Notificacion.initModel(sequelize);
 TokenUsuario.initModel(sequelize);
+EquipoStock.initModel(sequelize);
 
 // Taller -> todo lo que se consulta desde la raíz
 Taller.hasOne(Suscripcion, { foreignKey: 'tallerId', as: 'suscripcion' });
@@ -105,6 +109,9 @@ Orden.hasMany(OrdenHistorialEstado, { foreignKey: 'ordenId', as: 'historialEstad
 OrdenHistorialEstado.belongsTo(Orden, { foreignKey: 'ordenId', as: 'orden' });
 OrdenHistorialEstado.belongsTo(User, { foreignKey: 'usuarioId', as: 'usuario' });
 
+Orden.hasMany(OrdenPrecio, { foreignKey: 'ordenId', as: 'precios', onDelete: 'CASCADE' });
+OrdenPrecio.belongsTo(Orden, { foreignKey: 'ordenId', as: 'orden' });
+
 // Tipos de equipo personalizados
 User.hasMany(TipoEquipoPersonalizado, { foreignKey: 'usuarioId', as: 'tiposEquipo' });
 TipoEquipoPersonalizado.belongsTo(User, { foreignKey: 'usuarioId', as: 'usuario' });
@@ -154,6 +161,11 @@ TipoEquipoPersonalizado.hasMany(Equipo, { foreignKey: 'tipoEquipoPersonalizadoId
 Notificacion.belongsTo(User, { foreignKey: 'usuarioId', as: 'usuario' });
 User.hasMany(Notificacion, { foreignKey: 'usuarioId', as: 'notificaciones' });
 
+// Stock de equipos para la venta
+Taller.hasMany(EquipoStock, { foreignKey: 'tallerId', as: 'stock' });
+EquipoStock.belongsTo(Sucursal, { foreignKey: 'sucursalId', as: 'sucursal' });
+EquipoStock.belongsTo(User, { foreignKey: 'cargadoPorId', as: 'cargadoPor' });
+
 export {
   sequelize,
   Taller,
@@ -168,6 +180,7 @@ export {
   OrdenChequeo,
   OrdenImagen,
   OrdenHistorialEstado,
+  OrdenPrecio,
   TipoEquipoPersonalizado,
   ChequeoPersonalizado,
   Contador,
@@ -175,5 +188,6 @@ export {
   CuentaMovimiento,
   Solicitud,
   Notificacion,
-  TokenUsuario
+  TokenUsuario,
+  EquipoStock
 };

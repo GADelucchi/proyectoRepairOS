@@ -32,6 +32,35 @@ export interface Taller {
   moneda: Moneda;
   /** Link donde sus clientes consultan sus datos y su cuenta corriente. */
   portalClientes?: string;
+  /** Con qué datos factura. Cada taller carga los suyos. */
+  fiscal?: DatosFiscales;
+  /** Cada sucursal ve el stock de equipos de las demás. */
+  stockEntreSucursales?: boolean;
+}
+
+export type CondicionIvaEmisor = 'monotributo' | 'responsable_inscripto' | 'exento';
+
+export type CondicionIvaReceptor =
+  | 'consumidor_final'
+  | 'responsable_inscripto'
+  | 'monotributo'
+  | 'exento'
+  | 'no_categorizado'
+  | 'monotributo_social'
+  | 'monotributo_promovido'
+  | 'iva_liberado'
+  | 'iva_no_alcanzado'
+  | 'cliente_exterior';
+
+export interface DatosFiscales {
+  razonSocial: string | null;
+  cuit: string | null;
+  condicionIva: CondicionIvaEmisor | null;
+  domicilioFiscal: string | null;
+  /** YYYY-MM-DD */
+  inicioActividades: string | null;
+  ingresosBrutos: string | null;
+  puntoVenta: number | null;
 }
 
 export type EstadoSuscripcion = 'prueba' | 'activa' | 'vencida' | 'cancelada';
@@ -102,6 +131,7 @@ export interface Cliente {
   nombre: string;
   apellido: string;
   dniCuit?: string | null;
+  condicionIva?: CondicionIvaReceptor;
   telefono?: string | null;
   email?: string | null;
   fechaNacimiento?: string | null;
@@ -227,8 +257,14 @@ export interface Orden {
   notasInternas?: string | null;
   presupuestoMonto?: Monto | null;
   presupuestoAprobado?: boolean | null;
-  /** Moneda del presupuesto y del cobro. */
+  /** Qué incluye el presupuesto, para el cliente: sale en el seguimiento, el aviso y el remito. */
+  presupuestoDetalle?: string | null;
+  /** Moneda del presupuesto de lista. */
   moneda: Moneda;
+  /** En qué moneda se cobró al entregar: la de `montoTotal` y `montoAbonado`. */
+  monedaCobro?: Moneda | null;
+  /** Otros precios además del de lista. */
+  precios?: OrdenPrecio[];
   /** Solo para firmas anteriores al cifrado; las nuevas se piden a /ordenes/:id/firma. */
   firmaClienteUrl?: string | null;
   /** Cuándo firmó el cliente. Si viene, la orden tiene firma guardada. */
@@ -240,6 +276,8 @@ export interface Orden {
   fechaEntrega?: string | null;
   /** Saldo de la cuenta del cliente en la moneda de la orden: negativo es plata a favor. */
   saldoCliente?: number;
+  /** Todos los saldos del cliente, uno por moneda: al entregar se puede cobrar en otra. */
+  saldosCliente?: SaldoEnMoneda[];
   cliente?: Cliente;
   equipo?: Equipo;
   sucursal?: Sucursal;
@@ -256,12 +294,21 @@ export interface ResultadoNotificacion {
   detalle: string;
 }
 
+export interface OrdenPrecio {
+  id?: number;
+  /** Vacío: vale para cualquier medio de pago. */
+  medioPago?: MedioPago | null;
+  moneda: Moneda;
+  monto: Monto;
+}
+
 /** `tarjeta` es de los cobros anteriores a separar débito y crédito. */
 export type MedioPago =
   'efectivo' | 'transferencia' | 'tarjeta_debito' | 'tarjeta_credito' | 'otro' | 'tarjeta';
 
 /** Un asiento de la cuenta corriente: `cargo` suma deuda, `pago` la descuenta. */
-export type TipoMovimiento = 'cargo' | 'pago' | 'ajuste_debito' | 'ajuste_credito';
+export type TipoMovimiento =
+  'cargo' | 'pago' | 'ajuste_debito' | 'ajuste_credito' | 'conversion_debito' | 'conversion_credito';
 
 export interface CuentaMovimiento {
   id: number;
@@ -351,4 +398,58 @@ export interface MovimientoCaja {
   numeroOrden: string | null;
   usuario: string;
   sucursal: string | null;
+}
+
+export type CondicionEquipo = 'nuevo' | 'usado';
+
+/** Disponible se puede vender; reservado es sin pago y señado con pago parcial. */
+export type EstadoStock = 'disponible' | 'reservado' | 'senado' | 'vendido';
+
+/** Una unidad del stock de equipos para la venta, con su propio costo. */
+export interface EquipoStock {
+  id: number;
+  /** Correlativo del taller: se muestra como #0042. */
+  numero: number;
+  sucursalId: number;
+  sucursal?: { id: number; nombre: string };
+  marca: string;
+  modelo: string;
+  color: string | null;
+  /** 1 TB = 1024. */
+  almacenamientoGb: number | null;
+  condicion: CondicionEquipo;
+  bateria: number | null;
+  numeroSerie: string | null;
+  imei: string | null;
+  imei2: string | null;
+  /** YYYY-MM-DD */
+  fechaCompra: string;
+  proveedor: string | null;
+  monedaCosto: Moneda;
+  costo: Monto;
+  /** 1 US$ en la moneda del costo, el día de compra. */
+  cotizacionCosto: Monto | null;
+  costoUsd: number;
+  monedaPrecio: Moneda | null;
+  precio: Monto | null;
+  estado: EstadoStock;
+  observaciones: string | null;
+  createdAt: string;
+}
+
+export interface ResumenStock {
+  disponibles: number;
+  reservados: number;
+  senados: number;
+  vendidos: number;
+  /** Lo que costó lo que queda sin vender, en US$. */
+  costoStockUsd: number;
+  /** Lo que hay de cada modelo, con cada costo por separado. */
+  porModelo: {
+    marca: string;
+    modelo: string;
+    almacenamientoGb: number | null;
+    cantidad: number;
+    costos: { moneda: Moneda; costo: number; cantidad: number }[];
+  }[];
 }

@@ -7,6 +7,7 @@ export interface DatosAviso {
   estado: EstadoOrden;
   codigoSeguimiento?: string | null;
   presupuestoMonto?: Monto | null;
+  presupuestoDetalle?: string | null;
   moneda: Moneda;
   clienteNombre?: string | null;
   clienteTelefono?: string | null;
@@ -29,12 +30,14 @@ export function mensajeParaCliente(d: DatosAviso, taller: string): string {
     ? `${d.sucursal.nombre}${d.sucursal.direccion ? ` (${d.sucursal.direccion})` : ''}`
     : taller;
   const monto = d.presupuestoMonto != null ? formatearMonto(d.presupuestoMonto, d.moneda) : null;
+  // El detalle va en su propio párrafo, entre el monto y la pregunta.
+  const detalle = d.presupuestoDetalle?.trim() ? `\n\n${d.presupuestoDetalle.trim()}\n\n` : ' ';
 
   const cuerpo: Record<EstadoOrden, string> = {
     recibido: `Recibimos tu ${equipo} en ${taller}. Tu número de orden es ${d.numeroOrden}.`,
     en_diagnostico: `Estamos revisando tu ${equipo} (orden ${d.numeroOrden}). Te avisamos apenas tengamos el diagnóstico.`,
     presupuestado: monto
-      ? `El presupuesto para reparar tu ${equipo} (orden ${d.numeroOrden}) es de ${monto}. ¿Lo aprobás? Respondé este mensaje y seguimos.`
+      ? `El presupuesto para reparar tu ${equipo} (orden ${d.numeroOrden}) es de ${monto}.${detalle}¿Lo aprobás? Respondé este mensaje y seguimos.`
       : `Ya tenemos el presupuesto para tu ${equipo} (orden ${d.numeroOrden}). ¿Te lo pasamos?`,
     aprobado: `Gracias por aprobar el presupuesto. Ya empezamos con la reparación de tu ${equipo} (orden ${d.numeroOrden}).`,
     rechazado: `Registramos que no vas a seguir con la reparación de tu ${equipo} (orden ${d.numeroOrden}). Podés pasar a retirarlo por ${lugar}.`,
@@ -59,6 +62,7 @@ export function datosAvisoDeOrden(orden: {
   estado: DatosAviso['estado'];
   codigoSeguimiento?: string | null;
   presupuestoMonto?: DatosAviso['presupuestoMonto'];
+  presupuestoDetalle?: DatosAviso['presupuestoDetalle'];
   moneda: DatosAviso['moneda'];
   cliente?: { nombre?: string | null; telefono?: string | null } | null;
   equipo?: { marca?: string | null; modelo?: string | null } | null;
@@ -69,6 +73,7 @@ export function datosAvisoDeOrden(orden: {
     estado: orden.estado,
     codigoSeguimiento: orden.codigoSeguimiento,
     presupuestoMonto: orden.presupuestoMonto,
+    presupuestoDetalle: orden.presupuestoDetalle,
     moneda: orden.moneda,
     clienteNombre: orden.cliente?.nombre,
     clienteTelefono: orden.cliente?.telefono,

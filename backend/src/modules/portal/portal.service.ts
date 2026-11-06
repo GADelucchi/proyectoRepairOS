@@ -120,7 +120,8 @@ export async function consultarPortal(codigoTaller: string, dni: string, ultimos
       equipo: [o.equipo?.tipoEquipo?.nombre, o.equipo?.marca, o.equipo?.modelo].filter(Boolean).join(' · '),
       presupuestoMonto: o.presupuestoMonto,
       montoTotal: o.montoTotal,
-      moneda: o.moneda,
+      // Una orden entregada muestra lo cobrado; si no, lo presupuestado.
+      moneda: o.montoTotal != null ? (o.monedaCobro ?? o.moneda) : o.moneda,
       codigoSeguimiento: o.codigoSeguimiento
     })),
     movimientos: movimientos.map((m) => ({

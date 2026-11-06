@@ -1,5 +1,7 @@
 import { Col, Form, Row } from 'react-bootstrap';
 import { DateInput } from '@/shared/components/DateInput';
+import { CONDICIONES_IVA_RECEPTOR, ETIQUETA_CONDICION_IVA_RECEPTOR } from '@/shared/constants/fiscal';
+import type { CondicionIvaReceptor } from '@/shared/types';
 import type { ClienteFormData } from '../cliente-form';
 
 interface ClienteFormFieldsProps {
@@ -73,6 +75,23 @@ export function ClienteFormFields({
             value={value.dniCuit}
             onChange={(e) => set('dniCuit', e.target.value)}
           />
+        </Form.Group>
+      </Col>
+
+      <Col md={anchoMitad}>
+        <Form.Group controlId={`${prefijoId}-condicionIva`}>
+          <Form.Label>Condición frente al IVA</Form.Label>
+          <Form.Select
+            disabled={disabled}
+            value={value.condicionIva}
+            onChange={(e) => set('condicionIva', e.target.value as CondicionIvaReceptor)}
+          >
+            {CONDICIONES_IVA_RECEPTOR.map((condicion) => (
+              <option key={condicion} value={condicion}>
+                {ETIQUETA_CONDICION_IVA_RECEPTOR[condicion]}
+              </option>
+            ))}
+          </Form.Select>
         </Form.Group>
       </Col>
 

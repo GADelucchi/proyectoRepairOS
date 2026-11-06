@@ -25,7 +25,7 @@ interface ContextoPedido {
   sucursalId: number | null;
   cliente: Cliente;
   motivo: string;
-  /** Moneda de la deuda o del ajuste: la de la orden, en un fiado. */
+  /** Moneda de la deuda o del ajuste: en un fiado, la que se eligió para cobrar. */
   moneda: Moneda;
 }
 
@@ -121,7 +121,7 @@ export async function fiarComoAdmin(
     montoTotal: pedido.datos.montoTotal,
     montoAbonado: pedido.datos.montoAbonado,
     medioPago: pedido.datos.medioPago,
-    monedaEsperada: pedido.moneda,
+    moneda: pedido.moneda,
     puedeForzar: false,
     autorizadoPor,
     enLaMismaTransaccion: async (transaction) => {
@@ -166,7 +166,7 @@ async function aprobarFiado(
     montoTotal: datos.montoTotal,
     montoAbonado: datos.montoAbonado,
     medioPago: datos.medioPago,
-    monedaEsperada: solicitud.moneda,
+    moneda: solicitud.moneda,
     puedeForzar: false,
     autorizadoPor: aprobadorNombre,
     enLaMismaTransaccion: async (transaction) => {

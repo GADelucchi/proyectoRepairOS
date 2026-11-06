@@ -1,4 +1,4 @@
-import type { Cliente } from '@/shared/types';
+import type { Cliente, CondicionIvaReceptor } from '@/shared/types';
 import { convertirAFormatoBackend, convertirDesdeBackend } from '@/shared/utils/fechas';
 import { textoONull } from '@/shared/utils/texto';
 import type { ClienteInput } from './api';
@@ -8,6 +8,7 @@ export interface ClienteFormData {
   nombre: string;
   apellido: string;
   dniCuit: string;
+  condicionIva: CondicionIvaReceptor;
   telefono: string;
   email: string;
   fechaNacimiento: string;
@@ -22,6 +23,7 @@ export const CLIENTE_FORM_VACIO: ClienteFormData = {
   nombre: '',
   apellido: '',
   dniCuit: '',
+  condicionIva: 'consumidor_final',
   telefono: '',
   email: '',
   fechaNacimiento: '',
@@ -38,6 +40,7 @@ export function clienteAFormulario(cliente: Cliente): ClienteFormData {
     nombre: cliente.nombre,
     apellido: cliente.apellido,
     dniCuit: cliente.dniCuit ?? '',
+    condicionIva: cliente.condicionIva ?? 'consumidor_final',
     telefono: cliente.telefono ?? '',
     email: cliente.email ?? '',
     fechaNacimiento: convertirDesdeBackend(cliente.fechaNacimiento),
@@ -58,6 +61,7 @@ export function formularioAClienteInput(form: ClienteFormData): ClienteInput {
     nombre: form.nombre.trim(),
     apellido: form.apellido.trim(),
     dniCuit: textoONull(form.dniCuit),
+    condicionIva: form.condicionIva,
     telefono: textoONull(form.telefono),
     email: textoONull(form.email),
     fechaNacimiento: convertirAFormatoBackend(form.fechaNacimiento),

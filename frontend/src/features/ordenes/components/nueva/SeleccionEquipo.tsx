@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { Alert, Button, Card } from 'react-bootstrap';
+import { Alert, Button, Card, ListGroup, Spinner } from 'react-bootstrap';
 import * as equiposApi from '@/features/equipos/api';
 import { EquipoFormFields } from '@/features/equipos/components/EquipoFormFields';
 import { useBusquedaPorSerie } from '@/features/equipos/hooks/useBusquedaPorSerie';
@@ -49,6 +49,33 @@ export function SeleccionEquipo({ value, onChange, clienteId, tiposEquipo, disab
   );
   const porSerie = useBusquedaPorSerie(usarExistente);
 
+  // Los equipos del cliente elegido, sin tener que tipear. Se guardan con el id del
+  // cliente: si cambia, la lista deja de valer sin esperar a que nadie la limpie.
+  const [suyos, setSuyos] = useState<{ clienteId: number; equipos: Equipo[] } | null>(null);
+  const [buscandoSuyos, setBuscandoSuyos] = useState(false);
+  const [errorSuyos, setErrorSuyos] = useState(false);
+  const equiposDelCliente = clienteId && suyos?.clienteId === clienteId ? suyos.equipos : null;
+
+  async function alternarEquiposDelCliente() {
+    if (!clienteId) return;
+    if (equiposDelCliente) {
+      setSuyos(null);
+      return;
+    }
+    setBuscandoSuyos(true);
+    setErrorSuyos(false);
+    try {
+      setSuyos({ clienteId, equipos: await equiposApi.listarEquipos({ clienteId }) });
+    } catch {
+      setErrorSuyos(true);
+    } finally {
+      setBuscandoSuyos(false);
+    }
+  }
+
+  const elegir = (equipo: Equipo) =>
+    onChange({ existente: equipo, nuevo: null, texto: describirEquipo(equipo) });
+
   return (
     <Card className="h-100">
       <Card.Header>2. Equipo</Card.Header>
@@ -75,7 +102,7 @@ export function SeleccionEquipo({ value, onChange, clienteId, tiposEquipo, disab
               sugerencias={sugerencias}
               claveDe={(eq) => eq.id}
               mostrar={(eq) => `${describirEquipo(eq)} — ${nombreCompleto(eq.cliente)}`}
-              onElegir={(eq) => onChange({ existente: eq, nuevo: null, texto: describirEquipo(eq) })}
+              onElegir={elegir}
               placeholder="Buscar equipo por marca, modelo o número de serie..."
             />
             {value.existente && (
@@ -91,6 +118,37 @@ export function SeleccionEquipo({ value, onChange, clienteId, tiposEquipo, disab
                   Cambiar
                 </Button>
               </Alert>
+            )}
+            {clienteId && !value.existente && (
+              <div className="mt-2">
+                <Button
+                  variant="outline-primary"
+                  size="sm"
+                  disabled={disabled || buscandoSuyos}
+                  aria-expanded={Boolean(equiposDelCliente)}
+                  onClick={alternarEquiposDelCliente}
+                >
+                  {buscandoSuyos ? <Spinner size="sm" animation="border" /> : 'Buscar en sus equipos'}
+                </Button>
+                {errorSuyos && (
+                  <div className="text-danger small mt-1">No se pudieron cargar los equipos del cliente.</div>
+                )}
+                {equiposDelCliente &&
+                  (equiposDelCliente.length === 0 ? (
+                    <div className="text-muted small mt-1">
+                      Este cliente todavía no tiene equipos cargados.
+                    </div>
+                  ) : (
+                    <ListGroup className="mt-2">
+                      {equiposDelCliente.map((eq) => (
+                        <ListGroup.Item key={eq.id} action type="button" onClick={() => elegir(eq)}>
+                          {describirEquipo(eq)}
+                          {eq.numeroSerie && <span className="text-muted small"> · {eq.numeroSerie}</span>}
+                        </ListGroup.Item>
+                      ))}
+                    </ListGroup>
+                  ))}
+              </div>
             )}
             <Button
               variant="outline-secondary"

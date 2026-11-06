@@ -7,6 +7,7 @@ import type { User } from './User';
 import type { OrdenChequeo } from './OrdenChequeo';
 import type { OrdenImagen } from './OrdenImagen';
 import type { OrdenHistorialEstado } from './OrdenHistorialEstado';
+import type { OrdenPrecio } from './OrdenPrecio';
 import { MONEDA_POR_DEFECTO, Moneda } from '../shared/utils/dinero';
 
 export const ESTADOS_ORDEN = [
@@ -41,7 +42,9 @@ export interface OrdenAttributes {
   notasInternas?: string | null;
   presupuestoMonto?: number | null;
   presupuestoAprobado?: boolean | null;
+  presupuestoDetalle?: string | null;
   moneda: Moneda;
+  monedaCobro?: Moneda | null;
   firmaClienteUrl?: string | null;
   firmaClienteEnc?: string | null;
   firmaClienteAt?: Date | null;
@@ -65,7 +68,9 @@ export type OrdenCreationAttributes = Optional<
   | 'notasInternas'
   | 'presupuestoMonto'
   | 'presupuestoAprobado'
+  | 'presupuestoDetalle'
   | 'moneda'
+  | 'monedaCobro'
   | 'firmaClienteUrl'
   | 'firmaClienteEnc'
   | 'firmaClienteAt'
@@ -95,8 +100,12 @@ export class Orden extends Model<OrdenAttributes, OrdenCreationAttributes> imple
   declare notasInternas: string | null;
   declare presupuestoMonto: number | null;
   declare presupuestoAprobado: boolean | null;
-  /** Moneda del presupuesto y del cobro. Los movimientos que genera la orden la heredan. */
+  /** Qué incluye el presupuesto, escrito para el cliente: sale en el seguimiento y el remito. */
+  declare presupuestoDetalle: string | null;
+  /** Moneda del presupuesto de lista. */
   declare moneda: Moneda;
+  /** En qué moneda se cobró al entregar: la del total, lo abonado y los movimientos. */
+  declare monedaCobro: Moneda | null;
   /** URL pública del PNG. Solo para firmas anteriores al cifrado. */
   declare firmaClienteUrl: string | null;
   /** PNG de la firma cifrado con AES-256-GCM. Excluido del scope por defecto. */
@@ -121,6 +130,7 @@ export class Orden extends Model<OrdenAttributes, OrdenCreationAttributes> imple
   declare chequeos?: NonAttribute<OrdenChequeo[]>;
   declare imagenes?: NonAttribute<OrdenImagen[]>;
   declare historialEstados?: NonAttribute<OrdenHistorialEstado[]>;
+  declare precios?: NonAttribute<OrdenPrecio[]>;
 
   static initModel(sequelize: Sequelize): typeof Orden {
     Orden.init(
@@ -156,7 +166,9 @@ export class Orden extends Model<OrdenAttributes, OrdenCreationAttributes> imple
           defaultValue: null,
           field: 'presupuesto_aprobado'
         },
+        presupuestoDetalle: { type: DataTypes.TEXT, allowNull: true, field: 'presupuesto_detalle' },
         moneda: { type: DataTypes.STRING(3), allowNull: false, defaultValue: MONEDA_POR_DEFECTO },
+        monedaCobro: { type: DataTypes.STRING(3), allowNull: true, field: 'moneda_cobro' },
         firmaClienteUrl: { type: DataTypes.STRING(500), allowNull: true, field: 'firma_cliente_url' },
         firmaClienteEnc: { type: DataTypes.TEXT('medium'), allowNull: true, field: 'firma_cliente_enc' },
         firmaClienteAt: { type: DataTypes.DATE, allowNull: true, field: 'firma_cliente_at' },

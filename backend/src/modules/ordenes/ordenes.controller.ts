@@ -77,7 +77,7 @@ export async function entregarOrden(req: Request, res: Response): Promise<void> 
     notificacion: entrega.notificacion,
     pendiente: entrega.pendiente,
     creditoAplicado: entrega.creditoAplicado,
-    saldoCliente: await ordenes.saldoEnMonedaDe(orden)
+    saldoCliente: await ordenes.saldoEnMonedaDe(entrega.orden)
   });
 }
 

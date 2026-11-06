@@ -1,5 +1,5 @@
 import { apiClient } from '@/shared/api/client';
-import type { EstadoOrden, Moneda } from '@/shared/types';
+import type { EstadoOrden, MedioPago, Moneda } from '@/shared/types';
 
 /** Lo que ve el cliente con el link del remito: sin datos personales ni notas internas. */
 export interface SeguimientoPublico {
@@ -12,7 +12,14 @@ export interface SeguimientoPublico {
   fechaEntrega: string | null;
   reparacionSolicitada: string | null;
   equipo: { tipo: string | null; marca: string | null; modelo: string | null };
-  presupuesto: { monto: string; moneda: Moneda; aprobado: boolean | null } | null;
+  presupuesto: {
+    monto: string;
+    moneda: Moneda;
+    /** Qué incluye el presupuesto, escrito por el taller para el cliente. */
+    detalle: string | null;
+    aprobado: boolean | null;
+    alternativos: { medioPago: MedioPago | null; moneda: Moneda; monto: string }[];
+  } | null;
   taller: string | null;
   /** Código del portal de clientes del taller ("mis datos y mi cuenta"). */
   codigoPortal: string | null;

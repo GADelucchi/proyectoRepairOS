@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { CONDICIONES_IVA_RECEPTOR } from '../../shared/utils/fiscal';
 import { busqueda, emailOpcional, fechaIsoOpcional, textoOpcional } from '../../shared/validation/campos';
 
 /**
@@ -9,6 +10,8 @@ export const clienteSchema = z.object({
   nombre: z.string().trim().min(1, 'El nombre es requerido').max(100),
   apellido: z.string().trim().min(1, 'El apellido es requerido').max(100),
   dniCuit: textoOpcional(20),
+  /** Sin indicar, consumidor final. */
+  condicionIva: z.enum(CONDICIONES_IVA_RECEPTOR).optional(),
   telefono: textoOpcional(50),
   email: emailOpcional,
   fechaNacimiento: fechaIsoOpcional,

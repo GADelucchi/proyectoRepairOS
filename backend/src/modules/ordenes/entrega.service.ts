@@ -2,7 +2,7 @@ import { Transaction } from 'sequelize';
 import { sequelize, Orden, OrdenHistorialEstado, Solicitud } from '../../models';
 import { MedioPago } from '../../models/CuentaMovimiento';
 import { errores } from '../../shared/http/http-error';
-import { Moneda, montoConMoneda, redondearMonto } from '../../shared/utils/dinero';
+import { aNumero, Moneda, montoConMoneda, redondearMonto } from '../../shared/utils/dinero';
 import { esTransicionValida, etiquetaEstado } from './estado-orden';
 import { notificarCambioEstadoOrden, ResultadoNotificacion } from '../notificaciones/notificaciones.service';
 import {
@@ -27,12 +27,8 @@ export interface EntregaInput {
   comentario?: string | null;
   /** Para el taller: queda en el historial pero no se imprime en el remito. */
   notaInterna?: string | null;
-  /**
-   * Moneda en la que se pidió el cobro. La entrega cobra siempre en la moneda
-   * de la orden; si se indica y no coincide (alguien cambió la moneda del
-   * presupuesto mientras esperaba una autorización), se corta.
-   */
-  monedaEsperada?: Moneda;
+  /** En qué moneda se cobra. Sin indicar, la del presupuesto. */
+  moneda?: Moneda;
   /** Entregar desde un estado fuera del circuito (solo si `puedeForzar`). */
   forzar?: boolean;
   puedeForzar: boolean;
@@ -65,6 +61,8 @@ function comentarioDeEntrega(partes: {
   abonado: number;
   pendiente: number;
   creditoAplicado: number;
+  /** Solo si se cobró en otra moneda: el precio de lista, para que no se pierda. */
+  presupuesto?: string | null;
   autorizadoPor?: string | null;
   comentario?: string | null;
 }): string {
@@ -72,6 +70,7 @@ function comentarioDeEntrega(partes: {
   return [
     partes.forzado ? '[Forzado]' : null,
     `Entregado. Total ${m(partes.total)}; abonó ${m(partes.abonado)}.`,
+    partes.presupuesto ? `Presupuestado en ${partes.presupuesto}.` : null,
     partes.creditoAplicado > 0 ? `Se aplicaron ${m(partes.creditoAplicado)} de saldo a favor.` : null,
     partes.pendiente > 0 ? `Queda ${m(partes.pendiente)} en cuenta corriente.` : null,
     partes.autorizadoPor ? `Fiado autorizado por ${partes.autorizadoPor}.` : null,
@@ -108,12 +107,7 @@ export async function ejecutarEntrega(input: EntregaInput): Promise<ResultadoEnt
     const estadoAnterior = orden.estado;
     if (estadoAnterior === 'entregado') throw errores.conflicto('La orden ya fue entregada');
 
-    const moneda = orden.moneda;
-    if (input.monedaEsperada && input.monedaEsperada !== moneda) {
-      throw errores.conflicto(
-        `La orden ahora se cobra en ${moneda} y el pedido era en ${input.monedaEsperada}. Hay que volver a pedirlo.`
-      );
-    }
+    const moneda = input.moneda ?? orden.moneda;
 
     const forzado = !esTransicionValida(estadoAnterior, 'entregado');
     if (forzado) {
@@ -136,6 +130,7 @@ export async function ejecutarEntrega(input: EntregaInput): Promise<ResultadoEnt
     await orden.update(
       {
         estado: 'entregado',
+        monedaCobro: moneda,
         montoTotal: total.toFixed(2),
         montoAbonado: abonado.toFixed(2),
         creditoAplicado: creditoAplicado.toFixed(2),
@@ -178,6 +173,10 @@ export async function ejecutarEntrega(input: EntregaInput): Promise<ResultadoEnt
           abonado,
           pendiente,
           creditoAplicado,
+          presupuesto:
+            moneda !== orden.moneda && orden.presupuestoMonto != null
+              ? montoConMoneda(aNumero(orden.presupuestoMonto), orden.moneda)
+              : null,
           autorizadoPor: input.autorizadoPor,
           comentario: input.comentario
         }),

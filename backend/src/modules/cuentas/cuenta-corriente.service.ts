@@ -2,7 +2,7 @@ import { QueryTypes, Transaction } from 'sequelize';
 import { sequelize, Cliente, CuentaMovimiento } from '../../models';
 import { MedioPago, TipoMovimiento } from '../../models/CuentaMovimiento';
 import { HttpError, errores } from '../../shared/http/http-error';
-import { Moneda, redondearMonto } from '../../shared/utils/dinero';
+import { Moneda, montoConMoneda, redondearMonto, textoCotizacion } from '../../shared/utils/dinero';
 import { nombreCompleto } from '../../shared/utils/texto';
 
 /**
@@ -14,7 +14,8 @@ import { nombreCompleto } from '../../shared/utils/texto';
  * justificarse asiento por asiento cuando el cliente lo discute.
  *
  * Cada asiento tiene moneda y el saldo se lleva por moneda: un cliente puede
- * deber pesos y tener dólares a favor, y una cosa no compensa la otra.
+ * deber pesos y tener dólares a favor, y una cosa no compensa la otra. Una deuda
+ * solo cambia de moneda cuando el cliente la paga en otra (`registrarConversion`).
  */
 
 /** Saldo de un cliente en una moneda. */
@@ -23,10 +24,10 @@ export interface SaldoEnMoneda {
   saldo: number;
 }
 
-/** Expresión SQL del saldo: cargos y ajustes débito suman, el resto resta. */
+/** Expresión SQL del saldo: cargos y débitos suman, el resto resta. */
 export function sumaSaldo(alias = ''): string {
   const col = alias ? `${alias}.` : '';
-  return `SUM(CASE WHEN ${col}tipo IN ('cargo', 'ajuste_debito') THEN ${col}monto ELSE -${col}monto END)`;
+  return `SUM(CASE WHEN ${col}tipo IN ('cargo', 'ajuste_debito', 'conversion_debito') THEN ${col}monto ELSE -${col}monto END)`;
 }
 
 /** Saldo del cliente en una moneda. */
@@ -143,6 +144,28 @@ export const registrarPago = (datos: DatosMovimiento) => crearMovimiento('pago',
  */
 export const registrarAjuste = (direccion: 'debito' | 'credito', datos: DatosMovimiento) =>
   crearMovimiento(direccion === 'debito' ? 'ajuste_debito' : 'ajuste_credito', datos);
+
+/**
+ * Pago de una deuda en otra moneda: `datos` es la plata que entró y `deuda`, lo
+ * que cancela. La deuda baja en su moneda y sube en la del pago, y el `pago` que
+ * se asienta después la cancela ahí: así la caja cuenta lo que entró de verdad.
+ */
+export async function registrarConversion(
+  datos: DatosMovimiento,
+  deuda: { moneda: Moneda; monto: number }
+): Promise<void> {
+  const cotizacion = textoCotizacion(deuda.moneda, deuda.monto, datos.moneda, datos.monto);
+  await crearMovimiento('conversion_credito', {
+    ...datos,
+    moneda: deuda.moneda,
+    monto: deuda.monto,
+    nota: `Pagado con ${montoConMoneda(datos.monto, datos.moneda)} (${cotizacion})`
+  });
+  await crearMovimiento('conversion_debito', {
+    ...datos,
+    nota: `Por ${montoConMoneda(deuda.monto, deuda.moneda)} (${cotizacion})`
+  });
+}
 
 /** Plata a favor disponible: el saldo negativo es crédito del cliente. */
 export function creditoDisponible(saldo: number): number {

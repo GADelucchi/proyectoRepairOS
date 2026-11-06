@@ -46,7 +46,16 @@ export async function obtenerCuenta(clienteId: number): Promise<DetalleCuenta> {
 
 export async function registrarCobro(
   clienteId: number,
-  payload: { monto: number; moneda: Moneda; medioPago?: MedioPago | null; nota?: string | null }
+  payload: {
+    /** La plata que entró. */
+    monto: number;
+    moneda: Moneda;
+    /** Si paga en otra moneda: cuánto de qué deuda cancela. */
+    monedaDeuda?: Moneda;
+    montoDeuda?: number;
+    medioPago?: MedioPago | null;
+    nota?: string | null;
+  }
 ): Promise<{ movimiento: CuentaMovimiento; saldo: number }> {
   const { data } = await apiClient.post(`/cuentas/${clienteId}/pagos`, payload);
   return data;

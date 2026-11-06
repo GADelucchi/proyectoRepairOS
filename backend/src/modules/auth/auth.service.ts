@@ -1,6 +1,7 @@
 import bcrypt from 'bcrypt';
 import { z } from 'zod';
 import { sequelize, User, Sucursal, Taller, Suscripcion } from '../../models';
+import { ATRIBUTOS_FISCALES } from '../../models/Taller';
 import { errores } from '../../shared/http/http-error';
 import { signToken } from '../../shared/security/jwt';
 import { env } from '../../config/env';
@@ -8,6 +9,7 @@ import { esAdminDePlataforma, notificarAdminsDePlataforma } from '../plataforma/
 import { invalidarCacheUsuario } from '../../shared/middlewares/auth.middleware';
 import { monedaDePais } from '../../shared/utils/paises';
 import { excesoDelPlan, usoDelPlan } from '../suscripciones/limites.service';
+import { datosFiscalesDe } from '../configuracion/configuracion.service';
 import { codigoPublicoDe } from '../portal/portal.service';
 import { generarCodigoPublico, urlDelPortal } from '../seguimiento/codigo';
 import {
@@ -140,7 +142,13 @@ export async function seleccionarSucursal(usuarioId: number, sucursalId: number)
 /** Perfil de la sesión: usuario, taller, suscripción y sucursales disponibles. */
 export async function perfil(usuarioId: number, sucursalIdDelToken?: number) {
   const user = await User.findByPk(usuarioId, {
-    include: [{ model: Taller, as: 'taller', attributes: ['id', 'nombre', 'pais', 'codigoPublico'] }]
+    include: [
+      {
+        model: Taller,
+        as: 'taller',
+        attributes: ['id', 'nombre', 'pais', 'codigoPublico', 'stockEntreSucursales', ...ATRIBUTOS_FISCALES]
+      }
+    ]
   });
   if (!user) throw errores.noEncontrado('Usuario');
 
@@ -161,7 +169,9 @@ export async function perfil(usuarioId: number, sucursalIdDelToken?: number) {
           // Con la que arrancan las órdenes, los cobros y los ajustes.
           moneda: monedaDePais(user.taller.pais),
           // Link para que sus clientes consulten sus datos y su cuenta.
-          portalClientes: urlDelPortal(await codigoPublicoDe(user.taller))
+          portalClientes: urlDelPortal(await codigoPublicoDe(user.taller)),
+          stockEntreSucursales: user.taller.stockEntreSucursales,
+          fiscal: datosFiscalesDe(user.taller)
         }
       : null,
     suscripcion: await suscripcionDeTaller(user.tallerId),

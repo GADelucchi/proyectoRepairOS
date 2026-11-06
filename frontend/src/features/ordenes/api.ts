@@ -42,7 +42,9 @@ export interface NuevaOrdenInput {
   notasInternas?: string | null;
   fechaPactada?: string | null;
   presupuestoMonto?: number | null;
+  presupuestoDetalle?: string | null;
   moneda?: Moneda;
+  preciosAlternativos?: PrecioInput[];
   chequeos?: ChequeoInput[];
 }
 
@@ -86,9 +88,18 @@ export async function cambiarEstadoOrden(
   return data;
 }
 
+/** Precio alternativo al de lista, como lo espera la API. */
+export interface PrecioInput {
+  medioPago: MedioPago | null;
+  moneda: Moneda;
+  monto: number;
+}
+
 export interface EntregaInput {
   montoTotal: number;
   montoAbonado: number;
+  /** En qué moneda se cobra. Sin indicar, la del presupuesto. */
+  moneda?: Moneda;
   medioPago?: MedioPago | null;
   comentario?: string | null;
   notaInterna?: string | null;
@@ -114,6 +125,7 @@ export async function entregarOrden(id: number, input: EntregaInput): Promise<Or
 export interface SolicitudFiadoInput {
   montoTotal: number;
   montoAbonado: number;
+  moneda?: Moneda;
   medioPago?: MedioPago | null;
   motivo: string;
 }
@@ -138,7 +150,13 @@ export async function solicitarFiado(
 
 export async function actualizarPresupuesto(
   id: number,
-  payload: { monto?: number | null; moneda?: Moneda; aprobado?: boolean | null }
+  payload: {
+    monto?: number | null;
+    moneda?: Moneda;
+    detalle?: string | null;
+    preciosAlternativos?: PrecioInput[];
+    aprobado?: boolean | null;
+  }
 ): Promise<OrdenConNotificacion> {
   const { data } = await apiClient.put<OrdenConNotificacion>(`/ordenes/${id}/presupuesto`, payload);
   return data;

@@ -5,6 +5,7 @@ import { errores } from '../../shared/http/http-error';
 import { MONEDA_POR_DEFECTO, Moneda, montoConMoneda, redondearMonto } from '../../shared/utils/dinero';
 import {
   bloquearCliente,
+  registrarConversion,
   registrarPago,
   saldoDeCliente,
   saldosDeCliente,
@@ -122,36 +123,42 @@ export async function detalleCuenta(cliente: Cliente) {
  *
  * El saldo se lee y el pago se asienta con el cliente bloqueado, así dos cobros
  * simultáneos no pueden dejar la cuenta con saldo a favor por error.
+ *
+ * Con `monedaDeuda`, el cliente paga en otra moneda: la plata entra en la caja en
+ * la moneda en que pagó y la deuda baja en la suya, sin convertir nada por detrás.
  */
 export async function registrarCobro(
   cliente: Cliente,
   usuarioId: number,
   sucursalId: number,
-  { monto, moneda, medioPago, nota }: z.infer<typeof registrarCobroSchema>
+  { monto, moneda, monedaDeuda, montoDeuda, medioPago, nota }: z.infer<typeof registrarCobroSchema>
 ) {
+  const deudaEn = monedaDeuda ?? moneda;
+  const aDescontar = redondearMonto(montoDeuda ?? monto);
+
   const movimiento = await sequelize.transaction(async (transaction) => {
     await bloquearCliente(cliente.id, transaction);
-    const saldo = await saldoDeCliente(cliente.tallerId, cliente.id, moneda, transaction);
+    const saldo = await saldoDeCliente(cliente.tallerId, cliente.id, deudaEn, transaction);
 
-    if (saldo <= 0) throw errores.conflicto(`El cliente no tiene saldo pendiente en ${moneda}`);
-    if (redondearMonto(monto) > saldo) {
+    if (saldo <= 0) throw errores.conflicto(`El cliente no tiene saldo pendiente en ${deudaEn}`);
+    if (aDescontar > saldo) {
       throw errores.conflicto(
-        `El cobro supera lo que debe el cliente (saldo actual: ${montoConMoneda(saldo, moneda)}).`
+        `El cobro supera lo que debe el cliente (saldo actual: ${montoConMoneda(saldo, deudaEn)}).`
       );
     }
 
-    return registrarPago({
+    const datos = {
       tallerId: cliente.tallerId,
       clienteId: cliente.id,
       usuarioId,
       sucursalId,
       monto,
       moneda,
-      medioPago: medioPago ?? null,
-      nota: nota ?? null,
       transaction
-    });
+    };
+    if (monedaDeuda) await registrarConversion(datos, { moneda: monedaDeuda, monto: aDescontar });
+    return registrarPago({ ...datos, medioPago: medioPago ?? null, nota: nota ?? null });
   });
 
-  return { movimiento, saldo: await saldoDeCliente(cliente.tallerId, cliente.id, moneda) };
+  return { movimiento, saldo: await saldoDeCliente(cliente.tallerId, cliente.id, deudaEn) };
 }

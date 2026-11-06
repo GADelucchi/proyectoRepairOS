@@ -76,6 +76,8 @@ const EquipoDetallePage = diferida(
   'EquipoDetallePage'
 );
 const EscanearQrPage = diferida(() => import('@/features/equipos/pages/EscanearQrPage'), 'EscanearQrPage');
+const StockPage = diferida(() => import('@/features/stock/pages/StockPage'), 'StockPage');
+const EquipoStockPage = diferida(() => import('@/features/stock/pages/EquipoStockPage'), 'EquipoStockPage');
 const CuentasPage = diferida(() => import('@/features/cuentas/pages/CuentasPage'), 'CuentasPage');
 const CajaPage = diferida(() => import('@/features/caja/pages/CajaPage'), 'CajaPage');
 const SolicitudesPage = diferida(
@@ -131,6 +133,9 @@ export function App() {
               {/* Adonde lleva el QR de la etiqueta del equipo. */}
               <Route path="/equipos/:id" element={<EquipoDetallePage />} />
               <Route path="/escanear" element={<EscanearQrPage />} />
+              <Route path="/stock" element={<StockPage />} />
+              <Route path="/stock/nuevo" element={<EquipoStockPage />} />
+              <Route path="/stock/:id" element={<EquipoStockPage />} />
               <Route path="/cuentas" element={<CuentasPage />} />
               <Route path="/caja" element={<CajaPage />} />
               <Route path="/autorizaciones" element={<SolicitudesPage />} />

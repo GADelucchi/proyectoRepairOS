@@ -2,7 +2,6 @@ import { Suspense, useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router';
 import { Button, Offcanvas } from 'react-bootstrap';
 import { CircleHelp, Menu, Moon, PanelLeft, ScanLine, Sun } from 'lucide-react';
-import { AvisoSuscripcion } from '@/features/auth/components/AvisoSuscripcion';
 import { useAuth } from '@/features/auth/useAuth';
 import { GuiaInicio } from '@/features/guia/GuiaInicio';
 import { abrirGuia } from '@/features/guia/pasos';
@@ -171,7 +170,6 @@ export function Layout() {
             <AjustePlan />
           ) : (
             <>
-              {!usuario?.esDemo && <AvisoSuscripcion suscripcion={usuario?.suscripcion ?? null} />}
               {/* La página se descarga sin tapar el menú. */}
               <Suspense fallback={<Cargando />}>
                 <Outlet />

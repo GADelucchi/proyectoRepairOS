@@ -1,6 +1,8 @@
 import { z } from 'zod';
 import { MONEDA_POR_DEFECTO, MONEDAS } from '../utils/dinero';
 import { esFechaIsoValida } from '../utils/fechas';
+import { esCuitValido } from '../utils/fiscal';
+import { esImeiValido, normalizarImei } from '../utils/imei';
 
 /**
  * Piezas de validación que se repiten entre módulos.
@@ -34,6 +36,26 @@ export const fechaIsoOpcional = z
   .optional()
   .nullable()
   .transform(vacioANull);
+
+/** CUIT opcional, con o sin guiones. Se guarda solo con los dígitos. */
+export const cuitOpcional = z
+  .string()
+  .trim()
+  .optional()
+  .nullable()
+  .transform((v) => (v ? v.replace(/\D/g, '') : null))
+  .refine((v) => v === null || esCuitValido(v), { message: 'El CUIT no es válido' });
+
+/** IMEI opcional, con o sin espacios. Se guarda solo con los dígitos. */
+export const imeiOpcional = z
+  .string()
+  .trim()
+  .optional()
+  .nullable()
+  .transform((v) => (v ? normalizarImei(v) : null))
+  .refine((v) => v === null || esImeiValido(v), {
+    message: 'El IMEI no es válido: son 15 dígitos y el último es de control'
+  });
 
 export const idPositivo = z.number().int().positive();
 

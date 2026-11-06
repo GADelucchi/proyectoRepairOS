@@ -37,13 +37,19 @@ export function CuentasPage() {
   const cuentas = datos?.cuentas ?? [];
   const totalesAdeudados = datos?.totalesAdeudados ?? [];
 
-  function handleCobrado(nombre: string, monto: number, saldo: number, moneda: Moneda) {
+  function handleCobrado(
+    nombre: string,
+    monto: number,
+    monedaCobro: Moneda,
+    saldo: number,
+    monedaDeuda: Moneda
+  ) {
     setClienteAbierto(null);
-    const cobro = `Cobro de ${formatearMonto(monto, moneda)} registrado.`;
+    const cobro = `Cobro de ${formatearMonto(monto, monedaCobro)} registrado.`;
     setMensaje(
       saldo > 0
-        ? `${cobro} ${nombre} queda debiendo ${formatearMonto(saldo, moneda)}.`
-        : `${cobro} ${nombre} queda al día en ${moneda}.`
+        ? `${cobro} ${nombre} queda debiendo ${formatearMonto(saldo, monedaDeuda)}.`
+        : `${cobro} ${nombre} queda al día en ${monedaDeuda}.`
     );
     recargar();
   }

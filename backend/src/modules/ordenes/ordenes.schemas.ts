@@ -8,6 +8,7 @@ import {
   idPositivo,
   moneda,
   monto,
+  montoPositivo,
   textoOpcional
 } from '../../shared/validation/campos';
 import { clienteSchema } from '../clientes/clientes.schemas';
@@ -22,6 +23,20 @@ const chequeoSchema = z.object({
   orden: z.number().int().optional()
 });
 
+/** Precios alternativos al de lista: "en pesos y en efectivo, tanto". */
+const preciosAlternativos = z
+  .array(
+    z.object({
+      medioPago: z.enum(MEDIOS_PAGO).optional().nullable(),
+      moneda,
+      monto: montoPositivo
+    })
+  )
+  .max(5, 'Se pueden cargar hasta 5 precios alternativos');
+
+/** Qué incluye el presupuesto, para el cliente: lo ve en el seguimiento y en el remito. */
+const detallePresupuesto = textoOpcional(2000);
+
 export const chequeosSchema = z.array(chequeoSchema);
 export type ChequeoInput = z.infer<typeof chequeoSchema>;
 
@@ -30,7 +45,8 @@ const datosOrdenSchema = z.object({
   reparacionSolicitada: z.string().trim().min(1, 'Indicá la reparación o revisión a realizar'),
   notasInternas: z.string().optional().nullable(),
   fechaPactada: fechaIsoOpcional,
-  presupuestoMonto: monto.optional().nullable()
+  presupuestoMonto: monto.optional().nullable(),
+  presupuestoDetalle: detallePresupuesto
 });
 
 /**
@@ -39,8 +55,9 @@ const datosOrdenSchema = z.object({
  */
 export const crearOrdenSchema = datosOrdenSchema
   .extend({
-    /** Moneda del presupuesto y del cobro. Sin indicar, la local. */
+    /** Moneda del presupuesto de lista. Sin indicar, la local. */
     moneda: moneda.optional(),
+    preciosAlternativos: preciosAlternativos.optional(),
     clienteId: idPositivo.optional(),
     nuevoCliente: clienteSchema.optional(),
     equipoId: idPositivo.optional(),
@@ -82,17 +99,22 @@ export const cambiarEstadoSchema = z.object({
 export const presupuestoSchema = z.object({
   monto: monto.optional().nullable(),
   moneda: moneda.optional(),
+  detalle: detallePresupuesto,
+  /** Si viene, reemplaza la lista entera. */
+  preciosAlternativos: preciosAlternativos.optional(),
   aprobado: z.boolean().optional().nullable()
 });
 
 /**
  * Entrega del equipo: el momento en que se cobra. `montoTotal` puede diferir
  * del presupuesto (un repuesto extra, un descuento), así que se confirma acá.
+ * También la moneda: se puede presupuestar en dólares y terminar cobrando en pesos.
  */
 export const entregaSchema = z
   .object({
     montoTotal: monto,
     montoAbonado: monto,
+    moneda: moneda.optional(),
     medioPago: z.enum(MEDIOS_PAGO).optional().nullable(),
     comentario: z.string().trim().max(255).optional().nullable(),
     notaInterna,
@@ -109,6 +131,7 @@ export const solicitarFiadoSchema = z
   .object({
     montoTotal: monto,
     montoAbonado: monto,
+    moneda: moneda.optional(),
     medioPago: z.enum(MEDIOS_PAGO).optional().nullable(),
     motivo: z.string().trim().min(1, 'Hay que explicar el motivo del pedido').max(500)
   })

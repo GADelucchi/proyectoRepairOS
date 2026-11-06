@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router';
 import { estaListoParaRetirar } from '@/features/ordenes/estado-orden';
 import { Cargando } from '@/shared/components/Cargando';
 import { Logo } from '@/shared/components/Logo';
+import { ETIQUETA_MEDIO_PAGO } from '@/shared/constants/pagos';
 import { useConsulta } from '@/shared/hooks/useConsulta';
 import type { EstadoOrden } from '@/shared/types';
 import { formatearMonto } from '@/shared/utils/dinero';
@@ -139,6 +140,17 @@ export function SeguimientoPage() {
                     <Badge bg="secondary" className="ms-2">
                       No aprobado
                     </Badge>
+                  )}
+                  {s.presupuesto.alternativos.map((p, i) => (
+                    <div key={i} className="small text-muted">
+                      {p.medioPago ? ETIQUETA_MEDIO_PAGO[p.medioPago] : 'Otro precio'}:{' '}
+                      {formatearMonto(p.monto, p.moneda)}
+                    </div>
+                  ))}
+                  {s.presupuesto.detalle && (
+                    <div className="mt-2" style={{ whiteSpace: 'pre-line' }}>
+                      {s.presupuesto.detalle}
+                    </div>
                   )}
                 </ListGroup.Item>
               )}

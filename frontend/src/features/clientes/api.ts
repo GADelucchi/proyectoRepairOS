@@ -1,11 +1,12 @@
 import { apiClient } from '@/shared/api/client';
-import type { Cliente, EstadoOrden } from '@/shared/types';
+import type { Cliente, CondicionIvaReceptor, EstadoOrden } from '@/shared/types';
 
 /** Cuerpo que acepta la API para crear o editar un cliente. */
 export interface ClienteInput {
   nombre: string;
   apellido: string;
   dniCuit: string | null;
+  condicionIva: CondicionIvaReceptor;
   telefono: string | null;
   email: string | null;
   fechaNacimiento: string | null;

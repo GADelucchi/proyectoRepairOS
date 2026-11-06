@@ -6,7 +6,6 @@ import { AlertaError } from '@/shared/components/AlertaError';
 import { Cargando } from '@/shared/components/Cargando';
 import { useAccion } from '@/shared/hooks/useAccion';
 import { useConsulta } from '@/shared/hooks/useConsulta';
-import type { Moneda } from '@/shared/types';
 import { formatearMonto } from '@/shared/utils/dinero';
 import * as ordenesApi from '../api';
 import { ChequeosCard } from '../components/detalle/ChequeosCard';
@@ -29,10 +28,12 @@ function conAviso(base: string, orden: ordenesApi.OrdenConNotificacion): string 
   return orden.notificacion ? `${base} ${orden.notificacion.detalle}` : base;
 }
 
-function mensajeDeEntrega(
-  { saldoCliente, creditoAplicado = 0, notificacion }: ResultadoEntrega,
-  moneda: Moneda
-): string {
+function mensajeDeEntrega({
+  saldoCliente,
+  creditoAplicado = 0,
+  notificacion,
+  moneda
+}: ResultadoEntrega): string {
   const m = (valor: number) => formatearMonto(valor, moneda);
   const base =
     saldoCliente > 0
@@ -170,7 +171,7 @@ export function OrdenDetallePage() {
         </Col>
         <Col md={6}>
           <PresupuestoCard
-            key={`${orden.presupuestoMonto}-${orden.moneda}`}
+            key={`${orden.presupuestoMonto}-${orden.moneda}-${orden.presupuestoDetalle}-${JSON.stringify(orden.precios)}`}
             {...seccion}
             conAviso={conAviso}
           />
@@ -200,7 +201,7 @@ export function OrdenDetallePage() {
         onCerrar={() => setEntregando(false)}
         onEntregado={(resultado) => {
           setEntregando(false);
-          onActualizada(mensajeDeEntrega(resultado, orden.moneda));
+          onActualizada(mensajeDeEntrega(resultado));
         }}
         onAutorizacionPedida={() => {
           setEntregando(false);
