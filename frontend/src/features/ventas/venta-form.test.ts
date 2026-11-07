@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { EquipoStock } from '@/shared/types';
 import {
+  PAGO_VACIO,
   PARTE_VACIA,
   conPreciosDeLista,
   formularioAVentaInput,
@@ -13,6 +14,8 @@ import {
 
 const equipo = { id: 7, precio: '1150.00', monedaPrecio: 'USD' } as EquipoStock;
 const HOY = '2026-11-06';
+
+const efectivo = (monto: string) => ({ ...PAGO_VACIO, monto });
 
 const venta = (datos: Partial<VentaForm> = {}): VentaForm => ({
   ...ventaVacia('USD'),
@@ -48,17 +51,33 @@ describe('totales y pagos', () => {
     });
     expect(totalesDelFormulario(f)).toMatchObject({ total: 1100, partePago: 300, aPagar: 800 });
     expect(validarVenta({ ...f, partes: [] }, HOY)).toBeNull();
-    expect(formularioAVentaInput(f).pagos).toEqual([{ monto: 800, medioPago: 'efectivo' }]);
+    expect(formularioAVentaInput(f).pagos).toEqual([
+      { monto: 800, medioPago: 'efectivo', moneda: 'USD', cotizacion: null }
+    ]);
   });
 
   it('vender exige pagar todo y señar, una parte', () => {
-    expect(validarVenta(venta({ pagos: [{ monto: '500', medioPago: 'efectivo' }] }), HOY)).toContain('Señar');
-    expect(
-      validarVenta(venta({ modo: 'sena', pagos: [{ monto: '', medioPago: 'efectivo' }] }), HOY)
-    ).toContain('seña');
-    expect(
-      validarVenta(venta({ modo: 'sena', pagos: [{ monto: '200', medioPago: 'efectivo' }] }), HOY)
-    ).toBeNull();
+    expect(validarVenta(venta({ pagos: [efectivo('500')] }), HOY)).toContain('Señar');
+    expect(validarVenta(venta({ modo: 'sena', pagos: [efectivo('')] }), HOY)).toContain('seña');
+    expect(validarVenta(venta({ modo: 'sena', pagos: [efectivo('200')] }), HOY)).toBeNull();
+  });
+
+  it('US$ 900 en dólares y el resto en pesos: el pago vacío en pesos es lo que falta', () => {
+    const pesos = { ...PAGO_VACIO, moneda: 'ARS' as const, cotizacion: '1200' };
+    const f = venta({ items: [{ equipo, precio: '1000', editado: true }], pagos: [efectivo('900'), pesos] });
+    expect(validarVenta(f, HOY)).toBeNull();
+    expect(formularioAVentaInput(f).pagos).toEqual([
+      { monto: 900, medioPago: 'efectivo', moneda: 'USD', cotizacion: null },
+      { monto: 120000, medioPago: 'efectivo', moneda: 'ARS', cotizacion: 1200 }
+    ]);
+    // Sin cotización no se puede saber cuánto cubren los pesos.
+    expect(validarVenta({ ...f, pagos: [efectivo('900'), { ...pesos, cotizacion: '' }] }, HOY)).toContain(
+      'cotización'
+    );
+    // Con el monto escrito, tiene que cubrir lo que falta.
+    expect(validarVenta({ ...f, pagos: [efectivo('900'), { ...pesos, monto: '60000' }] }, HOY)).toContain(
+      'Señar'
+    );
   });
 
   it('en pesos pide la cotización, y una reserva pide la fecha', () => {

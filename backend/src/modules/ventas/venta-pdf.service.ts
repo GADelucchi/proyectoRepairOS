@@ -186,11 +186,17 @@ export async function generarVentaPdf(venta: Venta, taller: Taller): Promise<Buf
   let pagado = 0;
   for (const pago of pagos) {
     const signo = pago.tipo === 'devolucion' ? -1 : 1;
-    pagado += signo * aNumero(pago.monto);
+    pagado += signo * aNumero(pago.equivalente);
     const medio = pago.medioPago ? ` · ${ETIQUETA_MEDIO_PAGO[pago.medioPago]}` : '';
+    // En otra moneda: lo que entró, con la cotización, y a la derecha lo que cubre de la venta.
+    const enOtraMoneda =
+      pago.moneda === moneda
+        ? undefined
+        : `${formatearMonto(pago.monto, pago.moneda)}${pago.cotizacion ? ` (1 US$ = ${aNumero(pago.cotizacion).toLocaleString('es-AR')} ${pago.moneda === 'USD' ? moneda : pago.moneda})` : ''}`;
     renglon(
       `${TIPO_PAGO[pago.tipo]} del ${formatearFechaHora(pago.createdAt)}${medio}`,
-      `${signo < 0 ? '+' : '-'} ${plata(pago.monto)}`
+      `${signo < 0 ? '+' : '-'} ${plata(pago.equivalente)}`,
+      { sub: enOtraMoneda }
     );
   }
   if (venta.estado === 'reservada' || venta.estado === 'senada') {

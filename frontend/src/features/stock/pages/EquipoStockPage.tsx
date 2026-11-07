@@ -33,6 +33,7 @@ import {
 } from '@/shared/utils/fechas';
 import { nombreCompleto } from '@/shared/utils/texto';
 import * as stockApi from '../api';
+import { CostosReparacion } from '../components/CostosReparacion';
 import {
   ALMACENAMIENTOS_GB,
   ETIQUETA_ESTADO_STOCK,
@@ -91,6 +92,13 @@ export function FormularioEquipoStock({ equipo, onGuardado, onCancelar }: Formul
   // Los costos los ve solo un admin. Quien no lo es los carga al dar de alta, pero después no los ve.
   const verCostos = esAdmin || !equipo;
   const repetido = useRepetido(form, equipo?.id);
+  // Si no cargan, el campo se escribe a mano como siempre: no hace falta avisar.
+  const { datos: proveedores = [], recargar: recargarProveedores } = useConsulta(
+    stockApi.listarProveedores,
+    [],
+    'No se pudieron cargar los proveedores',
+    'stock-proveedores'
+  );
 
   function cambiar<K extends keyof EquipoStockForm>(campo: K, valor: EquipoStockForm[K]) {
     setForm((previo) => ({ ...previo, [campo]: valor }));
@@ -110,6 +118,7 @@ export function FormularioEquipoStock({ equipo, onGuardado, onCancelar }: Formul
         : await stockApi.crearEquipoStock(input);
     }, 'No se pudo guardar el equipo');
     if (!ok || !guardado) return;
+    if (guardado.proveedor && !proveedores.includes(guardado.proveedor)) recargarProveedores();
 
     if (otro) {
       setCargado(guardado);
@@ -289,7 +298,7 @@ export function FormularioEquipoStock({ equipo, onGuardado, onCancelar }: Formul
                   <CampoEscaneable
                     id="stock-serial"
                     inputRef={serialRef}
-                    autoCapitalize="characters"
+                    mayusculas
                     value={form.numeroSerie}
                     maxLength={150}
                     tituloEscaner="Escanear número de serie"
@@ -361,8 +370,16 @@ export function FormularioEquipoStock({ equipo, onGuardado, onCancelar }: Formul
                     <Form.Control
                       value={form.proveedor}
                       maxLength={150}
+                      list="stock-proveedores-usados"
+                      autoComplete="off"
                       onChange={(e) => cambiar('proveedor', e.target.value)}
                     />
+                    {/* Al escribir, el navegador sugiere los que ya se usaron. */}
+                    <datalist id="stock-proveedores-usados">
+                      {proveedores.map((p) => (
+                        <option key={p} value={p} />
+                      ))}
+                    </datalist>
                   </Form.Group>
                 </Col>
                 {verCostos && (
@@ -457,6 +474,9 @@ export function FormularioEquipoStock({ equipo, onGuardado, onCancelar }: Formul
           </div>
         </fieldset>
       </Form>
+
+      {/* Fuera del formulario: se agregan al momento, también con el equipo vendido. */}
+      {equipo && esAdmin && <CostosReparacion equipo={equipo} />}
 
       {equipo && (
         <DarDeBajaModal

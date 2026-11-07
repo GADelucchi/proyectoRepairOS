@@ -130,7 +130,7 @@ export function PartePagoModal({ show, moneda, inicial, onGuardar, onCerrar }: P
               <Form.Label htmlFor="parte-serial">Número de serie</Form.Label>
               <CampoEscaneable
                 id="parte-serial"
-                autoCapitalize="characters"
+                mayusculas
                 value={parte.numeroSerie}
                 maxLength={150}
                 tituloEscaner="Escanear número de serie"

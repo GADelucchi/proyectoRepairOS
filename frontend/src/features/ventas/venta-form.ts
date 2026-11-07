@@ -65,9 +65,50 @@ export const PARTE_VACIA: PartePagoForm = {
 };
 
 export interface PagoForm {
-  /** Vacío en el único pago de una venta: es todo lo que falta. */
+  /** Vacío en un pago de una venta (si es el único sin monto): es todo lo que falta. */
   monto: string;
   medioPago: MedioPago;
+  /** null: la moneda de la venta, aunque después se cambie. */
+  moneda: Moneda | null;
+  /** 1 US$ en la moneda que no es dólar, si el pago es en otra moneda que la venta. */
+  cotizacion: string;
+}
+
+export const PAGO_VACIO: PagoForm = { monto: '', medioPago: 'efectivo', moneda: null, cotizacion: '' };
+
+export const monedaDelPago = (p: PagoForm, monedaVenta: Moneda): Moneda => p.moneda ?? monedaVenta;
+
+/**
+ * Por qué no se puede tomar un pago en otra moneda, o null. Las mismas reglas
+ * que la API: la cotización es siempre contra el dólar, así que el pago o la
+ * venta tiene que ser en dólares.
+ */
+export function problemaDePago(p: PagoForm, monedaVenta: Moneda): string | null {
+  const moneda = monedaDelPago(p, monedaVenta);
+  if (moneda === monedaVenta) return null;
+  if (moneda !== 'USD' && monedaVenta !== 'USD') {
+    return `Una venta en ${monedaVenta} se cobra en ${monedaVenta} o en dólares, no en ${moneda}.`;
+  }
+  if (!(aNumero(p.cotizacion) > 0)) return `Indicá la cotización del pago en ${moneda}.`;
+  return null;
+}
+
+/** Lo que cubre de la venta un monto en la moneda del pago, o null si falta la cotización. */
+export function equivalenteDe(monto: number, p: PagoForm, monedaVenta: Moneda): number | null {
+  const moneda = monedaDelPago(p, monedaVenta);
+  if (moneda === monedaVenta) return redondear(monto);
+  if (problemaDePago(p, monedaVenta)) return null;
+  const cotizacion = aNumero(p.cotizacion);
+  return redondear(moneda === 'USD' ? monto * cotizacion : monto / cotizacion);
+}
+
+/** Lo inverso: cuánto hay que poner en la moneda del pago para cubrir un monto de la venta. */
+export function enMonedaDelPago(montoVenta: number, p: PagoForm, monedaVenta: Moneda): number | null {
+  const moneda = monedaDelPago(p, monedaVenta);
+  if (moneda === monedaVenta) return redondear(montoVenta);
+  if (problemaDePago(p, monedaVenta)) return null;
+  const cotizacion = aNumero(p.cotizacion);
+  return redondear(moneda === 'USD' ? montoVenta / cotizacion : montoVenta * cotizacion);
 }
 
 export interface VentaForm {
@@ -95,7 +136,7 @@ export function ventaVacia(moneda: Moneda): VentaForm {
     descuentoValor: '',
     partes: [],
     modo: 'venta',
-    pagos: [{ monto: '', medioPago: 'efectivo' }],
+    pagos: [PAGO_VACIO],
     reservadaHasta: '',
     comentarioCliente: '',
     comentarioInterno: ''
@@ -171,21 +212,59 @@ export function totalesDelFormulario(f: VentaForm): TotalesVenta {
   );
 }
 
-const pagosConMonto = (pagos: PagoForm[]): PagoInput[] =>
-  pagos.filter((p) => aNumero(p.monto) > 0).map((p) => ({ monto: aNumero(p.monto), medioPago: p.medioPago }));
-
-/** Pagos que cancelan un saldo: un solo pago sin monto es el saldo completo. */
-export function pagosConSaldo(pagos: PagoForm[], saldo: number): PagoInput[] {
-  if (pagos.length === 1 && !pagos[0].monto.trim()) {
-    return saldo > 0 ? [{ monto: saldo, medioPago: pagos[0].medioPago }] : [];
-  }
-  return pagosConMonto(pagos);
+function pagoAInput(p: PagoForm, monto: number, monedaVenta: Moneda): PagoInput {
+  const moneda = monedaDelPago(p, monedaVenta);
+  return {
+    monto,
+    medioPago: p.medioPago,
+    moneda,
+    cotizacion: moneda === monedaVenta ? null : aNumero(p.cotizacion)
+  };
 }
 
-/** Los pagos como los espera la API. En una venta con un solo pago sin monto, ese pago es todo lo que falta. */
+const pagosConMonto = (pagos: PagoForm[], monedaVenta: Moneda): PagoInput[] =>
+  pagos.filter((p) => aNumero(p.monto) > 0).map((p) => pagoAInput(p, aNumero(p.monto), monedaVenta));
+
+/**
+ * Lo que falta cubrir del saldo con los pagos que tienen monto, en la moneda
+ * de la venta. Los pagos en otra moneda sin cotización no cuentan.
+ */
+export function restoDelSaldo(pagos: PagoForm[], saldo: number, monedaVenta: Moneda): number {
+  const cubierto = pagos
+    .filter((p) => aNumero(p.monto) > 0)
+    .reduce((t, p) => t + (equivalenteDe(aNumero(p.monto), p, monedaVenta) ?? 0), 0);
+  return redondear(saldo - cubierto);
+}
+
+/**
+ * Pagos que cancelan un saldo. Si un solo pago quedó sin monto, ese pago es lo
+ * que falta, pasado a su moneda: "US$ 900 y el resto en pesos".
+ */
+export function pagosConSaldo(pagos: PagoForm[], saldo: number, monedaVenta: Moneda): PagoInput[] {
+  const vacios = pagos.filter((p) => !p.monto.trim());
+  if (vacios.length !== 1) return pagosConMonto(pagos, monedaVenta);
+  const resto = restoDelSaldo(pagos, saldo, monedaVenta);
+  const montoResto = resto > 0 ? enMonedaDelPago(resto, vacios[0], monedaVenta) : null;
+  return pagos.flatMap((p) => {
+    if (p === vacios[0]) return montoResto ? [pagoAInput(p, montoResto, monedaVenta)] : [];
+    return aNumero(p.monto) > 0 ? [pagoAInput(p, aNumero(p.monto), monedaVenta)] : [];
+  });
+}
+
+/** Lo que cubren los pagos, en la moneda de la venta. */
+export function cubiertoPor(pagos: PagoInput[], monedaVenta: Moneda): number {
+  return redondear(
+    pagos.reduce((t, p) => {
+      const pago = { ...PAGO_VACIO, moneda: p.moneda, cotizacion: String(p.cotizacion ?? '') };
+      return t + (equivalenteDe(p.monto, pago, monedaVenta) ?? 0);
+    }, 0)
+  );
+}
+
+/** Los pagos como los espera la API. En una venta, el único pago sin monto es todo lo que falta. */
 export function pagosDelFormulario(f: VentaForm, aPagar: number): PagoInput[] {
   if (f.modo === 'reserva') return [];
-  return f.modo === 'venta' ? pagosConSaldo(f.pagos, aPagar) : pagosConMonto(f.pagos);
+  return f.modo === 'venta' ? pagosConSaldo(f.pagos, aPagar, f.moneda) : pagosConMonto(f.pagos, f.moneda);
 }
 
 export function validarParte(p: PartePagoForm): string | null {
@@ -234,7 +313,11 @@ export function validarVenta(f: VentaForm, hoyIso: string): string | null {
   if (t.descuento > t.subtotal) return 'El descuento no puede ser mayor que el precio de los equipos.';
   if (t.partePago > t.total) return 'Lo que deja el cliente vale más que la venta.';
 
-  const pagado = redondear(pagosDelFormulario(f, t.aPagar).reduce((s, p) => s + p.monto, 0));
+  if (f.modo !== 'reserva') {
+    const problema = f.pagos.map((p) => problemaDePago(p, f.moneda)).find(Boolean);
+    if (problema) return problema;
+  }
+  const pagado = cubiertoPor(pagosDelFormulario(f, t.aPagar), f.moneda);
   if (f.modo === 'venta' && Math.abs(pagado - t.aPagar) >= 0.005) {
     return pagado < t.aPagar
       ? 'Para llevarse el equipo tiene que pagar todo. Si deja una parte, elegí Señar.'

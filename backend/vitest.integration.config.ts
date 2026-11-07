@@ -15,6 +15,9 @@ export default defineConfig({
     testTimeout: 30_000,
     hookTimeout: 120_000,
     env: {
+      // Como en Render: el proceso en UTC. Sequelize escribe las fechas de las consultas
+      // en la hora de la máquina, y en una en UTC-3 los rangos se correrían 3 horas.
+      TZ: 'UTC',
       NODE_ENV: 'test',
       DB_NAME: BASE_DE_TESTS,
       JWT_SECRET: 'secreto-de-prueba',

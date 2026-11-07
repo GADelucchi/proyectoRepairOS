@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { api, crearOrden, tallerConSucursal, type Sesion } from './helpers';
+import { api, crearOrden, tallerConSucursal, tecnicoDe, type Sesion } from './helpers';
 
 describe('moneda', () => {
   it('una orden sin moneda toma la del país del taller', async () => {
@@ -419,6 +419,36 @@ describe('tablero y reportes', () => {
     expect(reportes.body.ordenes.ingresadas).toBe(1);
     expect(reportes.body.porUsuario[0]).toMatchObject({ recibidas: 1 });
     expect(reportes.body.abandonados.total).toBe(0);
+  });
+
+  it('listan las órdenes que ingresaron y las que se entregaron en el período', async () => {
+    const taller = await tallerConSucursal();
+    const entregada = await crearOrden(taller);
+    const enCurso = await crearOrden(taller);
+    for (const estado of ['en_diagnostico', 'presupuestado', 'aprobado', 'listo_para_retirar']) {
+      await api().put(`/api/ordenes/${entregada.id}/estado`).set(taller.auth).send({ estado }).expect(200);
+    }
+    await api()
+      .post(`/api/ordenes/${entregada.id}/entrega`)
+      .set(taller.auth)
+      .send({ montoTotal: 1000, montoAbonado: 1000, medioPago: 'efectivo' })
+      .expect(200);
+
+    const hoy = new Date().toISOString().slice(0, 10);
+    const listar = (cuales: string) =>
+      api().get('/api/reportes/ordenes').query({ cuales, desde: '2020-01-01', hasta: hoy }).set(taller.auth);
+
+    const ingresadas = await listar('ingresadas').expect(200);
+    expect(ingresadas.body.total).toBe(2);
+    expect(ingresadas.body.ordenes.map((o: { id: number }) => o.id)).toEqual([enCurso.id, entregada.id]);
+    const entregadas = await listar('entregadas').expect(200);
+    expect(entregadas.body.total).toBe(1);
+    expect(entregadas.body.ordenes[0]).toMatchObject({ id: entregada.id, estado: 'entregado' });
+    expect(entregadas.body.ordenes[0].fechaEntrega).toBeTruthy();
+
+    await listar('otras').expect(400);
+    const tecnico = await tecnicoDe(taller);
+    await api().get('/api/reportes/ordenes').query({ cuales: 'ingresadas' }).set(tecnico.auth).expect(403);
   });
 });
 

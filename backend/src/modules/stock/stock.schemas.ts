@@ -7,6 +7,7 @@ import {
   imeiOpcional,
   moneda,
   monto,
+  montoPositivo,
   textoOpcional
 } from '../../shared/validation/campos';
 
@@ -19,7 +20,8 @@ export const datosDeEquipo = {
   almacenamientoGb: z.number().int().positive().max(65536).optional().nullable(),
   condicion: z.enum(CONDICIONES_EQUIPO, { message: 'Indicá si es nuevo o usado' }),
   bateria: z.number().int().min(0).max(100).optional().nullable(),
-  numeroSerie: textoOpcional(150),
+  /** Siempre en mayúsculas, como viene impreso. */
+  numeroSerie: textoOpcional(150).transform((s) => s?.toUpperCase() ?? null),
   imei: imeiOpcional,
   imei2: imeiOpcional,
   observaciones: textoOpcional(2000)
@@ -88,3 +90,22 @@ export const verificarStockQuery = z.object({
   /** El equipo que se está editando, que no cuenta como repetido. */
   excluirId: idEnQuery.optional()
 });
+
+/** Un costo que se le agrega a un equipo del stock: "Batería", US$ 35. */
+export const costoReparacionSchema = z
+  .object({
+    concepto: z.string().trim().min(1, 'Contá qué se le hizo: batería, pantalla, mano de obra…').max(150),
+    /** Sin indicar, hoy. */
+    fecha: fechaIso.optional(),
+    moneda,
+    monto: montoPositivo,
+    /** 1 US$ en la moneda del costo ese día. */
+    cotizacion: z.number().positive().max(99_999_999).optional().nullable()
+  })
+  .refine((c) => c.moneda === 'USD' || c.cotizacion, {
+    message: 'Indicá cuánto vale el dólar: el costo del equipo se suma en US$',
+    path: ['cotizacion']
+  })
+  .transform((c) => ({ ...c, cotizacion: c.moneda === 'USD' ? null : (c.cotizacion ?? null) }));
+
+export type CostoReparacionInput = z.infer<typeof costoReparacionSchema>;

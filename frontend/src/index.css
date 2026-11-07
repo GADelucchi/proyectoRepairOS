@@ -794,6 +794,22 @@ h6 {
   outline-offset: -2px;
 }
 
+/* Tarjeta de un número que se toca para ver el detalle (ver TarjetaDato). */
+.tarjeta-clickeable {
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+.tarjeta-clickeable:hover {
+  border-color: var(--rs-accent);
+}
+.tarjeta-clickeable:focus-visible {
+  outline: 2px solid var(--rs-accent);
+  outline-offset: 2px;
+}
+.tarjeta-accion {
+  color: var(--rs-accent);
+}
+
 /* ---------- Tablas como tarjetas en el celular (ver TablaApilable) ---------- */
 @media (max-width: 767.98px) {
   .tabla-apilable thead {

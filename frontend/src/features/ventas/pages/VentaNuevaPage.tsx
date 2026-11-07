@@ -385,7 +385,9 @@ export function VentaNuevaPage() {
                         value={form.pagos}
                         onChange={(pagos) => cambiar('pagos', pagos)}
                         moneda={form.moneda}
-                        placeholder={form.modo === 'venta' ? `Todo: ${plata(totales.aPagar)}` : 'Cuánto deja'}
+                        cotizacionVenta={form.cotizacion}
+                        saldo={form.modo === 'venta' ? totales.aPagar : undefined}
+                        placeholder="Cuánto deja"
                       />
                       {form.modo === 'sena' && (
                         <Form.Text className="text-muted">

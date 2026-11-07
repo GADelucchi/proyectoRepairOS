@@ -1,5 +1,5 @@
 import type { TipoDescuento } from '../../models/Venta';
-import { redondearMonto } from '../../shared/utils/dinero';
+import { type Moneda, redondearMonto } from '../../shared/utils/dinero';
 
 export interface Descuento {
   tipo: TipoDescuento;
@@ -48,6 +48,38 @@ export function problemaDeTotales(totales: TotalesVenta): string | null {
     return 'Lo que deja el cliente vale más que la venta: bajá el monto de la parte de pago.';
   }
   return null;
+}
+
+/** Un pago de la venta en la moneda en que entró la plata. */
+export interface PagoEnMoneda {
+  monto: number;
+  moneda: Moneda;
+  /** 1 US$ en la moneda que no es dólar. Solo si el pago es en otra moneda que la venta. */
+  cotizacion?: number | null;
+}
+
+/**
+ * Por qué no se puede tomar un pago en otra moneda, o null. La cotización se
+ * lee siempre contra el dólar (como la de la venta y la de los costos), así
+ * que uno de los dos, el pago o la venta, tiene que ser en dólares.
+ */
+export function problemaDePago(pago: PagoEnMoneda, monedaVenta: Moneda): string | null {
+  if (pago.moneda === monedaVenta) return null;
+  if (pago.moneda !== 'USD' && monedaVenta !== 'USD') {
+    return `Una venta en ${monedaVenta} no se puede cobrar en ${pago.moneda}: solo en ${monedaVenta} o en dólares.`;
+  }
+  if (!pago.cotizacion || pago.cotizacion <= 0) {
+    const otra = pago.moneda === 'USD' ? monedaVenta : pago.moneda;
+    return `Indicá la cotización del pago en ${pago.moneda}: cuántos ${otra} vale 1 US$.`;
+  }
+  return null;
+}
+
+/** Lo que cubre el pago de la venta, en la moneda de la venta. El pago ya tiene que estar validado. */
+export function equivalenteDe(pago: PagoEnMoneda, monedaVenta: Moneda): number {
+  if (pago.moneda === monedaVenta) return redondearMonto(pago.monto);
+  const cotizacion = pago.cotizacion ?? 0;
+  return redondearMonto(pago.moneda === 'USD' ? pago.monto * cotizacion : pago.monto / cotizacion);
 }
 
 /** Dos montos de plata son el mismo si no difieren en más de medio centavo. */

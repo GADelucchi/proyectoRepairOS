@@ -16,6 +16,8 @@ export interface OrdenEnLista {
   clienteTelefono: string | null;
   marca: string | null;
   modelo: string | null;
+  fechaIngreso: string;
+  fechaEntrega: string | null;
   /** Desde cuándo está en el estado actual. */
   desde: string | null;
 }
@@ -59,6 +61,24 @@ export async function obtenerTablero(): Promise<Tablero> {
 export async function obtenerReportes(rango: RangoCaja): Promise<Reportes> {
   const { data } = await apiClient.get<Reportes>('/reportes/resumen', {
     params: {
+      desde: rango.desde,
+      hasta: rango.hasta,
+      ...(rango.todasLasSucursales ? { todasLasSucursales: 'true' } : {})
+    }
+  });
+  return data;
+}
+
+export type ListadoDelPeriodo = 'ingresadas' | 'entregadas';
+
+/** Las órdenes detrás de "Ingresaron" o "Entregados" del período (solo admin). */
+export async function obtenerOrdenesDelPeriodo(
+  cuales: ListadoDelPeriodo,
+  rango: RangoCaja
+): Promise<ListaDeOrdenes> {
+  const { data } = await apiClient.get<ListaDeOrdenes>('/reportes/ordenes', {
+    params: {
+      cuales,
       desde: rango.desde,
       hasta: rango.hasta,
       ...(rango.todasLasSucursales ? { todasLasSucursales: 'true' } : {})

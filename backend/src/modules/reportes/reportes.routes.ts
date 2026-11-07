@@ -12,3 +12,4 @@ reportesRoutes.get('/caja/movimientos', reportes.movimientosDeCaja);
 reportesRoutes.get('/tablero', requireSucursal, estadisticas.tablero);
 // Los informes son del admin; la caja la usa también el mostrador para cerrar el día.
 reportesRoutes.get('/resumen', requireRole('admin'), estadisticas.reportes);
+reportesRoutes.get('/ordenes', requireRole('admin'), estadisticas.ordenesDelPeriodo);

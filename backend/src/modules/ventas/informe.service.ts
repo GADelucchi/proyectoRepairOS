@@ -3,6 +3,7 @@ import { Cliente, EquipoStock, User, Venta, VentaItem } from '../../models';
 import { aNumero, enDolares, redondearMonto } from '../../shared/utils/dinero';
 import { nombreCompleto } from '../../shared/utils/texto';
 import type { FiltroCaja } from '../reportes/caja.service';
+import { costoTotalUsd } from '../stock/stock.service';
 import { etiquetaVenta } from './calculos';
 
 const LIMITE = 2000;
@@ -12,7 +13,8 @@ const LIMITE = 2000;
  *
  * Cuenta las ventas completadas, por la fecha en que se completaron. El bruto es
  * lo que vale cada venta (con su descuento); el costo es la suma de lo que costó
- * cada unidad vendida, con la cotización del día en que se compró. La parte de
+ * cada unidad vendida, con la cotización del día en que se compró, más lo que se
+ * le agregó después (reparaciones, repuestos). La parte de
  * pago no resta: es un equipo que entró al stock y que se va a vender después.
  */
 export async function informeVentas(filtro: FiltroCaja) {
@@ -37,11 +39,7 @@ export async function informeVentas(filtro: FiltroCaja) {
     const items = venta.items ?? [];
     const brutoUsd = enDolares(venta.total, venta.moneda, venta.cotizacion);
     const costoUsd = redondearMonto(
-      items.reduce(
-        (total, i) =>
-          total + (i.equipo ? enDolares(i.equipo.costo, i.equipo.monedaCosto, i.equipo.cotizacionCosto) : 0),
-        0
-      )
+      items.reduce((total, i) => total + (i.equipo ? costoTotalUsd(i.equipo) : 0), 0)
     );
     return {
       id: venta.id,

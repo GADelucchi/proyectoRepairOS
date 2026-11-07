@@ -23,14 +23,18 @@ import {
 /** Cómo se cierra la venta al crearla: se lleva el equipo, deja una seña, o lo aparta sin pagar. */
 export const MODOS_VENTA = ['venta', 'sena', 'reserva'] as const;
 
-const pagosSchema = z
-  .array(
-    z.object({
-      monto: montoPositivo,
-      medioPago: z.enum(MEDIOS_PAGO, { message: 'Elegí el medio de pago' })
-    })
-  )
-  .max(5);
+/** Un pago, en la moneda en que entra la plata. Sin moneda, la de la venta. */
+const pagoSchema = z.object({
+  monto: montoPositivo,
+  medioPago: z.enum(MEDIOS_PAGO, { message: 'Elegí el medio de pago' }),
+  moneda: moneda.optional(),
+  /** 1 US$ en la moneda que no es dólar, si el pago es en otra moneda que la venta. */
+  cotizacion: z.number().positive().max(99_999_999).optional().nullable()
+});
+
+export type PagoVentaInput = z.infer<typeof pagoSchema>;
+
+const pagosSchema = z.array(pagoSchema).max(5);
 
 /** Un equipo que deja el cliente: entra al stock como usado, con lo que se le tomó como costo. */
 const partePagoSchema = z

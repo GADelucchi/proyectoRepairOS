@@ -1,7 +1,9 @@
 import { ReactNode, useState } from 'react';
-import { Badge, Button, Card, Col, Form, Row, Table } from 'react-bootstrap';
+import { Badge, Button, Card, Col, Form, Row, Tab, Table, Tabs } from 'react-bootstrap';
+import { useSearchParams } from 'react-router';
 import { ArrowDownToLine, CircleCheck, PackageCheck, Timer } from 'lucide-react';
 import { useAuth } from '@/features/auth/useAuth';
+import { InformeVentas } from '@/features/ventas/components/InformeVentas';
 import { AlertaError } from '@/shared/components/AlertaError';
 import { Cargando } from '@/shared/components/Cargando';
 import { FechaFiltro } from '@/shared/components/FechaFiltro';
@@ -11,6 +13,7 @@ import { descargarCsv } from '@/shared/utils/csv';
 import { formatearMonto } from '@/shared/utils/dinero';
 import { fechaLocalISO, haceDias } from '@/shared/utils/fechas';
 import * as reportesApi from '../api';
+import { OrdenesDelPeriodoModal } from '../components/OrdenesDelPeriodoModal';
 import { TablaOrdenes } from '../components/TablaOrdenes';
 
 /** Atajos de período, calculados en la fecha local del navegador. */
@@ -63,41 +66,29 @@ function Seccion({
 
 const SinDatos = () => <p className="text-muted small p-3 mb-0">Sin datos en el período.</p>;
 
+type Seccion = 'reparaciones' | 'ventas';
+
 /**
- * Reportes del período: órdenes, tiempos de reparación, presupuestos, trabajo
- * por técnico, facturación por mes y equipos abandonados. Cada tabla se puede
- * bajar para abrir en Excel.
+ * Reportes del período, en dos solapas con el mismo período y sucursales:
+ * reparaciones (órdenes, tiempos, presupuestos, trabajo por usuario,
+ * facturación y equipos abandonados) y ventas de equipos (bruto, costo y
+ * ganancia). Cada tabla se puede bajar para abrir en Excel.
  */
 export function ReportesPage() {
   const { esAdmin } = useAuth();
+  const [params, setParams] = useSearchParams();
+  const seccion: Seccion = params.get('seccion') === 'ventas' ? 'ventas' : 'reparaciones';
   const [rango, setRango] = useState(() => periodo('30'));
   const [todas, setTodas] = useState(false);
   const verTodas = esAdmin && todas;
-
-  const {
-    datos: r,
-    cargando,
-    error
-  } = useConsulta(
-    () => reportesApi.obtenerReportes({ ...rango, todasLasSucursales: verTodas }),
-    [rango.desde, rango.hasta, verTodas],
-    'No se pudieron cargar los reportes',
-    'reportes'
-  );
-
-  const sufijo = `${rango.desde}_a_${rango.hasta}`;
-  const conRespuesta = r ? r.presupuestos.aprobados + r.presupuestos.rechazados : 0;
-  const tasa = r && conRespuesta > 0 ? Math.round((r.presupuestos.aprobados / conRespuesta) * 100) : null;
 
   return (
     <div>
       <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
         <h3 className="mb-0">Reportes</h3>
-        {r && (
-          <Badge bg={r.alcance === 'taller' ? 'primary' : 'secondary'}>
-            {r.alcance === 'taller' ? 'Todo el taller' : 'Sucursal actual'}
-          </Badge>
-        )}
+        <Badge bg={verTodas ? 'primary' : 'secondary'}>
+          {verTodas ? 'Todo el taller' : 'Sucursal actual'}
+        </Badge>
       </div>
 
       <Card className="mb-3">
@@ -152,6 +143,49 @@ export function ReportesPage() {
         </Card.Body>
       </Card>
 
+      <Tabs
+        activeKey={seccion}
+        onSelect={(clave) => setParams(clave === 'ventas' ? { seccion: 'ventas' } : {}, { replace: true })}
+        className="mb-3"
+        mountOnEnter
+      >
+        <Tab eventKey="reparaciones" title="Reparaciones">
+          <ReporteReparaciones rango={rango} todasLasSucursales={verTodas} />
+        </Tab>
+        <Tab eventKey="ventas" title="Ventas de equipos">
+          <InformeVentas desde={rango.desde} hasta={rango.hasta} todasLasSucursales={verTodas} />
+        </Tab>
+      </Tabs>
+    </div>
+  );
+}
+
+/** Órdenes del período. Los números de ingresadas y entregadas se tocan para ver cuáles fueron. */
+function ReporteReparaciones({
+  rango,
+  todasLasSucursales
+}: {
+  rango: { desde: string; hasta: string };
+  todasLasSucursales: boolean;
+}) {
+  const [listado, setListado] = useState<reportesApi.ListadoDelPeriodo | null>(null);
+  const {
+    datos: r,
+    cargando,
+    error
+  } = useConsulta(
+    () => reportesApi.obtenerReportes({ ...rango, todasLasSucursales }),
+    [rango.desde, rango.hasta, todasLasSucursales],
+    'No se pudieron cargar los reportes',
+    'reportes'
+  );
+
+  const sufijo = `${rango.desde}_a_${rango.hasta}`;
+  const conRespuesta = r ? r.presupuestos.aprobados + r.presupuestos.rechazados : 0;
+  const tasa = r && conRespuesta > 0 ? Math.round((r.presupuestos.aprobados / conRespuesta) * 100) : null;
+
+  return (
+    <div>
       <AlertaError error={error} />
 
       {cargando && !r ? (
@@ -166,6 +200,8 @@ export function ReportesPage() {
                 detalle="órdenes nuevas"
                 icono={ArrowDownToLine}
                 tono="cyan"
+                onClick={() => setListado('ingresadas')}
+                accion="Ver cuáles"
               />
             </Col>
             <Col>
@@ -175,6 +211,8 @@ export function ReportesPage() {
                 detalle={`${r.ordenes.canceladas} canceladas`}
                 icono={PackageCheck}
                 tono="green"
+                onClick={() => setListado('entregadas')}
+                accion="Ver cuáles"
               />
             </Col>
             <Col>
@@ -351,6 +389,13 @@ export function ReportesPage() {
           </Row>
         </>
       ) : null}
+
+      <OrdenesDelPeriodoModal
+        cuales={listado}
+        rango={rango}
+        todasLasSucursales={todasLasSucursales}
+        onCerrar={() => setListado(null)}
+      />
     </div>
   );
 }

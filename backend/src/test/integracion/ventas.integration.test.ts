@@ -182,6 +182,102 @@ describe('venta de equipos', () => {
     );
   });
 
+  it('se paga en varias monedas: cada una entra a su caja y cubre la venta con su cotización', async () => {
+    const taller = await tallerConSucursal();
+    const equipo = await iphoneEnStock(taller);
+    const venta = {
+      nuevoCliente: cliente,
+      items: [{ equipoStockId: equipo.id, precio: 1000 }],
+      moneda: 'USD',
+      modo: 'sena'
+    };
+
+    // Los pesos necesitan la cotización.
+    const sinCotizacion = await api()
+      .post('/api/ventas')
+      .set(taller.auth)
+      .send({ ...venta, pagos: [{ monto: 120000, medioPago: 'efectivo', moneda: 'ARS' }] })
+      .expect(400);
+    expect(sinCotizacion.body.message).toContain('cotización');
+
+    // Seña: US$ 300 en dólares y US$ 100 en pesos a 1.200.
+    const { body: senada } = await api()
+      .post('/api/ventas')
+      .set(taller.auth)
+      .send({
+        ...venta,
+        pagos: [
+          { monto: 300, medioPago: 'efectivo' },
+          { monto: 120000, medioPago: 'transferencia', moneda: 'ARS', cotizacion: 1200 }
+        ]
+      })
+      .expect(201);
+    expect(senada).toMatchObject({ estado: 'senada', pagado: 400, saldo: 600 });
+    expect(senada.pagos[1]).toMatchObject({
+      moneda: 'ARS',
+      monto: '120000.00',
+      cotizacion: '1200.0000',
+      equivalente: '100.00'
+    });
+
+    // El resto: US$ 500 y US$ 100 en pesos a 1.250.
+    const { body: completa } = await api()
+      .post(`/api/ventas/${senada.id}/pagos`)
+      .set(taller.auth)
+      .send({
+        pagos: [
+          { monto: 500, medioPago: 'efectivo', moneda: 'USD' },
+          { monto: 125000, medioPago: 'efectivo', moneda: 'ARS', cotizacion: 1250 }
+        ]
+      })
+      .expect(200);
+    expect(completa).toMatchObject({ estado: 'completada', pagado: 1000, saldo: 0 });
+
+    // En la caja cada moneda por su lado: lo que hay en el cajón.
+    const caja = await cajaDeHoy(taller);
+    expect(caja.totales).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ moneda: 'USD', cobrado: 800 }),
+        expect.objectContaining({ moneda: 'ARS', cobrado: 245000 })
+      ])
+    );
+    const pdf = await api().get(`/api/ventas/${senada.id}/pdf`).set(taller.auth).expect(200);
+    expect(pdf.headers['content-type']).toContain('application/pdf');
+  });
+
+  it('al cancelar, la seña se devuelve en las monedas en que entró', async () => {
+    const taller = await tallerConSucursal();
+    const equipo = await iphoneEnStock(taller);
+    const { body: senada } = await api()
+      .post('/api/ventas')
+      .set(taller.auth)
+      .send({
+        nuevoCliente: cliente,
+        items: [{ equipoStockId: equipo.id, precio: 1000 }],
+        moneda: 'USD',
+        modo: 'sena',
+        pagos: [
+          { monto: 100, medioPago: 'efectivo' },
+          { monto: 60000, medioPago: 'efectivo', moneda: 'ARS', cotizacion: 1200 }
+        ]
+      })
+      .expect(201);
+
+    const { body: cancelada } = await api()
+      .post(`/api/ventas/${senada.id}/cancelar`)
+      .set(taller.auth)
+      .send({ motivo: 'Se arrepintió', devolverSena: true })
+      .expect(200);
+    expect(cancelada.pagado).toBe(0);
+    const devoluciones = cancelada.pagos.filter((p: { tipo: string }) => p.tipo === 'devolucion');
+    expect(devoluciones).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ moneda: 'USD', monto: '100.00', equivalente: '100.00' }),
+        expect.objectContaining({ moneda: 'ARS', monto: '60000.00', equivalente: '50.00' })
+      ])
+    );
+  });
+
   it('una reserva vencida vuelve el equipo al stock y queda registrada', async () => {
     const taller = await tallerConSucursal();
     const equipo = await iphoneEnStock(taller);

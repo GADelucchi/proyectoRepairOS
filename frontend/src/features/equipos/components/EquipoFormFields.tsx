@@ -1,5 +1,6 @@
 import { Button, Col, Form, Row, Spinner } from 'react-bootstrap';
 import type { TipoEquipoPersonalizado } from '@/shared/types';
+import { aMayusculas } from '@/shared/utils/texto';
 import type { EquipoFormData } from '../equipo-form';
 
 interface EquipoFormFieldsProps {
@@ -71,7 +72,8 @@ export function EquipoFormFields({
               placeholder={serieObligatoria ? '' : 'Si se deja vacío se genera uno'}
               disabled={disabled}
               autoComplete="off"
-              onChange={(e) => set('numeroSerie', e.target.value)}
+              autoCapitalize="characters"
+              onChange={(e) => set('numeroSerie', aMayusculas(e.target))}
               onBlur={(e) => onSerieCompleta?.(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && onSerieCompleta) {

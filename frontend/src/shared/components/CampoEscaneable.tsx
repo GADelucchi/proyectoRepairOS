@@ -1,6 +1,7 @@
 import { KeyboardEvent, Ref, useState } from 'react';
 import { Button, Form, InputGroup } from 'react-bootstrap';
 import { ScanBarcode } from 'lucide-react';
+import { aMayusculas } from '@/shared/utils/texto';
 import { EscanerCodigos } from './EscanerCodigos';
 
 interface CampoEscaneableProps {
@@ -13,7 +14,8 @@ interface CampoEscaneableProps {
   esperado?: string;
   inputRef?: Ref<HTMLInputElement>;
   inputMode?: 'numeric' | 'text';
-  autoCapitalize?: string;
+  /** Para números de serie: todo en mayúsculas, se escriba como se escriba. */
+  mayusculas?: boolean;
   maxLength?: number;
   placeholder?: string;
   isInvalid?: boolean;
@@ -38,7 +40,7 @@ export function CampoEscaneable({
   esperado,
   inputRef,
   inputMode,
-  autoCapitalize,
+  mayusculas = false,
   maxLength,
   placeholder,
   isInvalid,
@@ -56,7 +58,7 @@ export function CampoEscaneable({
           ref={inputRef}
           className="font-mono"
           inputMode={inputMode}
-          autoCapitalize={autoCapitalize}
+          autoCapitalize={mayusculas ? 'characters' : undefined}
           autoComplete="off"
           value={value}
           maxLength={maxLength}
@@ -66,7 +68,7 @@ export function CampoEscaneable({
             sinEnviarConEnter(e);
             if (e.key === 'Enter') onEnter?.();
           }}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={(e) => onChange(mayusculas ? aMayusculas(e.target) : e.target.value)}
           onBlur={onBlur}
         />
         <Button
@@ -84,8 +86,9 @@ export function CampoEscaneable({
         aceptar={aceptar}
         esperado={esperado}
         onCerrar={() => setEscaneando(false)}
-        onLeido={(valor) => {
+        onLeido={(leido) => {
           setEscaneando(false);
+          const valor = mayusculas ? leido.toUpperCase() : leido;
           if (onEscaneado) onEscaneado(valor);
           else onChange(valor);
         }}

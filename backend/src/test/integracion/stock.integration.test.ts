@@ -38,8 +38,10 @@ describe('stock de equipos', () => {
     const primero = await api()
       .post('/api/stock')
       .set(taller.auth)
-      .send(iphone({ costo: 1000, imei: null, numeroSerie: 'F2LXK9QWN1' }))
+      .send(iphone({ costo: 1000, imei: null, numeroSerie: 'f2lxk9qwn1' }))
       .expect(201);
+    // El serial se guarda en mayúsculas, se haya escrito como se haya escrito.
+    expect(primero.body.numeroSerie).toBe('F2LXK9QWN1');
     const segundo = await api().post('/api/stock').set(taller.auth).send(iphone()).expect(201);
     expect(primero.body).toMatchObject({ numero: 1, estado: 'disponible', costo: '1000.00', costoUsd: 1000 });
     expect(segundo.body).toMatchObject({ numero: 2, sucursalId: taller.sucursalId, monedaPrecio: 'USD' });
@@ -211,6 +213,99 @@ describe('stock de equipos', () => {
       .set(taller.auth)
       .expect(200);
     expect(propio.body.repetido).toBeNull();
+  });
+
+  it('los costos de reparación suman al costo del equipo y a la ganancia de la venta', async () => {
+    const taller = await tallerConSucursal();
+    const tecnico = await tecnicoDe(taller);
+    const { body: equipo } = await api()
+      .post('/api/stock')
+      .set(taller.auth)
+      .send(iphone({ modelo: 'iPhone 14', costo: 190, precio: 400 }))
+      .expect(201);
+
+    // Batería US$ 35 y mano de obra en pesos: 12.000 a 1.200 son US$ 10.
+    await api()
+      .post(`/api/stock/${equipo.id}/costos`)
+      .set(taller.auth)
+      .send({ concepto: 'Batería', moneda: 'USD', monto: 35 })
+      .expect(201);
+    await api()
+      .post(`/api/stock/${equipo.id}/costos`)
+      .set(taller.auth)
+      .send({ concepto: 'Mano de obra', moneda: 'ARS', monto: 12000 })
+      .expect(400);
+    const { body: conCostos } = await api()
+      .post(`/api/stock/${equipo.id}/costos`)
+      .set(taller.auth)
+      .send({ concepto: 'Mano de obra', moneda: 'ARS', monto: 12000, cotizacion: 1200 })
+      .expect(201);
+    expect(conCostos).toMatchObject({ costoCompraUsd: 190, costoReparacionesUsd: 45, costoUsd: 235 });
+    expect(conCostos.costosReparacion).toHaveLength(2);
+
+    // Uno cargado por error se anula: queda, pero no suma.
+    const { body: anulado } = await api()
+      .post(`/api/stock/${equipo.id}/costos/${conCostos.costosReparacion[1].id}/anular`)
+      .set(taller.auth)
+      .expect(200);
+    expect(anulado).toMatchObject({ costoReparacionesUsd: 35, costoUsd: 225 });
+    expect(anulado.costosReparacion[1].anuladoEn).toBeTruthy();
+
+    const lista = await api().get('/api/stock').set(taller.auth).expect(200);
+    expect(lista.body.resumen.costoStockUsd).toBe(225);
+
+    // Es de admin: el técnico no los carga ni los ve.
+    await api()
+      .post(`/api/stock/${equipo.id}/costos`)
+      .set(tecnico.auth)
+      .send({ concepto: 'Pantalla', moneda: 'USD', monto: 80 })
+      .expect(403);
+    const visto = await api().get(`/api/stock/${equipo.id}`).set(tecnico.auth).expect(200);
+    expect(visto.body).toMatchObject({ costoUsd: null, costoReparacionesUsd: null });
+    expect(visto.body.costosReparacion).toBeUndefined();
+
+    // Vendido a US$ 400: la ganancia es 400 - 225. Un costo después de vender la baja.
+    await api()
+      .post('/api/ventas')
+      .set(taller.auth)
+      .send({
+        nuevoCliente: { nombre: 'Ana', apellido: 'Paz', telefono: '221 555-0001' },
+        items: [{ equipoStockId: equipo.id, precio: 400 }],
+        moneda: 'USD',
+        modo: 'venta',
+        pagos: [{ monto: 400, medioPago: 'efectivo' }]
+      })
+      .expect(201);
+    const informe = () => api().get('/api/ventas/informe').set(taller.auth).expect(200);
+    expect((await informe()).body.resumen).toMatchObject({ costoUsd: 225, gananciaUsd: 175 });
+
+    await api()
+      .post(`/api/stock/${equipo.id}/costos`)
+      .set(taller.auth)
+      .send({ concepto: 'Garantía: cambio de pantalla', moneda: 'USD', monto: 60 })
+      .expect(201);
+    expect((await informe()).body.resumen).toMatchObject({ costoUsd: 285, gananciaUsd: 115 });
+  });
+
+  it('sugiere los proveedores ya usados, el último primero', async () => {
+    const taller = await tallerConSucursal();
+    const cargar = (proveedor: string | null, numeroSerie: string) =>
+      api()
+        .post('/api/stock')
+        .set(taller.auth)
+        .send(iphone({ proveedor, imei: null, numeroSerie }))
+        .expect(201);
+    await cargar('Distribuidora Once', 'SERIE001');
+    await cargar('Importadora del Sur', 'SERIE002');
+    await cargar('Distribuidora Once', 'SERIE003');
+    await cargar(null, 'SERIE004');
+
+    const { body } = await api().get('/api/stock/proveedores').set(taller.auth).expect(200);
+    expect(body).toEqual(['Distribuidora Once', 'Importadora del Sur']);
+
+    // Otro taller no ve los proveedores de este.
+    const otro = await tallerConSucursal();
+    await api().get('/api/stock/proveedores').set(otro.auth).expect(200, []);
   });
 
   it('los costos los ve solo un admin, y un técnico que edita no los cambia', async () => {

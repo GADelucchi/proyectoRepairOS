@@ -56,7 +56,7 @@ export function VentasPage() {
         <h3 className="mb-0">Ventas</h3>
         <div className="d-flex gap-2">
           {esAdmin && (
-            <Link className="btn btn-outline-secondary" to="/ventas/informe">
+            <Link className="btn btn-outline-secondary" to="/reportes?seccion=ventas">
               Informe
             </Link>
           )}

@@ -37,6 +37,7 @@ export interface EquipoStockAttributes {
   monedaCosto: Moneda;
   costo: string;
   cotizacionCosto?: string | null;
+  costoReparacionesUsd?: string;
   monedaPrecio?: Moneda | null;
   precio?: string | null;
   estado: EstadoStock;
@@ -61,6 +62,7 @@ export type EquipoStockCreationAttributes = Optional<
   | 'imei2'
   | 'proveedor'
   | 'cotizacionCosto'
+  | 'costoReparacionesUsd'
   | 'monedaPrecio'
   | 'precio'
   | 'estado'
@@ -102,6 +104,8 @@ export class EquipoStock
   declare costo: string;
   /** Cuánto valía 1 US$ en la moneda del costo el día de compra. Vacío si el costo es en dólares. */
   declare cotizacionCosto: string | null;
+  /** Lo que se le agregó después de comprarlo (reparaciones, repuestos), en US$. Ver EquipoStockCosto. */
+  declare costoReparacionesUsd: string;
   /** Precio de lista: se puede cambiar al vender. */
   declare monedaPrecio: Moneda | null;
   declare precio: string | null;
@@ -141,6 +145,12 @@ export class EquipoStock
         monedaCosto: { type: DataTypes.STRING(3), allowNull: false, field: 'moneda_costo' },
         costo: { type: DataTypes.DECIMAL(12, 2), allowNull: false },
         cotizacionCosto: { type: DataTypes.DECIMAL(14, 4), allowNull: true, field: 'cotizacion_costo' },
+        costoReparacionesUsd: {
+          type: DataTypes.DECIMAL(12, 2),
+          allowNull: false,
+          defaultValue: 0,
+          field: 'costo_reparaciones_usd'
+        },
         monedaPrecio: { type: DataTypes.STRING(3), allowNull: true, field: 'moneda_precio' },
         precio: { type: DataTypes.DECIMAL(12, 2), allowNull: true },
         estado: {

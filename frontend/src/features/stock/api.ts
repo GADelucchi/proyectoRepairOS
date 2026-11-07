@@ -59,6 +59,12 @@ export async function darDeBajaEquipoStock(id: number, motivo: string): Promise<
   return data;
 }
 
+/** Los proveedores que ya se usaron en el taller, el último primero. */
+export async function listarProveedores(): Promise<string[]> {
+  const { data } = await apiClient.get<string[]>('/stock/proveedores');
+  return data;
+}
+
 export interface EquipoRepetido {
   id: number;
   numero: number;
@@ -76,4 +82,24 @@ export async function verificarRepetido(params: {
 }): Promise<EquipoRepetido | null> {
   const { data } = await apiClient.get<{ repetido: EquipoRepetido | null }>('/stock/verificar', { params });
   return data.repetido;
+}
+
+export interface CostoReparacionInput {
+  concepto: string;
+  moneda: Moneda;
+  monto: number;
+  /** 1 US$ en la moneda del costo. Null si es en dólares. */
+  cotizacion: number | null;
+}
+
+/** Suma un costo al equipo (solo admin). Devuelve el equipo con el costo nuevo. */
+export async function agregarCosto(id: number, input: CostoReparacionInput): Promise<EquipoStock> {
+  const { data } = await apiClient.post<EquipoStock>(`/stock/${id}/costos`, input);
+  return data;
+}
+
+/** El costo queda anulado (no se borra) y deja de sumar. */
+export async function anularCosto(id: number, costoId: number): Promise<EquipoStock> {
+  const { data } = await apiClient.post<EquipoStock>(`/stock/${id}/costos/${costoId}/anular`);
+  return data;
 }

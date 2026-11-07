@@ -84,10 +84,6 @@ const VentaDetallePage = diferida(
   () => import('@/features/ventas/pages/VentaDetallePage'),
   'VentaDetallePage'
 );
-const InformeVentasPage = diferida(
-  () => import('@/features/ventas/pages/InformeVentasPage'),
-  'InformeVentasPage'
-);
 const CuentasPage = diferida(() => import('@/features/cuentas/pages/CuentasPage'), 'CuentasPage');
 const CajaPage = diferida(() => import('@/features/caja/pages/CajaPage'), 'CajaPage');
 const SolicitudesPage = diferida(
@@ -137,7 +133,8 @@ export function App() {
               {/* Informes y costos: solo admin (la API también lo exige). */}
               <Route element={<RutaAdmin />}>
                 <Route path="/reportes" element={<ReportesPage />} />
-                <Route path="/ventas/informe" element={<InformeVentasPage />} />
+                {/* El informe de ventas pasó a Reportes: los enlaces viejos llegan igual. */}
+                <Route path="/ventas/informe" element={<Navigate to="/reportes?seccion=ventas" replace />} />
               </Route>
               <Route path="/ordenes" element={<OrdenesPage />} />
               <Route path="/ordenes/nueva" element={<OrdenNuevaPage />} />

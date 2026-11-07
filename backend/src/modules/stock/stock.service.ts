@@ -1,12 +1,23 @@
 import { Op, Transaction, WhereOptions, col, fn, literal } from 'sequelize';
 import { z } from 'zod';
 import { sequelize } from '../../config/database';
-import { Contador, EquipoStock, Sucursal, Taller, User, Venta, VentaItem } from '../../models';
+import { env } from '../../config/env';
+import {
+  Contador,
+  EquipoStock,
+  EquipoStockCosto,
+  Sucursal,
+  Taller,
+  User,
+  Venta,
+  VentaItem
+} from '../../models';
 import { EquipoStockAttributes, EquipoStockCreationAttributes, EstadoStock } from '../../models/EquipoStock';
 import { errores } from '../../shared/http/http-error';
 import { aNumero, enDolares, redondearMonto } from '../../shared/utils/dinero';
+import { fechaEnZona } from '../../shared/utils/fechas';
 import { etiquetaVenta } from '../ventas/calculos';
-import { EquipoStockInput, listarStockQuery } from './stock.schemas';
+import { CostoReparacionInput, EquipoStockInput, listarStockQuery } from './stock.schemas';
 
 /** Quién opera: el stock se carga y se ve desde la sucursal elegida. Los costos los ve solo un admin. */
 export interface ContextoStock {
@@ -21,6 +32,11 @@ const FUERA_DEL_STOCK: EstadoStock[] = ['vendido', 'baja'];
 
 const LIMITE_LISTADO = 200;
 
+/** El "proveedor" de lo que entra en parte de pago: no es alguien a quien se le compra. */
+export const PROVEEDOR_PARTE_DE_PAGO = 'Parte de pago';
+
+const LIMITE_PROVEEDORES = 100;
+
 const INCLUDES = [
   { model: Sucursal, as: 'sucursal', attributes: ['id', 'nombre'] },
   { model: User, as: 'bajaPor', attributes: ['id', 'nombre', 'apellido'] }
@@ -30,13 +46,41 @@ const INCLUDES = [
 export const etiquetaNumero = (numero: number) => `#${String(numero).padStart(4, '0')}`;
 
 /**
- * Equipo tal como sale por la API, con el costo ya pasado a dólares para sumar.
- * Sin `verCostos` (quien no es admin), el costo no sale del servidor.
+ * Lo que costó el equipo en dólares: la compra, con la cotización de ese día,
+ * más lo que se le agregó después (reparaciones, repuestos). Es el costo que
+ * resta en el informe de ventas.
+ */
+export function costoTotalUsd(
+  equipo: Pick<EquipoStock, 'costo' | 'monedaCosto' | 'cotizacionCosto' | 'costoReparacionesUsd'>
+): number {
+  return redondearMonto(
+    enDolares(equipo.costo, equipo.monedaCosto, equipo.cotizacionCosto) + aNumero(equipo.costoReparacionesUsd)
+  );
+}
+
+/**
+ * Equipo tal como sale por la API, con el costo ya pasado a dólares para sumar:
+ * `costoCompraUsd` es lo que se pagó, `costoUsd` incluye las reparaciones.
+ * Sin `verCostos` (quien no es admin), ningún costo sale del servidor.
  */
 export function serializarEquipoStock(equipo: EquipoStock, verCostos: boolean) {
   const datos = equipo.get({ plain: true });
-  if (!verCostos) return { ...datos, costo: null, cotizacionCosto: null, costoUsd: null };
-  return { ...datos, costoUsd: enDolares(equipo.costo, equipo.monedaCosto, equipo.cotizacionCosto) };
+  if (!verCostos) {
+    return {
+      ...datos,
+      costo: null,
+      cotizacionCosto: null,
+      costoReparacionesUsd: null,
+      costoCompraUsd: null,
+      costoUsd: null
+    };
+  }
+  return {
+    ...datos,
+    costoCompraUsd: enDolares(equipo.costo, equipo.monedaCosto, equipo.cotizacionCosto),
+    costoReparacionesUsd: aNumero(equipo.costoReparacionesUsd),
+    costoUsd: costoTotalUsd(equipo)
+  };
 }
 
 /**
@@ -244,8 +288,10 @@ export async function darDeBajaEquipoStock(ctx: ContextoStock, equipo: EquipoSto
   return serializarEquipoStock(await equipoVisible(ctx, equipo.id), ctx.esAdmin);
 }
 
-/** Costo en dólares de una fila, en SQL, para sumar sin traer todo el stock. */
-const COSTO_USD = literal("CASE WHEN moneda_costo = 'USD' THEN costo ELSE costo / cotizacion_costo END");
+/** Costo en dólares de una fila (compra más reparaciones), en SQL, para sumar sin traer todo el stock. */
+const COSTO_USD = literal(
+  "CASE WHEN moneda_costo = 'USD' THEN costo ELSE costo / cotizacion_costo END + costo_reparaciones_usd"
+);
 
 interface FilaPorModelo {
   marca: string;
@@ -337,6 +383,22 @@ async function resumenDelStock(base: WhereOptions<EquipoStockAttributes>, verCos
   };
 }
 
+/**
+ * Los proveedores a los que ya se les compró, el último primero: para que al
+ * cargar otro equipo no haya que escribir el nombre entero (ni con otra grafía).
+ */
+export async function proveedoresUsados(tallerId: number): Promise<string[]> {
+  const filas = await EquipoStock.findAll({
+    where: { tallerId, proveedor: { [Op.and]: [{ [Op.ne]: null }, { [Op.ne]: PROVEEDOR_PARTE_DE_PAGO }] } },
+    attributes: ['proveedor', [fn('MAX', col('id')), 'ultimo']],
+    group: ['proveedor'],
+    order: [[literal('ultimo'), 'DESC']],
+    limit: LIMITE_PROVEEDORES,
+    raw: true
+  });
+  return filas.map((f) => f.proveedor).filter((p): p is string => Boolean(p?.trim()));
+}
+
 export async function listarStock(ctx: ContextoStock, filtros: z.infer<typeof listarStockQuery>) {
   const sucursalId = await sucursalDelFiltro(ctx, filtros.sucursal);
   const base: WhereOptions<EquipoStockAttributes> = {
@@ -378,4 +440,81 @@ export async function listarStock(ctx: ContextoStock, filtros: z.infer<typeof li
   ]);
 
   return { equipos: await serializarConVenta(equipos, ctx.esAdmin), resumen };
+}
+
+const COSTO_INCLUDES = [
+  { model: User, as: 'usuario', attributes: ['id', 'nombre', 'apellido'] },
+  { model: User, as: 'anuladoPor', attributes: ['id', 'nombre', 'apellido'] }
+];
+
+/** Los costos que se le agregaron al equipo, también los anulados (quedan como registro). Solo admin. */
+export function costosDeEquipo(equipoId: number) {
+  return EquipoStockCosto.findAll({
+    where: { equipoStockId: equipoId },
+    include: COSTO_INCLUDES,
+    order: [
+      ['fecha', 'ASC'],
+      ['id', 'ASC']
+    ]
+  });
+}
+
+/**
+ * Vuelve a sumar los costos vigentes en el equipo. El equipo ya tiene que estar
+ * bloqueado: dos costos cargados a la vez no se pisan la suma.
+ */
+async function recalcularReparaciones(equipoId: number, transaction: Transaction) {
+  const total = await EquipoStockCosto.sum('montoUsd', {
+    where: { equipoStockId: equipoId, anuladoEn: null },
+    transaction
+  });
+  await EquipoStock.update(
+    { costoReparacionesUsd: redondearMonto(aNumero(total)).toFixed(2) },
+    { where: { id: equipoId }, transaction }
+  );
+}
+
+async function bloquearEquipo(equipo: EquipoStock, transaction: Transaction) {
+  await EquipoStock.findByPk(equipo.id, { attributes: ['id'], lock: transaction.LOCK.UPDATE, transaction });
+}
+
+/**
+ * Agrega un costo al equipo: suma a lo que costó y baja la ganancia cuando se
+ * venda. También sobre uno ya vendido (una garantía que hubo que cubrir): cambia
+ * la ganancia de esa venta.
+ */
+export async function agregarCosto(ctx: ContextoStock, equipo: EquipoStock, datos: CostoReparacionInput) {
+  await sequelize.transaction(async (transaction) => {
+    await bloquearEquipo(equipo, transaction);
+    await EquipoStockCosto.create(
+      {
+        tallerId: ctx.tallerId,
+        equipoStockId: equipo.id,
+        concepto: datos.concepto,
+        fecha: datos.fecha ?? fechaEnZona(new Date(), env.timezone),
+        moneda: datos.moneda,
+        monto: datos.monto.toFixed(2),
+        cotizacion: datos.cotizacion?.toFixed(4) ?? null,
+        montoUsd: enDolares(datos.monto, datos.moneda, datos.cotizacion).toFixed(2),
+        usuarioId: ctx.usuarioId
+      },
+      { transaction }
+    );
+    await recalcularReparaciones(equipo.id, transaction);
+  });
+}
+
+/** Un costo cargado por error no se borra: queda anulado, con quién y cuándo, y deja de sumar. */
+export async function anularCosto(ctx: ContextoStock, equipo: EquipoStock, costoId: number) {
+  await sequelize.transaction(async (transaction) => {
+    await bloquearEquipo(equipo, transaction);
+    const costo = await EquipoStockCosto.findOne({
+      where: { id: costoId, equipoStockId: equipo.id },
+      transaction
+    });
+    if (!costo) throw errores.noEncontrado('Costo');
+    if (costo.anuladoEn) throw errores.conflicto('El costo ya está anulado.');
+    await costo.update({ anuladoEn: new Date(), anuladoPorId: ctx.usuarioId }, { transaction });
+    await recalcularReparaciones(equipo.id, transaction);
+  });
 }

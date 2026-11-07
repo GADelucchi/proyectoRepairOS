@@ -19,20 +19,29 @@ import type { EstadoStock } from '../../models/EquipoStock';
 import type { EstadoVenta, VentaAttributes } from '../../models/Venta';
 import type { TipoPagoVenta } from '../../models/VentaPago';
 import { errores } from '../../shared/http/http-error';
-import { aNumero, redondearMonto } from '../../shared/utils/dinero';
+import { type Moneda, aNumero, redondearMonto } from '../../shared/utils/dinero';
 import { fechaEnZona } from '../../shared/utils/fechas';
 import { nombreCompleto } from '../../shared/utils/texto';
 import {
   ContextoStock,
+  PROVEEDOR_PARTE_DE_PAGO,
   etiquetaNumero,
   exigirSinRepetidos,
   ingresarAlStock,
   serializarEquipoStock
 } from '../stock/stock.service';
-import { etiquetaVenta, mismoMonto, problemaDeTotales, totalesDeVenta } from './calculos';
+import {
+  equivalenteDe,
+  etiquetaVenta,
+  mismoMonto,
+  problemaDePago,
+  problemaDeTotales,
+  totalesDeVenta
+} from './calculos';
 import { revisarVencimientos } from './vencimientos.service';
 import {
   NuevaVenta,
+  PagoVentaInput,
   PartePagoInput,
   cancelarVentaSchema,
   listarVentasQuery,
@@ -68,11 +77,35 @@ const INCLUDES_DETALLE = [
   { model: VentaPago, as: 'pagos', include: [{ model: User, as: 'usuario', attributes: USUARIO_RESUMIDO }] }
 ];
 
-/** Lo que entró en plata: señas y pagos, menos lo que se devolvió. */
-function pagadoDe(pagos: Pick<VentaPago, 'tipo' | 'monto'>[]): number {
+/** Lo que entró en plata, en la moneda de la venta: señas y pagos, menos lo que se devolvió. */
+function pagadoDe(pagos: Pick<VentaPago, 'tipo' | 'equivalente'>[]): number {
   return redondearMonto(
-    pagos.reduce((total, p) => total + (p.tipo === 'devolucion' ? -1 : 1) * aNumero(p.monto), 0)
+    pagos.reduce((total, p) => total + (p.tipo === 'devolucion' ? -1 : 1) * aNumero(p.equivalente), 0)
   );
+}
+
+/** Un pago listo para guardar: en su moneda y con lo que cubre de la venta. */
+interface PagoImputado {
+  monto: number;
+  moneda: Moneda;
+  cotizacion: number | null;
+  equivalente: number;
+  medioPago: MedioPago;
+}
+
+/** Cada pago con lo que cubre de la venta. Uno en otra moneda necesita la cotización. */
+function imputarPagos(pagos: PagoVentaInput[], monedaVenta: Moneda): PagoImputado[] {
+  return pagos.map((p) => {
+    const moneda = p.moneda ?? monedaVenta;
+    const pago = {
+      monto: p.monto,
+      moneda,
+      cotizacion: moneda === monedaVenta ? null : (p.cotizacion ?? null)
+    };
+    const problema = problemaDePago(pago, monedaVenta);
+    if (problema) throw errores.solicitudInvalida(problema);
+    return { ...pago, medioPago: p.medioPago, equivalente: equivalenteDe(pago, monedaVenta) };
+  });
 }
 
 /** Lo que falta pagar en plata: el total, menos la parte de pago, menos lo que ya pagó. */
@@ -199,7 +232,7 @@ async function ingresarPartesPago(ctx: ContextoVenta, venta: Venta, transaction:
         imei: parte.imei,
         imei2: parte.imei2,
         fechaCompra: hoy,
-        proveedor: 'Parte de pago',
+        proveedor: PROVEEDOR_PARTE_DE_PAGO,
         monedaCosto: venta.moneda,
         costo: parte.monto,
         cotizacionCosto: venta.cotizacion,
@@ -218,7 +251,7 @@ async function registrarPagos(
   ctx: ContextoVenta,
   venta: Venta,
   tipo: TipoPagoVenta,
-  pagos: { monto: number; medioPago: MedioPago }[],
+  pagos: PagoImputado[],
   transaction: Transaction
 ) {
   if (pagos.length === 0) return;
@@ -229,7 +262,9 @@ async function registrarPagos(
       ventaId: venta.id,
       tipo,
       monto: p.monto.toFixed(2),
-      moneda: venta.moneda,
+      moneda: p.moneda,
+      cotizacion: p.cotizacion?.toFixed(4) ?? null,
+      equivalente: p.equivalente.toFixed(2),
       medioPago: p.medioPago,
       usuarioId: ctx.usuarioId
     })),
@@ -237,7 +272,8 @@ async function registrarPagos(
   );
 }
 
-const sumaDe = (pagos: { monto: number }[]) => redondearMonto(pagos.reduce((t, p) => t + p.monto, 0));
+/** Lo que cubren los pagos, en la moneda de la venta. */
+const sumaDe = (pagos: PagoImputado[]) => redondearMonto(pagos.reduce((t, p) => t + p.equivalente, 0));
 
 const ESTADO_INICIAL: Record<NuevaVenta['modo'], { venta: EstadoVenta; equipo: EstadoStock }> = {
   venta: { venta: 'completada', equipo: 'vendido' },
@@ -266,7 +302,8 @@ export async function crearVenta(ctx: ContextoVenta, datos: NuevaVenta) {
   const problema = problemaDeTotales(totales);
   if (problema) throw errores.solicitudInvalida(problema);
 
-  const pagado = sumaDe(datos.pagos);
+  const pagos = imputarPagos(datos.pagos, datos.moneda);
+  const pagado = sumaDe(pagos);
   if (datos.modo === 'venta' && !mismoMonto(pagado, totales.aPagar)) {
     throw errores.solicitudInvalida(
       `Para entregar los equipos tiene que pagar todo: faltan ${redondearMonto(totales.aPagar - pagado)}. Si deja una parte, es una seña.`
@@ -328,7 +365,7 @@ export async function crearVenta(ctx: ContextoVenta, datos: NuevaVenta) {
       datos.partesPago.map((p: PartePagoInput) => ({ ...p, ventaId: venta.id, monto: p.monto.toFixed(2) })),
       { transaction }
     );
-    await registrarPagos(ctx, venta, datos.modo === 'venta' ? 'pago' : 'sena', datos.pagos, transaction);
+    await registrarPagos(ctx, venta, datos.modo === 'venta' ? 'pago' : 'sena', pagos, transaction);
     await cambiarEstadoEquipos(venta, estados.equipo, transaction);
     if (datos.modo === 'venta') await ingresarPartesPago(ctx, venta, transaction);
     return venta.id;
@@ -370,14 +407,15 @@ export async function pagarVenta(
     exigirAbierta(actual);
     const anteriores = await VentaPago.findAll({ where: { ventaId: actual.id }, transaction });
     const saldo = saldoDe(actual, pagadoDe(anteriores));
-    const monto = sumaDe(pagos);
+    const imputados = imputarPagos(pagos, actual.moneda);
+    const monto = sumaDe(imputados);
 
     if (monto > saldo + 0.005)
       throw errores.solicitudInvalida(`El pago supera el saldo de la venta (${saldo}).`);
     if (monto <= 0 && saldo > 0) throw errores.solicitudInvalida('Indicá cuánto paga.');
 
     const completa = mismoMonto(monto, saldo);
-    await registrarPagos(ctx, actual, completa ? 'pago' : 'sena', pagos, transaction);
+    await registrarPagos(ctx, actual, completa ? 'pago' : 'sena', imputados, transaction);
     if (completa) {
       await actual.update({ estado: 'completada', completadaEn: new Date() }, { transaction });
       await cambiarEstadoEquipos(actual, 'vendido', transaction);
@@ -419,13 +457,13 @@ export async function cancelarVenta(
     }
     exigirAbierta(actual);
 
-    const pagado = pagadoDe(await VentaPago.findAll({ where: { ventaId: actual.id }, transaction }));
-    if (devolverSena && pagado > 0) {
+    const pagos = await VentaPago.findAll({ where: { ventaId: actual.id }, transaction });
+    if (devolverSena && pagadoDe(pagos) > 0) {
       await registrarPagos(
         ctx,
         actual,
         'devolucion',
-        [{ monto: pagado, medioPago: medioDevolucion }],
+        devolucionDe(pagos, actual.moneda, medioDevolucion),
         transaction
       );
     }
@@ -441,6 +479,33 @@ export async function cancelarVenta(
     );
   });
   return detalle(ctx, venta.id);
+}
+
+/**
+ * Lo que se devuelve al cancelar: lo mismo que entró, en cada moneda. Si dejó
+ * dólares y pesos, se le devuelven dólares y pesos.
+ */
+function devolucionDe(pagos: VentaPago[], monedaVenta: Moneda, medioPago: MedioPago): PagoImputado[] {
+  const porMoneda = new Map<Moneda, { monto: number; equivalente: number }>();
+  for (const p of pagos) {
+    const signo = p.tipo === 'devolucion' ? -1 : 1;
+    const suma = porMoneda.get(p.moneda) ?? { monto: 0, equivalente: 0 };
+    suma.monto += signo * aNumero(p.monto);
+    suma.equivalente += signo * aNumero(p.equivalente);
+    porMoneda.set(p.moneda, suma);
+  }
+  return [...porMoneda.entries()]
+    .filter(([, suma]) => suma.monto > 0.005)
+    .map(([moneda, suma]) => {
+      const equivalente = redondearMonto(suma.equivalente);
+      const monto = redondearMonto(suma.monto);
+      // La cotización promedio de lo que entró en esa moneda, siempre como 1 US$ en la otra.
+      const cotizacion =
+        moneda === monedaVenta
+          ? null
+          : Number((moneda === 'USD' ? equivalente / monto : monto / equivalente).toFixed(4));
+      return { moneda, monto, equivalente, cotizacion, medioPago };
+    });
 }
 
 /** Listado de ventas de la sucursal (o de todas, para un admin), las más nuevas primero. */
@@ -530,7 +595,7 @@ export async function listarVentas(ctx: ContextoVenta, filtros: z.infer<typeof l
           }
         ]
       },
-      { model: VentaPago, as: 'pagos', attributes: ['id', 'tipo', 'monto', 'createdAt'] }
+      { model: VentaPago, as: 'pagos', attributes: ['id', 'tipo', 'equivalente', 'createdAt'] }
     ],
     order: [['id', 'DESC']]
   });

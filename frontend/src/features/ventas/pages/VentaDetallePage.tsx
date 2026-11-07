@@ -24,8 +24,11 @@ import {
   DIAS_AVISO_SENA,
   ETIQUETA_ESTADO_VENTA,
   VARIANTE_ESTADO_VENTA,
+  PAGO_VACIO,
+  cubiertoPor,
   diasDesde,
   pagosConSaldo,
+  problemaDePago,
   type PagoForm
 } from '../venta-form';
 
@@ -309,7 +312,14 @@ export function VentaDetallePage() {
                           className={`text-end text-nowrap ${p.tipo === 'devolucion' ? 'text-danger' : ''}`}
                         >
                           {p.tipo === 'devolucion' ? '-' : ''}
-                          {plata(p.monto)}
+                          {formatearMonto(p.monto, p.moneda)}
+                          {p.moneda !== v.moneda && (
+                            <div className="small text-muted">
+                              = {plata(p.equivalente)}
+                              {p.cotizacion &&
+                                ` · 1 US$ = ${aNumero(p.cotizacion).toLocaleString('es-AR')} ${p.moneda === 'USD' ? v.moneda : p.moneda}`}
+                            </div>
+                          )}
                         </td>
                       </tr>
                     ))}
@@ -353,13 +363,14 @@ interface ModalVentaProps {
 
 /** Cobrar sobre una reserva o una seña. Si cubre el saldo, la venta se completa. */
 function PagarModal({ show, venta, onCerrar, onHecho }: ModalVentaProps) {
-  const [pagos, setPagos] = useState<PagoForm[]>([{ monto: '', medioPago: 'efectivo' }]);
+  const [pagos, setPagos] = useState<PagoForm[]>([PAGO_VACIO]);
   const [error, setError] = useState<string | null>(null);
   const { enCurso, ejecutar } = useAccion(setError);
   const plata = (valor: number) => formatearMonto(valor, venta.moneda);
-  // Un solo pago sin monto es el saldo completo, igual que en la venta.
-  const aPagar = pagosConSaldo(pagos, venta.saldo);
-  const monto = redondear(aPagar.reduce((t, p) => t + p.monto, 0));
+  // El único pago sin monto es lo que falta del saldo, igual que en la venta.
+  const aPagar = pagosConSaldo(pagos, venta.saldo, venta.moneda);
+  const monto = cubiertoPor(aPagar, venta.moneda);
+  const problema = pagos.map((p) => problemaDePago(p, venta.moneda)).find(Boolean) ?? null;
   const completa = Math.abs(monto - venta.saldo) < 0.005;
 
   async function confirmar(e: FormEvent) {
@@ -372,7 +383,7 @@ function PagarModal({ show, venta, onCerrar, onHecho }: ModalVentaProps) {
       )
     ) {
       onHecho(nueva!);
-      setPagos([{ monto: '', medioPago: 'efectivo' }]);
+      setPagos([PAGO_VACIO]);
     }
   }
 
@@ -392,7 +403,8 @@ function PagarModal({ show, venta, onCerrar, onHecho }: ModalVentaProps) {
             value={pagos}
             onChange={setPagos}
             moneda={venta.moneda}
-            placeholder={`Todo: ${plata(venta.saldo)}`}
+            cotizacionVenta={venta.cotizacion != null ? String(aNumero(venta.cotizacion)) : ''}
+            saldo={venta.saldo}
           />
           <Form.Text className="text-muted d-block mt-2">
             {completa
@@ -404,7 +416,7 @@ function PagarModal({ show, venta, onCerrar, onHecho }: ModalVentaProps) {
           <Button variant="secondary" onClick={onCerrar}>
             Volver
           </Button>
-          <Button type="submit" disabled={enCurso || (monto <= 0 && venta.saldo > 0)}>
+          <Button type="submit" disabled={enCurso || Boolean(problema) || (monto <= 0 && venta.saldo > 0)}>
             {completa ? 'Cobrar y completar' : 'Registrar seña'}
           </Button>
         </Modal.Footer>

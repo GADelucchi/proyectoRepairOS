@@ -416,6 +416,22 @@ export type CondicionEquipo = 'nuevo' | 'usado';
 /** Disponible se puede vender; reservado es sin pago y señado con pago parcial. */
 export type EstadoStock = 'disponible' | 'reservado' | 'senado' | 'vendido' | 'baja';
 
+/** Un costo agregado a un equipo del stock: "Batería US$ 35". Anulado, queda como registro y no suma. */
+export interface CostoReparacion {
+  id: number;
+  concepto: string;
+  /** YYYY-MM-DD */
+  fecha: string;
+  moneda: Moneda;
+  monto: Monto;
+  cotizacion: Monto | null;
+  montoUsd: Monto;
+  usuario?: { id: number; nombre: string; apellido: string };
+  anuladoEn: string | null;
+  anuladoPor?: { id: number; nombre: string; apellido: string } | null;
+  createdAt: string;
+}
+
 /** Una unidad del stock de equipos para la venta, con su propio costo. */
 export interface EquipoStock {
   id: number;
@@ -441,7 +457,14 @@ export interface EquipoStock {
   costo: Monto | null;
   /** 1 US$ en la moneda del costo, el día de compra. */
   cotizacionCosto: Monto | null;
+  /** Lo que se pagó al comprarlo, en US$. */
+  costoCompraUsd: number | null;
+  /** Lo que se le agregó después (reparaciones, repuestos), en US$. */
+  costoReparacionesUsd: number | null;
+  /** Compra más reparaciones, en US$: lo que resta en el informe de ventas. */
   costoUsd: number | null;
+  /** Solo para admin, en el detalle del equipo. */
+  costosReparacion?: CostoReparacion[];
   monedaPrecio: Moneda | null;
   precio: Monto | null;
   estado: EstadoStock;
@@ -514,8 +537,13 @@ export interface VentaPartePago {
 export interface VentaPago {
   id: number;
   tipo: TipoPagoVenta;
+  /** En la moneda en que entró la plata. */
   monto: Monto;
   moneda: Moneda;
+  /** 1 US$ en la moneda que no es dólar, si el pago es en otra moneda que la venta. */
+  cotizacion: Monto | null;
+  /** Lo que cubre de la venta, en su moneda. */
+  equivalente: Monto;
   medioPago: MedioPago | null;
   usuario?: { id: number; nombre: string; apellido: string };
   createdAt: string;

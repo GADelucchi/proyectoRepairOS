@@ -13,9 +13,13 @@ import type {
 
 export type ModoVenta = 'venta' | 'sena' | 'reserva';
 
+/** Un pago, en la moneda en que entra la plata. */
 export interface PagoInput {
   monto: number;
   medioPago: MedioPago;
+  moneda: Moneda;
+  /** 1 US$ en la moneda que no es dólar. Null si es en la moneda de la venta. */
+  cotizacion: number | null;
 }
 
 export interface PartePagoInput {

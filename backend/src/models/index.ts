@@ -21,6 +21,7 @@ import { Solicitud } from './Solicitud';
 import { Notificacion } from './Notificacion';
 import { TokenUsuario } from './TokenUsuario';
 import { EquipoStock } from './EquipoStock';
+import { EquipoStockCosto } from './EquipoStockCosto';
 import { Venta } from './Venta';
 import { VentaItem } from './VentaItem';
 import { VentaPartePago } from './VentaPartePago';
@@ -48,6 +49,7 @@ Solicitud.initModel(sequelize);
 Notificacion.initModel(sequelize);
 TokenUsuario.initModel(sequelize);
 EquipoStock.initModel(sequelize);
+EquipoStockCosto.initModel(sequelize);
 Venta.initModel(sequelize);
 VentaItem.initModel(sequelize);
 VentaPartePago.initModel(sequelize);
@@ -174,6 +176,9 @@ Taller.hasMany(EquipoStock, { foreignKey: 'tallerId', as: 'stock' });
 EquipoStock.belongsTo(Sucursal, { foreignKey: 'sucursalId', as: 'sucursal' });
 EquipoStock.belongsTo(User, { foreignKey: 'cargadoPorId', as: 'cargadoPor' });
 EquipoStock.belongsTo(User, { foreignKey: 'bajaPorId', as: 'bajaPor' });
+EquipoStock.hasMany(EquipoStockCosto, { foreignKey: 'equipoStockId', as: 'costos' });
+EquipoStockCosto.belongsTo(User, { foreignKey: 'usuarioId', as: 'usuario' });
+EquipoStockCosto.belongsTo(User, { foreignKey: 'anuladoPorId', as: 'anuladoPor' });
 
 // Ventas de equipos del stock
 Taller.hasMany(Venta, { foreignKey: 'tallerId', as: 'ventas' });
@@ -212,6 +217,7 @@ export {
   Notificacion,
   TokenUsuario,
   EquipoStock,
+  EquipoStockCosto,
   Venta,
   VentaItem,
   VentaPartePago,

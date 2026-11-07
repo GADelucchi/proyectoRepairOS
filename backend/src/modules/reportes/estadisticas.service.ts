@@ -37,6 +37,8 @@ interface OrdenEnLista {
   clienteTelefono: string | null;
   marca: string | null;
   modelo: string | null;
+  fechaIngreso: string;
+  fechaEntrega: string | null;
   /** Cuándo entró al estado en el que está. */
   desde: string | null;
   /** Cuántas órdenes cumplen la condición (la lista trae solo las primeras). */
@@ -49,7 +51,7 @@ function listaDeOrdenes(condicion: string, orden: string, replacements: Parametr
        SELECT o.id, o.numero_orden AS numeroOrden, o.estado, o.fecha_pactada AS fechaPactada,
               o.codigo_seguimiento AS codigoSeguimiento, o.presupuesto_monto AS presupuestoMonto, o.moneda,
               c.nombre AS clienteNombre, c.apellido AS clienteApellido, c.telefono AS clienteTelefono,
-              e.marca, e.modelo,
+              e.marca, e.modelo, o.fecha_ingreso AS fechaIngreso, o.fecha_entrega AS fechaEntrega,
               (SELECT MAX(h.created_at) FROM orden_historial_estados h
                 WHERE h.orden_id = o.id AND h.estado_nuevo = o.estado) AS desde,
               COUNT(*) OVER () AS total
@@ -148,6 +150,11 @@ export async function tablero(tallerId: number, sucursalId: number) {
   };
 }
 
+/** Del taller y, si el filtro la tiene, de la sucursal. */
+const deSucursalDe = (filtro: FiltroCaja) => (alias: string) =>
+  `${alias}.taller_id = :tallerId ${filtro.sucursalId ? `AND ${alias}.sucursal_id = :sucursalId` : ''}`;
+const enRango = (columna: string) => `${columna} >= :inicio AND ${columna} < :fin`;
+
 /**
  * Reportes del período: cuánto entra y sale del taller, cuánto se tarda, qué
  * presupuestos se aprueban y quién repara qué. Mismo filtro de fechas y
@@ -155,9 +162,7 @@ export async function tablero(tallerId: number, sucursalId: number) {
  */
 export async function reportes(filtro: FiltroCaja) {
   const p = { ...filtro.parametros, tz: desfasajeSql(env.timezone), diasAbandono: DIAS_ABANDONO };
-  const deSucursal = (alias: string) =>
-    `${alias}.taller_id = :tallerId ${filtro.sucursalId ? `AND ${alias}.sucursal_id = :sucursalId` : ''}`;
-  const enRango = (columna: string) => `${columna} >= :inicio AND ${columna} < :fin`;
+  const deSucursal = deSucursalDe(filtro);
 
   const [[totales], [presupuestos], porTipo, porUsuario, porMes, abandonados] = await Promise.all([
     consultar<Record<string, number>>(
@@ -267,4 +272,25 @@ export async function reportes(filtro: FiltroCaja) {
     })),
     abandonados: { diasMinimos: DIAS_ABANDONO, ...resumenDeLista(abandonados) }
   };
+}
+
+export const LISTADOS_DEL_PERIODO = ['ingresadas', 'entregadas'] as const;
+export type ListadoDelPeriodo = (typeof LISTADOS_DEL_PERIODO)[number];
+
+const LIMITE_LISTADO_PERIODO = 500;
+
+/**
+ * Las órdenes detrás de "Ingresaron" y "Entregados" de los reportes, con la
+ * misma condición que las cuenta: la más reciente primero.
+ */
+export async function ordenesDelPeriodo(filtro: FiltroCaja, cuales: ListadoDelPeriodo) {
+  const [columna, orden] =
+    cuales === 'ingresadas' ? ['o.fecha_ingreso', 'fechaIngreso'] : ['o.fecha_entrega', 'fechaEntrega'];
+  const filas = await listaDeOrdenes(
+    `${deSucursalDe(filtro)('o')} AND ${enRango(columna)}`,
+    `${orden} DESC, id DESC`,
+    filtro.parametros,
+    LIMITE_LISTADO_PERIODO
+  );
+  return resumenDeLista(filas);
 }
