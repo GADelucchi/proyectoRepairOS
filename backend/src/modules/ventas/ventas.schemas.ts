@@ -118,6 +118,13 @@ export const cancelarVentaSchema = z.object({
   medioDevolucion: z.enum(MEDIOS_PAGO).optional().default('efectivo')
 });
 
+export const anularVentaSchema = z.object({
+  motivo: z.string().trim().min(3, 'Contá por qué se anula').max(255),
+  /** Si se le devuelve lo que pagó, en las monedas en que entró. Si no, el taller se lo queda. */
+  devolverPlata: z.boolean().optional().default(false),
+  medioDevolucion: z.enum(MEDIOS_PAGO).optional().default('efectivo')
+});
+
 export const listarVentasQuery = z.object({
   estado: z.enum(ESTADOS_VENTA).optional(),
   /** Número de venta, cliente (nombre o DNI), IMEI o serial de un equipo vendido. */

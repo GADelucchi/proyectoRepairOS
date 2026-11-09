@@ -10,7 +10,8 @@ export const ETIQUETA_ESTADO_VENTA: Record<EstadoVenta, string> = {
   senada: 'Señada',
   completada: 'Completada',
   cancelada: 'Cancelada',
-  vencida: 'Reserva vencida'
+  vencida: 'Reserva vencida',
+  anulada: 'Anulada'
 };
 
 export const VARIANTE_ESTADO_VENTA: Record<EstadoVenta, string> = {
@@ -18,7 +19,8 @@ export const VARIANTE_ESTADO_VENTA: Record<EstadoVenta, string> = {
   senada: 'warning',
   completada: 'success',
   cancelada: 'secondary',
-  vencida: 'secondary'
+  vencida: 'secondary',
+  anulada: 'danger'
 };
 
 /** A partir de estos días sin completar, una seña se marca y se avisa a los admins. Igual que la API. */

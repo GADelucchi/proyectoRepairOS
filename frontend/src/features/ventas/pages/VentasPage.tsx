@@ -22,6 +22,7 @@ const FILTROS: { valor: EstadoVenta | ''; etiqueta: string }[] = [
   { valor: 'senada', etiqueta: 'Señadas' },
   { valor: 'completada', etiqueta: 'Completadas' },
   { valor: 'cancelada', etiqueta: 'Canceladas' },
+  { valor: 'anulada', etiqueta: 'Anuladas' },
   { valor: 'vencida', etiqueta: 'Vencidas' }
 ];
 

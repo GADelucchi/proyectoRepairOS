@@ -360,6 +360,93 @@ describe('venta de equipos', () => {
     );
   });
 
+  it('anular una venta completada la deja registrada, devuelve equipos y plata, y la saca del informe', async () => {
+    const taller = await tallerConSucursal();
+    const tecnico = await tecnicoDe(taller);
+    const equipo = await iphoneEnStock(taller);
+
+    // US$ 1.000: deja un iPhone 11 por US$ 200, paga US$ 500 y el resto en pesos.
+    const { body: venta } = await api()
+      .post('/api/ventas')
+      .set(taller.auth)
+      .send({
+        nuevoCliente: cliente,
+        items: [{ equipoStockId: equipo.id, precio: 1000 }],
+        moneda: 'USD',
+        modo: 'venta',
+        partesPago: [{ marca: 'Apple', modelo: 'iPhone 11', imei: IMEI_PARTE, monto: 200 }],
+        pagos: [
+          { monto: 500, medioPago: 'efectivo' },
+          { monto: 360000, medioPago: 'efectivo', moneda: 'ARS', cotizacion: 1200 }
+        ]
+      })
+      .expect(201);
+    const parteId = venta.partesPago[0].equipoStockId;
+
+    // Si lo que dejó ya está en otra venta, no se le puede devolver.
+    const { body: reserva } = await api()
+      .post('/api/ventas')
+      .set(taller.auth)
+      .send({
+        nuevoCliente: { ...cliente, dniCuit: '30999888' },
+        items: [{ equipoStockId: parteId, precio: 300 }],
+        moneda: 'USD',
+        modo: 'reserva',
+        reservadaHasta: hoy()
+      })
+      .expect(201);
+    const anular = { motivo: 'Devolvió el equipo', devolverPlata: true };
+    const ocupado = await api()
+      .post(`/api/ventas/${venta.id}/anular`)
+      .set(taller.auth)
+      .send(anular)
+      .expect(409);
+    expect(ocupado.body.message).toContain('otra venta');
+    await api()
+      .post(`/api/ventas/${reserva.id}/cancelar`)
+      .set(taller.auth)
+      .send({ motivo: 'No vino' })
+      .expect(200);
+
+    await api().post(`/api/ventas/${venta.id}/cancelar`).set(taller.auth).send(anular).expect(409);
+    await api().post(`/api/ventas/${venta.id}/anular`).set(tecnico.auth).send(anular).expect(403);
+    const { body: anulada } = await api()
+      .post(`/api/ventas/${venta.id}/anular`)
+      .set(taller.auth)
+      .send(anular)
+      .expect(200);
+    expect(anulada).toMatchObject({
+      estado: 'anulada',
+      motivoCancelacion: 'Devolvió el equipo',
+      pagado: 0,
+      saldo: 0
+    });
+    expect(anulada.canceladaPor).toMatchObject({ id: expect.any(Number) });
+
+    // El que se vendió vuelve al stock; el que dejó se le devuelve.
+    const vuelto = await api().get(`/api/stock/${equipo.id}`).set(taller.auth).expect(200);
+    expect(vuelto.body.estado).toBe('disponible');
+    const devuelto = await api().get(`/api/stock/${parteId}`).set(taller.auth).expect(200);
+    expect(devuelto.body).toMatchObject({ estado: 'baja', motivoBaja: expect.stringContaining('VTA-') });
+
+    // La plata salió en las monedas en que entró: la caja queda en cero en cada una.
+    const caja = await cajaDeHoy(taller);
+    expect(caja.totales).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ moneda: 'USD', cobrado: 0 }),
+        expect.objectContaining({ moneda: 'ARS', cobrado: 0 })
+      ])
+    );
+    const informe = await api().get('/api/ventas/informe').set(taller.auth).expect(200);
+    expect(informe.body.resumen).toMatchObject({ ventas: 0, brutoUsd: 0 });
+
+    await api().post(`/api/ventas/${venta.id}/anular`).set(taller.auth).send(anular).expect(409);
+    const anuladas = await api().get('/api/ventas').query({ estado: 'anulada' }).set(taller.auth).expect(200);
+    expect(anuladas.body.map((v: { id: number }) => v.id)).toEqual([venta.id]);
+    const pdf = await api().get(`/api/ventas/${venta.id}/pdf`).set(taller.auth).expect(200);
+    expect(pdf.headers['content-type']).toContain('application/pdf');
+  });
+
   it('a los 15 días de una seña sin completar avisa a los admins', async () => {
     const taller = await tallerConSucursal();
     const equipo = await iphoneEnStock(taller);

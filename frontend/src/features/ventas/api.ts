@@ -96,6 +96,18 @@ export async function cancelarVenta(
   return data;
 }
 
+/**
+ * Solo admin. Da vuelta una venta completada sin borrarla: queda anulada, los
+ * equipos vuelven al stock y lo que dejó en parte de pago se le devuelve.
+ */
+export async function anularVenta(
+  id: number,
+  datos: { motivo: string; devolverPlata: boolean; medioDevolucion?: MedioPago }
+): Promise<Venta> {
+  const { data } = await apiClient.post<Venta>(`/ventas/${id}/anular`, datos);
+  return data;
+}
+
 export async function descargarPdf(id: number): Promise<Blob> {
   const { data } = await apiClient.get(`/ventas/${id}/pdf`, { responseType: 'blob' });
   return data;

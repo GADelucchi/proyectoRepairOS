@@ -25,7 +25,8 @@ const ETIQUETA_ESTADO: Record<EstadoVenta, string> = {
   senada: 'Seña',
   completada: 'Venta',
   cancelada: 'Cancelada',
-  vencida: 'Reserva vencida'
+  vencida: 'Reserva vencida',
+  anulada: 'Venta anulada'
 };
 
 const CONDICION_IVA: Record<string, string> = {
@@ -148,6 +149,8 @@ export async function generarVentaPdf(venta: Venta, taller: Taller): Promise<Buf
   }
   if (venta.estado === 'cancelada' && venta.canceladaEn)
     dato('Cancelada el', formatearFechaHora(venta.canceladaEn));
+  if (venta.estado === 'anulada' && venta.canceladaEn)
+    dato('Anulada el', formatearFechaHora(venta.canceladaEn));
 
   // ---------- Cliente ----------
   seccion('Cliente');

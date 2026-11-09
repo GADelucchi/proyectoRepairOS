@@ -43,6 +43,7 @@ import {
   NuevaVenta,
   PagoVentaInput,
   PartePagoInput,
+  anularVentaSchema,
   cancelarVentaSchema,
   listarVentasQuery,
   pagarVentaSchema
@@ -108,8 +109,12 @@ function imputarPagos(pagos: PagoVentaInput[], monedaVenta: Moneda): PagoImputad
   });
 }
 
+/** Ya no espera pagos: se cerró sin completarse o se dio vuelta. */
+const CERRADAS: EstadoVenta[] = ['cancelada', 'vencida', 'anulada'];
+
 /** Lo que falta pagar en plata: el total, menos la parte de pago, menos lo que ya pagó. */
 function saldoDe(venta: Venta, pagado: number): number {
+  if (CERRADAS.includes(venta.estado)) return 0;
   return redondearMonto(aNumero(venta.total) - aNumero(venta.partePago) - pagado);
 }
 
@@ -121,7 +126,7 @@ export function serializarVenta(venta: Venta, verCostos: boolean) {
     ...datos,
     etiqueta: etiquetaVenta(venta.numero),
     pagado,
-    saldo: venta.estado === 'cancelada' || venta.estado === 'vencida' ? 0 : saldoDe(venta, pagado),
+    saldo: saldoDe(venta, pagado),
     items: (venta.items ?? []).map((item) => ({
       ...item.get({ plain: true }),
       equipo: item.equipo ? serializarEquipoStock(item.equipo, verCostos) : null
@@ -386,6 +391,7 @@ function exigirAbierta(venta: Venta) {
   const motivo: Partial<Record<EstadoVenta, string>> = {
     completada: 'La venta ya está completa.',
     cancelada: 'La venta está cancelada.',
+    anulada: 'La venta está anulada.',
     vencida: 'La reserva venció y los equipos volvieron al stock. Hacé una venta nueva.'
   };
   throw errores.conflicto(motivo[venta.estado] ?? 'La venta no admite cambios.');
@@ -439,11 +445,35 @@ export async function extenderReserva(ctx: ContextoVenta, venta: Venta, hasta: s
 }
 
 /**
+ * Lo común a cancelar y anular: la plata que se devuelve (sale de la caja hoy,
+ * en las monedas en que entró), los equipos que vuelven al stock y quién, cuándo
+ * y por qué la cerró.
+ */
+async function cerrarVenta(
+  ctx: ContextoVenta,
+  venta: Venta,
+  estado: 'cancelada' | 'anulada',
+  { motivo, devolver, medio }: { motivo: string; devolver: boolean; medio: MedioPago },
+  transaction: Transaction
+) {
+  const pagos = await VentaPago.findAll({ where: { ventaId: venta.id }, transaction });
+  if (devolver && pagadoDe(pagos) > 0) {
+    await registrarPagos(ctx, venta, 'devolucion', devolucionDe(pagos, venta.moneda, medio), transaction);
+  }
+  const apartados: EstadoStock[] = estado === 'anulada' ? ['vendido'] : ['reservado', 'senado'];
+  await cambiarEstadoEquipos(venta, 'disponible', transaction, apartados);
+  await venta.update(
+    { estado, canceladaEn: new Date(), canceladaPorId: ctx.usuarioId, motivoCancelacion: motivo },
+    { transaction }
+  );
+}
+
+/**
  * Cancelar una reserva o una seña (solo admin). La venta no se borra: queda
  * cancelada con quién, cuándo y por qué, y los equipos vuelven al stock. La
  * seña se devuelve (sale de la caja) o se la queda el taller.
  *
- * Una venta completada no se cancela: los equipos ya se entregaron.
+ * Una venta completada no se cancela: se anula.
  */
 export async function cancelarVenta(
   ctx: ContextoVenta,
@@ -453,32 +483,91 @@ export async function cancelarVenta(
   await sequelize.transaction(async (transaction) => {
     const actual = await bloquearVenta(venta, transaction);
     if (actual.estado === 'completada') {
-      throw errores.conflicto('Una venta completada no se cancela: los equipos ya se entregaron.');
+      throw errores.conflicto('Una venta completada no se cancela: se anula.');
     }
     exigirAbierta(actual);
-
-    const pagos = await VentaPago.findAll({ where: { ventaId: actual.id }, transaction });
-    if (devolverSena && pagadoDe(pagos) > 0) {
-      await registrarPagos(
-        ctx,
-        actual,
-        'devolucion',
-        devolucionDe(pagos, actual.moneda, medioDevolucion),
-        transaction
-      );
-    }
-    await cambiarEstadoEquipos(actual, 'disponible', transaction, ['reservado', 'senado']);
-    await actual.update(
-      {
-        estado: 'cancelada',
-        canceladaEn: new Date(),
-        canceladaPorId: ctx.usuarioId,
-        motivoCancelacion: motivo
-      },
-      { transaction }
+    await cerrarVenta(
+      ctx,
+      actual,
+      'cancelada',
+      { motivo, devolver: devolverSena, medio: medioDevolucion },
+      transaction
     );
   });
   return detalle(ctx, venta.id);
+}
+
+/**
+ * Anular una venta completada (solo admin): un error de carga o un cliente que
+ * devuelve lo que se llevó. Tampoco se borra: queda anulada con quién, cuándo y
+ * por qué, y deja de contar en el informe. Los equipos vuelven al stock, lo que
+ * dejó en parte de pago se le devuelve y lo que pagó se le devuelve o se lo
+ * queda el taller.
+ */
+export async function anularVenta(
+  ctx: ContextoVenta,
+  venta: Venta,
+  { motivo, devolverPlata, medioDevolucion }: z.infer<typeof anularVentaSchema>
+) {
+  await sequelize.transaction(async (transaction) => {
+    const actual = await bloquearVenta(venta, transaction);
+    if (actual.estado !== 'completada') {
+      throw errores.conflicto(
+        actual.estado === 'anulada'
+          ? 'La venta ya está anulada.'
+          : 'Solo se anula una venta completada: una reserva o una seña se cancela.'
+      );
+    }
+    await devolverPartesPago(ctx, actual, transaction);
+    await cerrarVenta(
+      ctx,
+      actual,
+      'anulada',
+      { motivo, devolver: devolverPlata, medio: medioDevolucion },
+      transaction
+    );
+  });
+  return detalle(ctx, venta.id);
+}
+
+/**
+ * Lo que dejó el cliente en parte de pago vuelve a sus manos: sale del stock
+ * dado de baja, con el motivo. Si ya está en otra venta o se dio de baja, no se
+ * le puede devolver y la anulación no sigue.
+ */
+async function devolverPartesPago(ctx: ContextoVenta, venta: Venta, transaction: Transaction) {
+  const ids = (
+    await VentaPartePago.findAll({
+      where: { ventaId: venta.id, equipoStockId: { [Op.ne]: null } },
+      attributes: ['equipoStockId'],
+      transaction
+    })
+  ).map((p) => p.equipoStockId!);
+  if (ids.length === 0) return;
+
+  const equipos = await EquipoStock.findAll({
+    where: { id: ids },
+    lock: transaction.LOCK.UPDATE,
+    transaction
+  });
+  const ocupado = equipos.find((e) => e.estado !== 'disponible');
+  if (ocupado) {
+    const cual = `${etiquetaNumero(ocupado.numero)} (${ocupado.marca} ${ocupado.modelo}), que dejó el cliente,`;
+    throw errores.conflicto(
+      ocupado.estado === 'baja'
+        ? `${cual} se dio de baja del stock: no se le puede devolver.`
+        : `${cual} está en otra venta: cancelá o anulá esa primero.`
+    );
+  }
+  await EquipoStock.update(
+    {
+      estado: 'baja',
+      bajaEn: new Date(),
+      bajaPorId: ctx.usuarioId,
+      motivoBaja: `Se le devolvió al cliente al anular ${etiquetaVenta(venta.numero)}.`
+    },
+    { where: { id: ids }, transaction }
+  );
 }
 
 /**
@@ -617,7 +706,7 @@ export async function listarVentas(ctx: ContextoVenta, filtros: z.infer<typeof l
       total: venta.total,
       partePago: venta.partePago,
       pagado,
-      saldo: venta.estado === 'cancelada' || venta.estado === 'vencida' ? 0 : saldoDe(venta, pagado),
+      saldo: saldoDe(venta, pagado),
       reservadaHasta: venta.reservadaHasta,
       senadaDesde: Number.isFinite(primeraSena) ? new Date(primeraSena) : null,
       createdAt: venta.createdAt,

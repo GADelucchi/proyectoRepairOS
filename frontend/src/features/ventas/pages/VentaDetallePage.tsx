@@ -32,7 +32,7 @@ import {
   type PagoForm
 } from '../venta-form';
 
-const TIPO_PAGO = { sena: 'Seña', pago: 'Pago', devolucion: 'Seña devuelta' } as const;
+const TIPO_PAGO = { sena: 'Seña', pago: 'Pago', devolucion: 'Devolución' } as const;
 
 /** Una venta: qué se llevó, qué dejó, qué pagó y lo que falta. */
 export function VentaDetallePage() {
@@ -126,6 +126,15 @@ export function VentaDetallePage() {
           volvieron al stock.
         </Alert>
       )}
+      {v.estado === 'anulada' && (
+        <Alert variant="danger">
+          Anulada el {formatearFechaHora(v.canceladaEn)}
+          {v.canceladaPor && ` por ${nombreCompleto(v.canceladaPor)}`}: {v.motivoCancelacion}. Los equipos
+          volvieron al stock
+          {v.partesPago.length > 0 && ' y lo que dejó en parte de pago se le devolvió'}. No cuenta en el
+          informe de ventas.
+        </Alert>
+      )}
       {v.estado === 'vencida' && (
         <Alert variant="secondary">La reserva venció y los equipos volvieron al stock.</Alert>
       )}
@@ -204,7 +213,11 @@ export function VentaDetallePage() {
                           </div>
                           <div className="small">
                             {p.equipoStockId ? (
-                              <Link to={`/stock/${p.equipoStockId}`}>Entró al stock</Link>
+                              <Link to={`/stock/${p.equipoStockId}`}>
+                                {v.estado === 'anulada'
+                                  ? 'Se le devolvió (salió del stock)'
+                                  : 'Entró al stock'}
+                              </Link>
                             ) : (
                               <span className="text-muted">Entra al stock al completar la venta</span>
                             )}
@@ -332,6 +345,11 @@ export function VentaDetallePage() {
           {abierta && esAdmin && (
             <Button variant="outline-danger" onClick={() => setModal('cancelar')}>
               Cancelar {v.estado === 'reservada' ? 'la reserva' : 'la seña'}
+            </Button>
+          )}
+          {v.estado === 'completada' && esAdmin && (
+            <Button variant="outline-danger" onClick={() => setModal('cancelar')}>
+              Anular la venta
             </Button>
           )}
         </Col>
@@ -471,26 +489,30 @@ function ExtenderModal({ show, venta, onCerrar, onHecho }: ModalVentaProps) {
   );
 }
 
-/** Solo admin. La venta no se borra: queda cancelada, con el motivo. */
+/**
+ * Solo admin. Una reserva o una seña se cancela; una venta completada se anula.
+ * Ninguna se borra: queda cancelada o anulada, con el motivo.
+ */
 function CancelarModal({ show, venta, onCerrar, onHecho }: ModalVentaProps) {
   const [motivo, setMotivo] = useState('');
   const [devolver, setDevolver] = useState(true);
   const [medio, setMedio] = useState<MedioPago>('efectivo');
   const [error, setError] = useState<string | null>(null);
   const { enCurso, ejecutar } = useAccion(setError);
-  const conSena = venta.pagado > 0;
+  const anular = venta.estado === 'completada';
+  const conPlata = venta.pagado > 0;
+  const variasMonedas = new Set(venta.pagos.map((p) => p.moneda)).size > 1;
 
   async function confirmar(e: FormEvent) {
     e.preventDefault();
+    const datos = { motivo: motivo.trim(), medioDevolucion: medio };
     let nueva: Venta | undefined;
     const ok = await ejecutar(
       async () =>
-        void (nueva = await ventasApi.cancelarVenta(venta.id, {
-          motivo: motivo.trim(),
-          devolverSena: conSena && devolver,
-          medioDevolucion: medio
-        })),
-      'No se pudo cancelar'
+        void (nueva = anular
+          ? await ventasApi.anularVenta(venta.id, { ...datos, devolverPlata: conPlata && devolver })
+          : await ventasApi.cancelarVenta(venta.id, { ...datos, devolverSena: conPlata && devolver })),
+      anular ? 'No se pudo anular' : 'No se pudo cancelar'
     );
     if (ok) onHecho(nueva!);
   }
@@ -499,12 +521,23 @@ function CancelarModal({ show, venta, onCerrar, onHecho }: ModalVentaProps) {
     <Modal show={show} onHide={onCerrar} centered>
       <Form onSubmit={confirmar}>
         <Modal.Header closeButton>
-          <Modal.Title as="h5">Cancelar {venta.etiqueta}</Modal.Title>
+          <Modal.Title as="h5">
+            {anular ? 'Anular' : 'Cancelar'} {venta.etiqueta}
+          </Modal.Title>
         </Modal.Header>
         <Modal.Body className="d-grid gap-3">
           <AlertaError error={error} onCerrar={() => setError(null)} />
           <p className="small text-muted mb-0">
-            Los equipos vuelven al stock. La venta no se borra: queda cancelada con el motivo.
+            {anular ? (
+              <>
+                Los equipos vuelven al stock
+                {venta.partesPago.length > 0 &&
+                  ' y lo que dejó en parte de pago se le devuelve (sale del stock)'}
+                . La venta no se borra: queda anulada con el motivo y deja de contar en el informe de ventas.
+              </>
+            ) : (
+              'Los equipos vuelven al stock. La venta no se borra: queda cancelada con el motivo.'
+            )}
           </p>
           <Form.Group controlId="cancelar-motivo">
             <Form.Label>Motivo</Form.Label>
@@ -515,30 +548,38 @@ function CancelarModal({ show, venta, onCerrar, onHecho }: ModalVentaProps) {
               required
             />
           </Form.Group>
-          {conSena && (
+          {conPlata && (
             <div>
               <Form.Check
                 type="switch"
                 id="cancelar-devolver"
-                label={`Devolver la seña (${formatearMonto(venta.pagado, venta.moneda)})`}
+                label={`Devolver ${anular ? 'lo pagado' : 'la seña'} (${formatearMonto(venta.pagado, venta.moneda)})`}
                 checked={devolver}
                 onChange={(e) => setDevolver(e.target.checked)}
               />
               {devolver ? (
-                <Form.Select
-                  className="mt-2"
-                  aria-label="Medio de la devolución"
-                  value={medio}
-                  onChange={(e) => setMedio(e.target.value as MedioPago)}
-                >
-                  {MEDIOS_PAGO.map((m) => (
-                    <option key={m} value={m}>
-                      {ETIQUETA_MEDIO_PAGO[m]}
-                    </option>
-                  ))}
-                </Form.Select>
+                <>
+                  <Form.Select
+                    className="mt-2"
+                    aria-label="Medio de la devolución"
+                    value={medio}
+                    onChange={(e) => setMedio(e.target.value as MedioPago)}
+                  >
+                    {MEDIOS_PAGO.map((m) => (
+                      <option key={m} value={m}>
+                        {ETIQUETA_MEDIO_PAGO[m]}
+                      </option>
+                    ))}
+                  </Form.Select>
+                  <Form.Text className="text-muted">
+                    Sale de la caja hoy
+                    {variasMonedas && ', en las mismas monedas en que entró'}.
+                  </Form.Text>
+                </>
               ) : (
-                <Form.Text className="text-muted">El taller se queda con la seña.</Form.Text>
+                <Form.Text className="text-muted">
+                  El taller se queda con {anular ? 'lo que pagó' : 'la seña'}.
+                </Form.Text>
               )}
             </div>
           )}
@@ -548,7 +589,7 @@ function CancelarModal({ show, venta, onCerrar, onHecho }: ModalVentaProps) {
             Volver
           </Button>
           <Button type="submit" variant="danger" disabled={enCurso || motivo.trim().length < 3}>
-            Cancelar venta
+            {anular ? 'Anular venta' : 'Cancelar venta'}
           </Button>
         </Modal.Footer>
       </Form>

@@ -11,9 +11,19 @@ import type { VentaPartePago } from './VentaPartePago';
  * Reservada: apartada sin pago hasta `reservadaHasta`; al pasar la fecha vence
  * sola y los equipos vuelven al stock. Señada: el cliente pagó una parte; no
  * vence sola, a los días se avisa a un admin. Completada: pagó todo y se llevó
- * los equipos. Cancelada y vencida quedan como registro: una venta nunca se borra.
+ * los equipos. Cancelada (una reserva o seña que no siguió), anulada (una
+ * completada que se dio vuelta) y vencida quedan como registro: una venta nunca
+ * se borra. `canceladaEn`, `canceladaPorId` y `motivoCancelacion` sirven para
+ * las canceladas y las anuladas.
  */
-export const ESTADOS_VENTA = ['reservada', 'senada', 'completada', 'cancelada', 'vencida'] as const;
+export const ESTADOS_VENTA = [
+  'reservada',
+  'senada',
+  'completada',
+  'cancelada',
+  'vencida',
+  'anulada'
+] as const;
 export type EstadoVenta = (typeof ESTADOS_VENTA)[number];
 
 export const TIPOS_DESCUENTO = ['porcentaje', 'monto'] as const;

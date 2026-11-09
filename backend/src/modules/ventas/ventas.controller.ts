@@ -7,6 +7,7 @@ import { etiquetaVenta } from './calculos';
 import { informeVentas } from './informe.service';
 import { generarVentaPdf } from './venta-pdf.service';
 import {
+  anularVentaSchema,
   cancelarVentaSchema,
   crearVentaSchema,
   extenderReservaSchema,
@@ -53,6 +54,10 @@ export async function cancelarVenta(req: Request, res: Response): Promise<void> 
   res.json(
     await ventas.cancelarVenta(contexto(req), await ventaDe(req), cancelarVentaSchema.parse(req.body))
   );
+}
+
+export async function anularVenta(req: Request, res: Response): Promise<void> {
+  res.json(await ventas.anularVenta(contexto(req), await ventaDe(req), anularVentaSchema.parse(req.body)));
 }
 
 export async function descargarPdf(req: Request, res: Response): Promise<void> {

@@ -504,7 +504,7 @@ export interface ResumenStock {
   }[];
 }
 
-export type EstadoVenta = 'reservada' | 'senada' | 'completada' | 'cancelada' | 'vencida';
+export type EstadoVenta = 'reservada' | 'senada' | 'completada' | 'cancelada' | 'vencida' | 'anulada';
 export type TipoDescuento = 'porcentaje' | 'monto';
 export type TipoPagoVenta = 'sena' | 'pago' | 'devolucion';
 
