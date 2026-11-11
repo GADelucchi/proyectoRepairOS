@@ -21,6 +21,7 @@ export interface TallerAttributes {
   ingresosBrutos?: string | null;
   puntoVenta?: number | null;
   stockEntreSucursales?: boolean;
+  catalogoPublico?: boolean;
   terminosVenta?: string | null;
   createdAt?: Date;
   updatedAt?: Date;
@@ -40,6 +41,7 @@ export type TallerCreationAttributes = Optional<
   | 'ingresosBrutos'
   | 'puntoVenta'
   | 'stockEntreSucursales'
+  | 'catalogoPublico'
   | 'terminosVenta'
   | 'createdAt'
   | 'updatedAt'
@@ -75,6 +77,8 @@ export class Taller extends Model<TallerAttributes, TallerCreationAttributes> im
   declare puntoVenta: number | null;
   /** Cada sucursal ve el stock de las demás. Apagado, cada una ve solo lo suyo. */
   declare stockEntreSucursales: boolean;
+  /** Publica los equipos disponibles y su precio en `/api/catalogo/:codigoPublico`. */
+  declare catalogoPublico: boolean;
   /** Términos y condiciones que se imprimen en el comprobante de cada venta de equipos. */
   declare terminosVenta: string | null;
   declare readonly createdAt: Date;
@@ -100,6 +104,12 @@ export class Taller extends Model<TallerAttributes, TallerCreationAttributes> im
           allowNull: false,
           defaultValue: false,
           field: 'stock_entre_sucursales'
+        },
+        catalogoPublico: {
+          type: DataTypes.BOOLEAN,
+          allowNull: false,
+          defaultValue: false,
+          field: 'catalogo_publico'
         },
         terminosVenta: { type: DataTypes.TEXT, allowNull: true, field: 'terminos_venta' }
       },

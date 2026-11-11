@@ -57,17 +57,29 @@ export const PASOS_GUIA: PasoGuia[] = [
       'Imprimí una etiqueta con QR para cada equipo (desde Equipos) y pegala atrás. Con este botón escaneás la etiqueta y ves el equipo y su historial al instante.'
   },
   {
+    objetivo: 'nav-stock',
+    titulo: 'Stock de equipos',
+    texto:
+      'Los equipos que tenés para vender, cada uno con su número (#0042), su costo y su precio. Si es usado, cargá la salud de la batería. El IMEI o el serial se pueden escanear de la caja, y si ya está cargado te avisa. El costo lo ve solo un admin, que también puede publicar el stock con sus precios en un link para tus clientes (Ajustes → Configuración).'
+  },
+  {
+    objetivo: 'nav-ventas',
+    titulo: 'Ventas',
+    texto:
+      'Buscá o escaneá el equipo del stock y elegí: reservarlo hasta una fecha (si no vuelven, se libera solo), dejarlo señado o venderlo. Si el cliente entrega su equipo en parte de pago, entra al stock como usado. Se puede cobrar en varias monedas, y el comprobante sale con tus términos de venta.'
+  },
+  {
     objetivo: 'nav-caja',
     titulo: 'Cuenta corriente y caja',
     texto:
-      'Quién debe, qué se cobró hoy y por qué medio. Fiar o ajustar un saldo pide la autorización de un admin.'
+      'Quién debe, qué se cobró hoy y por qué medio, separado en reparaciones, ventas y señas. Fiar o ajustar un saldo pide la autorización de un admin.'
   },
   {
     objetivo: 'nav-reportes',
     soloAdmin: true,
     titulo: 'Reportes',
     texto:
-      'Tiempo promedio de reparación, presupuestos aprobados, trabajo de cada técnico y equipos que nadie vino a buscar. Todo se puede bajar a Excel.'
+      'Tiempo promedio de reparación, presupuestos aprobados, trabajo de cada técnico y equipos que nadie vino a buscar. También el informe de ventas de equipos, con la ganancia de cada una en dólares. Todo se puede bajar a Excel.'
   },
   {
     objetivo: 'campanita',

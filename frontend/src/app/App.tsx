@@ -53,6 +53,7 @@ const PortalClientePage = diferida(
   () => import('@/features/portal/pages/PortalClientePage'),
   'PortalClientePage'
 );
+const CatalogoPage = diferida(() => import('@/features/catalogo/pages/CatalogoPage'), 'CatalogoPage');
 const SeguimientoPage = diferida(
   () => import('@/features/seguimiento/pages/SeguimientoPage'),
   'SeguimientoPage'
@@ -112,6 +113,8 @@ export function App() {
         {/* Público: lo abre el cliente con el link o el QR del remito. */}
         <Route path="/seguimiento/:codigo" element={<SeguimientoPage />} />
         <Route path="/cliente/:codigo" element={<PortalClientePage />} />
+        {/* Público: los equipos en venta, si el taller publicó su catálogo. */}
+        <Route path="/catalogo/:codigo" element={<CatalogoPage />} />
 
         <Route element={<RutaProtegida />}>
           <Route path="/seleccionar-sucursal" element={<SeleccionSucursalPage />} />

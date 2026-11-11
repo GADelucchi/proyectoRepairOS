@@ -11,7 +11,7 @@ import { monedaDePais } from '../../shared/utils/paises';
 import { excesoDelPlan, usoDelPlan } from '../suscripciones/limites.service';
 import { datosFiscalesDe } from '../configuracion/configuracion.service';
 import { codigoPublicoDe } from '../portal/portal.service';
-import { generarCodigoPublico, urlDelPortal } from '../seguimiento/codigo';
+import { generarCodigoPublico, urlDelCatalogo, urlDelPortal } from '../seguimiento/codigo';
 import {
   errorDeBloqueo,
   finDeGracia,
@@ -152,6 +152,7 @@ export async function perfil(usuarioId: number, sucursalIdDelToken?: number) {
           'pais',
           'codigoPublico',
           'stockEntreSucursales',
+          'catalogoPublico',
           'terminosVenta',
           ...ATRIBUTOS_FISCALES
         ]
@@ -178,7 +179,12 @@ export async function perfil(usuarioId: number, sucursalIdDelToken?: number) {
           moneda: monedaDePais(user.taller.pais),
           // Link para que sus clientes consulten sus datos y su cuenta.
           portalClientes: urlDelPortal(await codigoPublicoDe(user.taller)),
+          // La página con los equipos en venta; se ve solo si `catalogoPublico` está encendido.
+          catalogoClientes: urlDelCatalogo(await codigoPublicoDe(user.taller)),
+          // Con el que se arma el link de la API del catálogo (`/api/catalogo/:codigo`).
+          codigoPublico: user.taller.codigoPublico,
           stockEntreSucursales: user.taller.stockEntreSucursales,
+          catalogoPublico: user.taller.catalogoPublico,
           terminosVenta: user.taller.terminosVenta,
           fiscal: datosFiscalesDe(user.taller)
         }

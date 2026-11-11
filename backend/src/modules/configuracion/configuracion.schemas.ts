@@ -30,6 +30,8 @@ export const actualizarTallerSchema = z.object({
   pais: z.enum(CODIGOS_PAIS).optional(),
   /** Cada sucursal ve el stock de las demás. */
   stockEntreSucursales: z.boolean().optional(),
+  /** Publica los equipos disponibles y su precio en `/api/catalogo/:codigo`. */
+  catalogoPublico: z.boolean().optional(),
   /** Se imprimen en el comprobante de cada venta de equipos. */
   terminosVenta: textoOpcional(10000),
   /** Van juntos: los campos vacíos se borran, así que guardar el nombre no los toca. */

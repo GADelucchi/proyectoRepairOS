@@ -366,6 +366,361 @@ const ORDENES = [
   }
 ];
 
+/** Cuántos pesos valía 1 US$ (ilustrativo: es para que la demo muestre ventas y costos en pesos). */
+const COTIZACION_ARS = 1450;
+
+/**
+ * Equipos del stock, de la compra más vieja a la más nueva. El estado sale de
+ * las ventas (`VENTAS`): lo que no está en ninguna queda disponible. Los precios
+ * de venta van en dólares, como se publican los celulares.
+ *
+ * `costos`: lo que se le agregó después de comprarlo (lo ve solo un admin).
+ */
+const STOCK = [
+  {
+    clave: 'ip13pro-vendido',
+    sucursal: 'central',
+    diasCompra: 70,
+    marca: 'Apple',
+    modelo: 'iPhone 13 Pro',
+    color: 'Grafito',
+    gb: 128,
+    condicion: 'usado',
+    bateria: 89,
+    proveedor: 'Importadora Once',
+    costo: 520,
+    precio: 690
+  },
+  {
+    clave: 'a35-vendido',
+    sucursal: 'central',
+    diasCompra: 60,
+    marca: 'Samsung',
+    modelo: 'Galaxy A35',
+    color: 'Azul',
+    gb: 128,
+    condicion: 'nuevo',
+    proveedor: 'Distribuidora Sur',
+    monedaCosto: 'ARS',
+    costo: 350000,
+    cotizacionCosto: 1380,
+    precio: 330
+  },
+  {
+    clave: 'ip14-vendido',
+    sucursal: 'central',
+    diasCompra: 48,
+    marca: 'Apple',
+    modelo: 'iPhone 14',
+    color: 'Medianoche',
+    gb: 128,
+    condicion: 'usado',
+    bateria: 90,
+    proveedor: 'Importadora Once',
+    costo: 560,
+    precio: 720,
+    costos: [{ concepto: 'Cambio de vidrio trasero', diasAtras: 45, monto: 35 }]
+  },
+  {
+    clave: 'ip13-disp',
+    sucursal: 'central',
+    diasCompra: 40,
+    marca: 'Apple',
+    modelo: 'iPhone 13',
+    color: 'Azul',
+    gb: 128,
+    condicion: 'usado',
+    bateria: 86,
+    proveedor: 'Importadora Once',
+    costo: 380,
+    precio: 520
+  },
+  {
+    clave: 'motoe13-baja',
+    sucursal: 'central',
+    diasCompra: 38,
+    marca: 'Motorola',
+    modelo: 'Moto E13',
+    color: 'Negro',
+    gb: 64,
+    condicion: 'nuevo',
+    proveedor: 'Distribuidora Sur',
+    costo: 85,
+    precio: 129,
+    baja: { diasAtras: 36, motivo: 'Vino con la pantalla rota de fábrica; el proveedor no lo cambió.' }
+  },
+  {
+    clave: 's23-disp',
+    sucursal: 'central',
+    diasCompra: 30,
+    marca: 'Samsung',
+    modelo: 'Galaxy S23',
+    color: 'Verde',
+    gb: 256,
+    condicion: 'usado',
+    bateria: 88,
+    proveedor: 'Particular',
+    costo: 400,
+    precio: 580,
+    costos: [
+      {
+        concepto: 'Módulo de pantalla',
+        diasAtras: 27,
+        moneda: 'ARS',
+        monto: 87000,
+        cotizacion: COTIZACION_ARS
+      }
+    ]
+  },
+  {
+    clave: 'ip15pro-vendido',
+    sucursal: 'central',
+    diasCompra: 25,
+    marca: 'Apple',
+    modelo: 'iPhone 15 Pro',
+    color: 'Titanio natural',
+    gb: 256,
+    condicion: 'nuevo',
+    proveedor: 'Importadora Once',
+    costo: 980,
+    precio: 1199
+  },
+  {
+    clave: 's23ultra-senado',
+    sucursal: 'central',
+    diasCompra: 22,
+    marca: 'Samsung',
+    modelo: 'Galaxy S23 Ultra',
+    color: 'Negro',
+    gb: 256,
+    condicion: 'usado',
+    bateria: 92,
+    proveedor: 'Particular',
+    costo: 650,
+    precio: 890
+  },
+  {
+    clave: 'ip15-disp',
+    sucursal: 'central',
+    diasCompra: 18,
+    marca: 'Apple',
+    modelo: 'iPhone 15',
+    color: 'Negro',
+    gb: 128,
+    condicion: 'nuevo',
+    proveedor: 'Importadora Once',
+    costo: 780,
+    precio: 999
+  },
+  {
+    clave: 'a55-disp',
+    sucursal: 'central',
+    diasCompra: 15,
+    marca: 'Samsung',
+    modelo: 'Galaxy A55',
+    color: 'Celeste',
+    gb: 256,
+    condicion: 'nuevo',
+    proveedor: 'Distribuidora Sur',
+    monedaCosto: 'ARS',
+    costo: 435000,
+    cotizacionCosto: COTIZACION_ARS,
+    precio: 429
+  },
+  {
+    clave: 'ip14pro-reservado',
+    sucursal: 'central',
+    diasCompra: 12,
+    marca: 'Apple',
+    modelo: 'iPhone 14 Pro',
+    color: 'Morado oscuro',
+    gb: 256,
+    condicion: 'usado',
+    bateria: 91,
+    proveedor: 'Particular',
+    costo: 700,
+    precio: 950
+  },
+  {
+    clave: 'redmi-disp',
+    sucursal: 'central',
+    diasCompra: 6,
+    marca: 'Xiaomi',
+    modelo: 'Redmi Note 13 Pro',
+    color: 'Negro',
+    gb: 256,
+    condicion: 'nuevo',
+    proveedor: 'Distribuidora Sur',
+    costo: 230,
+    precio: 319
+  },
+  {
+    clave: 'g84-vendido',
+    sucursal: 'norte',
+    diasCompra: 35,
+    marca: 'Motorola',
+    modelo: 'Moto G84',
+    color: 'Azul',
+    gb: 256,
+    condicion: 'nuevo',
+    proveedor: 'Distribuidora Sur',
+    costo: 190,
+    precio: 259
+  },
+  {
+    clave: 'edge40-disp',
+    sucursal: 'norte',
+    diasCompra: 20,
+    marca: 'Motorola',
+    modelo: 'Edge 40',
+    color: 'Negro',
+    gb: 256,
+    condicion: 'nuevo',
+    proveedor: 'Distribuidora Sur',
+    costo: 280,
+    precio: 379
+  },
+  {
+    clave: 'ip12-disp',
+    sucursal: 'norte',
+    diasCompra: 10,
+    marca: 'Apple',
+    modelo: 'iPhone 12',
+    color: 'Blanco',
+    gb: 64,
+    condicion: 'usado',
+    bateria: 79,
+    proveedor: 'Particular',
+    costo: 210,
+    precio: 300
+  }
+];
+
+/**
+ * Ventas: completadas a lo largo de los últimos dos meses (para que el informe
+ * tenga este mes y el anterior), más una reserva y una seña abiertas. Cubren los
+ * casos que tiene que mostrar la demo: venta en pesos, descuento, parte de pago
+ * y pago en dos monedas.
+ *
+ * `pagos` tienen que cubrir lo que se paga en plata (total − parte de pago), en
+ * la moneda de la venta o en dólares con su cotización. `crearDemo` lo verifica.
+ */
+const VENTAS = [
+  {
+    cliente: 'gomez',
+    sucursal: 'central',
+    vendedor: 'admin',
+    diasAtras: 50,
+    estado: 'completada',
+    moneda: 'USD',
+    items: [{ equipo: 'ip13pro-vendido', precio: 690 }],
+    pagos: [{ monto: 690, medio: 'efectivo' }]
+  },
+  {
+    cliente: 'sosa',
+    sucursal: 'central',
+    vendedor: 'tecnico',
+    diasAtras: 34,
+    estado: 'completada',
+    moneda: 'ARS',
+    cotizacion: 1420,
+    items: [{ equipo: 'a35-vendido', precio: 480000 }],
+    pagos: [{ monto: 480000, medio: 'transferencia' }]
+  },
+  {
+    cliente: 'peralta',
+    sucursal: 'central',
+    vendedor: 'admin',
+    diasAtras: 21,
+    estado: 'completada',
+    moneda: 'USD',
+    items: [{ equipo: 'ip14-vendido', precio: 720 }],
+    descuento: { tipo: 'monto', valor: 20 },
+    comentarioCliente: 'Incluye funda y vidrio templado.',
+    // Lo que deja entra al stock como usado, con su costo = lo que se le descontó.
+    partePago: {
+      marca: 'Apple',
+      modelo: 'iPhone 11',
+      color: 'Rojo',
+      gb: 64,
+      bateria: 76,
+      monto: 150,
+      precio: 260,
+      observaciones: 'Rayón en el marco.'
+    },
+    // 700 − 150 de parte de pago = 550: 400 en dólares y el resto en pesos.
+    pagos: [
+      { monto: 400, medio: 'efectivo' },
+      { monto: 217500, moneda: 'ARS', cotizacion: COTIZACION_ARS, medio: 'transferencia' }
+    ]
+  },
+  {
+    cliente: 'ferreyra',
+    sucursal: 'central',
+    vendedor: 'admin',
+    diasAtras: 8,
+    estado: 'completada',
+    moneda: 'USD',
+    items: [{ equipo: 'ip15pro-vendido', precio: 1199 }],
+    pagos: [{ monto: 1199, medio: 'transferencia' }]
+  },
+  {
+    cliente: 'ledesma',
+    sucursal: 'norte',
+    vendedor: 'admin',
+    diasAtras: 3,
+    estado: 'completada',
+    moneda: 'USD',
+    items: [{ equipo: 'g84-vendido', precio: 259 }],
+    pagos: [{ monto: 259, medio: 'efectivo' }]
+  },
+  {
+    cliente: 'ledesma',
+    sucursal: 'central',
+    vendedor: 'tecnico',
+    diasAtras: 5,
+    estado: 'senada',
+    moneda: 'USD',
+    items: [{ equipo: 's23ultra-senado', precio: 890 }],
+    comentarioCliente: 'Retira el sábado con el resto.',
+    pagos: [{ monto: 200, medio: 'efectivo' }]
+  },
+  {
+    cliente: 'sosa',
+    sucursal: 'central',
+    vendedor: 'tecnico',
+    diasAtras: 1,
+    estado: 'reservada',
+    moneda: 'USD',
+    items: [{ equipo: 'ip14pro-reservado', precio: 950 }],
+    reservadaPorDias: 3,
+    pagos: []
+  }
+];
+
+const TERMINOS_VENTA =
+  'Garantía de 90 días en equipos usados y la del fabricante en los nuevos. No cubre golpes, humedad ni pantallas rotas. Las señas no son reembolsables pasados 15 días.';
+
+/** IMEI válido (dígito verificador de Luhn), distinto para cada equipo de la demo. */
+function imeiDemo(indice) {
+  const base = '3569' + String(41000000 + indice * 7919).padStart(10, '0');
+  let suma = 0;
+  for (let i = 0; i < 14; i++) {
+    let d = Number(base[i]);
+    if (i % 2 === 1) {
+      d *= 2;
+      if (d > 9) d -= 9;
+    }
+    suma += d;
+  }
+  return base + String((10 - (suma % 10)) % 10);
+}
+
+const redondear = (valor) => Math.round((valor + Number.EPSILON) * 100) / 100;
+
+/** Un monto pasado a dólares con su cotización (1 US$ en esa moneda), como `enDolares`. */
+const aDolares = (monto, moneda, cotizacion) => (moneda === 'USD' ? monto : redondear(monto / cotizacion));
+
 /** Resta días a una fecha sin tocar la original. */
 function haceDias(dias) {
   const fecha = new Date();
@@ -398,6 +753,22 @@ async function borrarDemo(queryInterface) {
   if (!tallerId) return false;
 
   const r = { replacements: [tallerId] };
+
+  // Stock y ventas primero: las ventas apuntan a clientes, sucursales y users, y
+  // un equipo del stock a la venta en la que entró como parte de pago.
+  await sequelize.query('DELETE FROM venta_pagos WHERE taller_id = ?', r);
+  await sequelize.query(
+    'DELETE p FROM venta_partes_pago p JOIN ventas v ON v.id = p.venta_id WHERE v.taller_id = ?',
+    r
+  );
+  await sequelize.query(
+    'DELETE i FROM venta_items i JOIN ventas v ON v.id = i.venta_id WHERE v.taller_id = ?',
+    r
+  );
+  await sequelize.query('DELETE FROM equipo_stock_costos WHERE taller_id = ?', r);
+  await sequelize.query('UPDATE equipos_stock SET recibido_en_venta_id = NULL WHERE taller_id = ?', r);
+  await sequelize.query('DELETE FROM ventas WHERE taller_id = ?', r);
+  await sequelize.query('DELETE FROM equipos_stock WHERE taller_id = ?', r);
 
   await sequelize.query(
     `DELETE oc FROM orden_chequeos oc
@@ -458,7 +829,9 @@ async function borrarDemo(queryInterface) {
   await sequelize.query('DELETE FROM users WHERE taller_id = ?', r);
   await sequelize.query('DELETE FROM sucursales WHERE taller_id = ?', r);
   await sequelize.query('DELETE FROM suscripciones WHERE taller_id = ?', r);
-  await sequelize.query('DELETE FROM contadores WHERE clave = ?', { replacements: ['orden:' + tallerId] });
+  await sequelize.query('DELETE FROM contadores WHERE clave IN (?)', {
+    replacements: [['orden:' + tallerId, 'stock:' + tallerId, 'venta:' + tallerId]]
+  });
   await sequelize.query('DELETE FROM talleres WHERE id = ?', r);
 
   return true;
@@ -490,8 +863,11 @@ async function crearDemo(queryInterface) {
   const tallerId = await insertarYObtenerId(sequelize, 'talleres', {
     nombre: TALLER_NOMBRE,
     activo: true,
-    // Fijo: el portal de clientes de la demo tiene siempre el mismo link.
+    // Fijo: el portal de clientes y el catálogo de la demo tienen siempre el mismo link.
     codigo_publico: 'DEMO2026',
+    stock_entre_sucursales: true,
+    catalogo_publico: true,
+    terminos_venta: TERMINOS_VENTA,
     created_at: ahora,
     updated_at: ahora
   });
@@ -709,7 +1085,241 @@ async function crearDemo(queryInterface) {
     { replacements: ['orden:' + tallerId, numero] }
   );
 
-  return { tallerId, ordenes: ORDENES.length, clientes: CLIENTES.length, equipos: EQUIPOS.length };
+  const stock = await crearStockYVentas(sequelize, { tallerId, sucursalIds, usuarioIds, clienteIds });
+
+  return {
+    tallerId,
+    ordenes: ORDENES.length,
+    clientes: CLIENTES.length,
+    equipos: EQUIPOS.length,
+    stock: stock.equipos,
+    ventas: VENTAS.length
+  };
+}
+
+/**
+ * El stock y las ventas de la demo, armados como los arma la app: los equipos
+ * apartados o vendidos cambian de estado, lo que deja el cliente en parte de
+ * pago entra al stock y la plata queda en `venta_pagos` (es lo que suma la caja).
+ */
+async function crearStockYVentas(sequelize, { tallerId, sucursalIds, usuarioIds, clienteIds }) {
+  const ahora = new Date();
+  let numeroStock = 0;
+  let indiceImei = 0;
+
+  /** Inserta un equipo en el stock con el próximo número y devuelve su id. */
+  async function ingresar(datos) {
+    numeroStock += 1;
+    indiceImei += 1;
+    return insertarYObtenerId(sequelize, 'equipos_stock', {
+      taller_id: tallerId,
+      sucursal_id: datos.sucursalId,
+      numero: numeroStock,
+      marca: datos.marca,
+      modelo: datos.modelo,
+      color: datos.color || null,
+      almacenamiento_gb: datos.gb || null,
+      condicion: datos.condicion,
+      bateria: datos.condicion === 'usado' ? datos.bateria : null,
+      numero_serie: null,
+      // Todo el stock de la demo son celulares.
+      imei: imeiDemo(indiceImei),
+      imei2: null,
+      fecha_compra: soloFecha(datos.fecha),
+      proveedor: datos.proveedor,
+      moneda_costo: datos.monedaCosto,
+      costo: datos.costo,
+      cotizacion_costo: datos.monedaCosto === 'USD' ? null : datos.cotizacionCosto,
+      costo_reparaciones_usd: datos.costoReparacionesUsd || 0,
+      moneda_precio: 'USD',
+      precio: datos.precio,
+      estado: datos.estado || 'disponible',
+      observaciones: datos.observaciones || null,
+      cargado_por_id: usuarioIds.admin,
+      baja_en: datos.baja ? datos.baja.fecha : null,
+      baja_por_id: datos.baja ? usuarioIds.admin : null,
+      motivo_baja: datos.baja ? datos.baja.motivo : null,
+      recibido_en_venta_id: datos.recibidoEnVentaId || null,
+      created_at: datos.fecha,
+      updated_at: ahora
+    });
+  }
+
+  // El estado de cada equipo según la venta en la que está.
+  const ESTADO_EQUIPO = { completada: 'vendido', senada: 'senado', reservada: 'reservado' };
+  const estadoPorEquipo = {};
+  for (const venta of VENTAS) {
+    for (const item of venta.items) estadoPorEquipo[item.equipo] = ESTADO_EQUIPO[venta.estado];
+  }
+
+  const stockIds = {};
+  for (const eq of STOCK) {
+    const monedaCosto = eq.monedaCosto || 'USD';
+    const costos = (eq.costos || []).map((c) => {
+      const moneda = c.moneda || 'USD';
+      return { ...c, moneda, montoUsd: aDolares(c.monto, moneda, c.cotizacion) };
+    });
+    stockIds[eq.clave] = await ingresar({
+      ...eq,
+      sucursalId: sucursalIds[eq.sucursal],
+      fecha: haceDias(eq.diasCompra),
+      monedaCosto,
+      costoReparacionesUsd: redondear(costos.reduce((t, c) => t + c.montoUsd, 0)),
+      estado: eq.baja ? 'baja' : estadoPorEquipo[eq.clave],
+      baja: eq.baja && { fecha: haceDias(eq.baja.diasAtras), motivo: eq.baja.motivo }
+    });
+
+    for (const c of costos) {
+      await insertarYObtenerId(sequelize, 'equipo_stock_costos', {
+        taller_id: tallerId,
+        equipo_stock_id: stockIds[eq.clave],
+        concepto: c.concepto,
+        fecha: soloFecha(haceDias(c.diasAtras)),
+        moneda: c.moneda,
+        monto: c.monto,
+        cotizacion: c.moneda === 'USD' ? null : c.cotizacion,
+        monto_usd: c.montoUsd,
+        usuario_id: usuarioIds.admin,
+        created_at: haceDias(c.diasAtras),
+        updated_at: haceDias(c.diasAtras)
+      });
+    }
+  }
+
+  // De la más vieja a la más nueva, para que la numeración siga el orden cronológico.
+  const ventasOrdenadas = [...VENTAS].sort((a, b) => b.diasAtras - a.diasAtras);
+  let numeroVenta = 0;
+  for (const v of ventasOrdenadas) {
+    numeroVenta += 1;
+    const fecha = haceDias(v.diasAtras);
+    const sucursalId = sucursalIds[v.sucursal];
+    const vendedorId = usuarioIds[v.vendedor];
+    const subtotal = v.items.reduce((t, i) => t + i.precio, 0);
+    const descuento = v.descuento ? v.descuento.valor : 0;
+    const total = subtotal - descuento;
+    const partePago = v.partePago ? v.partePago.monto : 0;
+
+    const pagos = v.pagos.map((p) => {
+      const moneda = p.moneda || v.moneda;
+      const equivalente =
+        moneda === v.moneda
+          ? p.monto
+          : redondear(moneda === 'USD' ? p.monto * p.cotizacion : p.monto / p.cotizacion);
+      return { ...p, moneda, equivalente };
+    });
+    const pagado = redondear(pagos.reduce((t, p) => t + p.equivalente, 0));
+    if (v.estado === 'completada' && Math.abs(pagado - (total - partePago)) >= 0.005) {
+      throw new Error('Demo: los pagos de VTA-' + numeroVenta + ' no cubren lo que se paga en plata.');
+    }
+
+    const ventaId = await insertarYObtenerId(sequelize, 'ventas', {
+      taller_id: tallerId,
+      sucursal_id: sucursalId,
+      numero: numeroVenta,
+      cliente_id: clienteIds[v.cliente],
+      estado: v.estado,
+      moneda: v.moneda,
+      cotizacion: v.cotizacion || null,
+      subtotal,
+      descuento_tipo: v.descuento ? v.descuento.tipo : null,
+      descuento_valor: v.descuento ? v.descuento.valor : null,
+      descuento,
+      total,
+      parte_pago: partePago,
+      reservada_hasta: v.reservadaPorDias ? soloFecha(haceDias(-v.reservadaPorDias)) : null,
+      comentario_cliente: v.comentarioCliente || null,
+      comentario_interno: null,
+      vendedor_id: vendedorId,
+      completada_en: v.estado === 'completada' ? fecha : null,
+      created_at: fecha,
+      updated_at: fecha
+    });
+
+    for (const item of v.items) {
+      await insertarYObtenerId(sequelize, 'venta_items', {
+        venta_id: ventaId,
+        equipo_stock_id: stockIds[item.equipo],
+        precio: item.precio,
+        created_at: fecha,
+        updated_at: fecha
+      });
+    }
+
+    for (const p of pagos) {
+      await insertarYObtenerId(sequelize, 'venta_pagos', {
+        taller_id: tallerId,
+        sucursal_id: sucursalId,
+        venta_id: ventaId,
+        tipo: v.estado === 'completada' ? 'pago' : 'sena',
+        monto: p.monto,
+        moneda: p.moneda,
+        cotizacion: p.moneda === v.moneda ? null : p.cotizacion,
+        equivalente: p.equivalente,
+        medio_pago: p.medio,
+        usuario_id: vendedorId,
+        nota: null,
+        created_at: fecha,
+        updated_at: fecha
+      });
+    }
+
+    if (v.partePago) {
+      const parte = v.partePago;
+      const equipoStockId = await ingresar({
+        sucursalId,
+        marca: parte.marca,
+        modelo: parte.modelo,
+        color: parte.color,
+        gb: parte.gb,
+        condicion: 'usado',
+        bateria: parte.bateria,
+        fecha,
+        proveedor: 'Parte de pago',
+        monedaCosto: v.moneda,
+        costo: parte.monto,
+        cotizacionCosto: v.cotizacion || null,
+        precio: parte.precio,
+        observaciones: [
+          'Lo dejó el cliente en VTA-' + String(numeroVenta).padStart(6, '0') + '.',
+          parte.observaciones
+        ]
+          .filter(Boolean)
+          .join(' '),
+        recibidoEnVentaId: ventaId
+      });
+      await insertarYObtenerId(sequelize, 'venta_partes_pago', {
+        venta_id: ventaId,
+        marca: parte.marca,
+        modelo: parte.modelo,
+        color: parte.color,
+        almacenamiento_gb: parte.gb,
+        condicion: 'usado',
+        bateria: parte.bateria,
+        numero_serie: null,
+        imei: imeiDemo(indiceImei),
+        imei2: null,
+        monto: parte.monto,
+        observaciones: parte.observaciones || null,
+        equipo_stock_id: equipoStockId,
+        created_at: fecha,
+        updated_at: fecha
+      });
+    }
+  }
+
+  // Los contadores siguen donde terminó la siembra, como el de las órdenes.
+  for (const [clave, valor] of [
+    ['stock:' + tallerId, numeroStock],
+    ['venta:' + tallerId, numeroVenta]
+  ]) {
+    await sequelize.query(
+      'INSERT INTO contadores (clave, valor, created_at, updated_at) VALUES (?, ?, NOW(), NOW()) ' +
+        'ON DUPLICATE KEY UPDATE valor = VALUES(valor), updated_at = NOW()',
+      { replacements: [clave, valor] }
+    );
+  }
+
+  return { equipos: numeroStock };
 }
 
 module.exports = {

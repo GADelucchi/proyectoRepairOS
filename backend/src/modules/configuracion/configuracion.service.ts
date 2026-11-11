@@ -24,6 +24,7 @@ export async function actualizarTaller(
     pais: taller.pais,
     moneda: monedaDePais(taller.pais),
     stockEntreSucursales: taller.stockEntreSucursales,
+    catalogoPublico: taller.catalogoPublico,
     terminosVenta: taller.terminosVenta,
     fiscal: datosFiscalesDe(taller)
   };

@@ -162,7 +162,24 @@ export function FormularioEquipoStock({ equipo, onGuardado, onCancelar }: Formul
         </Alert>
       )}
       {equipo?.estado === 'vendido' && (
-        <Alert variant="secondary">El equipo ya se vendió: sus datos quedan como estaban en la venta.</Alert>
+        <Alert variant="secondary">
+          {equipo.venta ? (
+            <>
+              Se vendió el {formatearFecha(equipo.venta.fecha)} por{' '}
+              {formatearMonto(equipo.venta.precio, equipo.venta.moneda)} en la venta{' '}
+              <Link to={`/ventas/${equipo.venta.id}`}>{equipo.venta.etiqueta}</Link>. Sus datos quedan como
+              estaban en la venta.
+            </>
+          ) : (
+            'El equipo ya se vendió: sus datos quedan como estaban en la venta.'
+          )}
+        </Alert>
+      )}
+      {(equipo?.estado === 'reservado' || equipo?.estado === 'senado') && equipo.venta && (
+        <Alert variant="warning">
+          Está {equipo.estado === 'reservado' ? 'reservado' : 'señado'} en la venta{' '}
+          <Link to={`/ventas/${equipo.venta.id}`}>{equipo.venta.etiqueta}</Link>.
+        </Alert>
       )}
       {equipo?.estado === 'baja' && (
         <Alert variant="dark">

@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { authRoutes } from './modules/auth/auth.routes';
+import { catalogoRoutes } from './modules/catalogo/catalogo.routes';
 import { clientesRoutes } from './modules/clientes/clientes.routes';
 import { configuracionRoutes } from './modules/configuracion/configuracion.routes';
 import { cuentasRoutes } from './modules/cuentas/cuentas.routes';
@@ -44,3 +45,5 @@ apiRoutes.use('/plan', planRoutes);
 apiRoutes.use('/seguimiento', seguimientoRoutes);
 // Público: el cliente consulta sus datos y su cuenta con DNI + teléfono.
 apiRoutes.use('/portal', portalRoutes);
+// Público: los equipos en venta del taller, si lo activó en Configuración.
+apiRoutes.use('/catalogo', catalogoRoutes);

@@ -36,6 +36,12 @@ export interface Taller {
   fiscal?: DatosFiscales;
   /** Cada sucursal ve el stock de equipos de las demás. */
   stockEntreSucursales?: boolean;
+  /** Página pública con los equipos en venta (solo se ve con `catalogoPublico`). */
+  catalogoClientes?: string;
+  /** Arma el link de la API del catálogo público. */
+  codigoPublico?: string | null;
+  /** Los equipos disponibles y su precio se publican en `/api/catalogo/:codigoPublico`. */
+  catalogoPublico?: boolean;
   /** Se imprimen en el comprobante de cada venta de equipos. */
   terminosVenta?: string | null;
 }

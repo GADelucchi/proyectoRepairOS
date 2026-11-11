@@ -26,6 +26,11 @@ export function urlDelPortal(codigoPublico: string): string {
   return `${env.appPublicUrl}/cliente/${codigoPublico}`;
 }
 
+/** Página pública con los equipos en venta del taller (`/catalogo/:codigo`). */
+export function urlDelCatalogo(codigoPublico: string): string {
+  return `${env.appPublicUrl}/catalogo/${codigoPublico}`;
+}
+
 export function urlDeSeguimiento(codigo: string): string {
   return `${env.appPublicUrl}/seguimiento/${codigo}`;
 }

@@ -40,7 +40,11 @@ async function main() {
         resumen.equipos +
         ' equipos, ' +
         resumen.ordenes +
-        ' órdenes.'
+        ' órdenes, ' +
+        resumen.stock +
+        ' equipos en stock, ' +
+        resumen.ventas +
+        ' ventas.'
     );
     console.log('  Acceso: ' + DEMO_EMAIL + ' / ' + DEMO_PASSWORD);
   } finally {

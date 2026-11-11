@@ -39,6 +39,7 @@ export const ITEMS_MENU: ItemMenu[] = [
     etiqueta: 'Stock',
     icono: Package,
     tono: 'orange',
+    tour: 'nav-stock',
     title: 'Stock de equipos para la venta'
   },
   {
@@ -46,6 +47,7 @@ export const ITEMS_MENU: ItemMenu[] = [
     etiqueta: 'Ventas',
     icono: ShoppingBag,
     tono: 'pink',
+    tour: 'nav-ventas',
     title: 'Ventas de equipos del stock'
   },
   { to: '/cuentas', etiqueta: 'Cuentas', icono: Wallet, tono: 'amber', title: 'Cuenta corriente' },

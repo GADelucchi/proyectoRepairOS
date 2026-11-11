@@ -47,6 +47,7 @@ export async function actualizarTaller(datos: {
   nombre?: string;
   pais?: string;
   stockEntreSucursales?: boolean;
+  catalogoPublico?: boolean;
   terminosVenta?: string | null;
   fiscal?: DatosFiscales;
 }): Promise<Taller> {
