@@ -3,12 +3,20 @@ import { Button, Card, Form, Spinner } from 'react-bootstrap';
 import { useAccion } from '@/shared/hooks/useAccion';
 import type { EstadoOrden } from '@/shared/types';
 import * as ordenesApi from '../../api';
-import { ESTADOS_ORDEN, ETIQUETA_ESTADO, estaListoParaRetirar, transicionesDesde } from '../../estado-orden';
+import {
+  ESTADOS_CON_FLUJO_PROPIO,
+  ESTADOS_ORDEN,
+  ETIQUETA_ESTADO,
+  estaListoParaRetirar,
+  transicionesDesde
+} from '../../estado-orden';
 import type { SeccionOrdenProps } from './tipos';
 
 interface EstadoCardProps extends Omit<SeccionOrdenProps, 'puedeEditar'> {
   esAdmin: boolean;
   onEntregar: () => void;
+  /** Elegir "Externo" sin un envío abierto pide a quién se manda el equipo. */
+  onTercerizar: () => void;
   conAviso: (base: string, orden: ordenesApi.OrdenConNotificacion) => string;
 }
 
@@ -20,6 +28,10 @@ interface EstadoCardProps extends Omit<SeccionOrdenProps, 'puedeEditar'> {
  *
  * El comentario sale impreso en el remito; la nota interna queda en el
  * historial solo para el taller.
+ *
+ * "Externo" abre el formulario de tercerización, salvo que el equipo siga
+ * afuera (volvió a presupuesto y el cliente ya aprobó): ahí es un cambio común.
+ * Al pasar a "Externo" no se pide comentario: el remito es del cliente.
  */
 export function EstadoCard({
   orden,
@@ -27,6 +39,7 @@ export function EstadoCard({
   onActualizada,
   onError,
   onEntregar,
+  onTercerizar,
   conAviso
 }: EstadoCardProps) {
   const [nuevoEstado, setNuevoEstado] = useState<EstadoOrden | ''>('');
@@ -35,18 +48,35 @@ export function EstadoCard({
   const [forzar, setForzar] = useState(false);
   const { enCurso, ejecutar } = useAccion(onError);
 
-  const posibles = (forzar && esAdmin ? ESTADOS_ORDEN : transicionesDesde(orden.estado)).filter(
-    (e) => e !== 'entregado' && e !== orden.estado
+  const sigueAfuera = (orden.tercerizaciones ?? []).some(
+    (t) => t.estado === 'enviada' || t.estado === 'recibida'
   );
-  const puedeEntregar = orden.estado !== 'entregado' && (estaListoParaRetirar(orden.estado) || esAdmin);
+  const posibles = (forzar && esAdmin ? ESTADOS_ORDEN : transicionesDesde(orden.estado)).filter(
+    (e) =>
+      e !== orden.estado &&
+      // "Externo" se elige acá y sigue en el formulario; los otros, por su flujo.
+      (e === 'externo' || !ESTADOS_CON_FLUJO_PROPIO.includes(e)) &&
+      // Forzar pide un motivo que sale en el remito: a "Externo" se va por el circuito.
+      !(forzar && e === 'externo') &&
+      // Un equipo tercerizado se recibe con "Recibí el equipo", que pide el tipo.
+      !(orden.estado === 'por_recibir' && e === 'recibido')
+  );
+  const abreFormulario = nuevoEstado === 'externo' && !sigueAfuera;
+  const puedeEntregar =
+    !['entregado', 'por_recibir'].includes(orden.estado) && (estaListoParaRetirar(orden.estado) || esAdmin);
 
   async function cambiar() {
     if (!nuevoEstado) return;
+    if (abreFormulario) {
+      setNuevoEstado('');
+      onTercerizar();
+      return;
+    }
     let actualizada: ordenesApi.OrdenConNotificacion | undefined;
     const ok = await ejecutar(async () => {
       actualizada = await ordenesApi.cambiarEstadoOrden(orden.id, {
         estado: nuevoEstado,
-        comentario: comentario.trim() || undefined,
+        comentario: (nuevoEstado !== 'externo' && comentario.trim()) || undefined,
         notaInterna: notaInterna.trim() || undefined,
         forzar: forzar || undefined
       });
@@ -93,27 +123,37 @@ export function EstadoCard({
                 </option>
               ))}
             </Form.Select>
-            <Form.Control
-              className="mb-2"
-              aria-label="Comentario"
-              placeholder={
-                forzar
-                  ? 'Motivo del cambio forzado (obligatorio)'
-                  : 'Comentario (opcional, sale en el remito)'
-              }
-              value={comentario}
-              onChange={(e) => setComentario(e.target.value)}
-            />
-            <Form.Control
-              as="textarea"
-              rows={2}
-              className="mb-2"
-              aria-label="Notas internas"
-              placeholder="Notas internas (opcional, no las ve el cliente)"
-              value={notaInterna}
-              maxLength={2000}
-              onChange={(e) => setNotaInterna(e.target.value)}
-            />
+            {abreFormulario && (
+              <Form.Text className="text-muted d-block mb-2">
+                A continuación cargás a quién se manda el equipo. El cliente lo sigue viendo &quot;En
+                reparación&quot;.
+              </Form.Text>
+            )}
+            {nuevoEstado !== 'externo' && (
+              <Form.Control
+                className="mb-2"
+                aria-label="Comentario"
+                placeholder={
+                  forzar
+                    ? 'Motivo del cambio forzado (obligatorio)'
+                    : 'Comentario (opcional, sale en el remito)'
+                }
+                value={comentario}
+                onChange={(e) => setComentario(e.target.value)}
+              />
+            )}
+            {!abreFormulario && (
+              <Form.Control
+                as="textarea"
+                rows={2}
+                className="mb-2"
+                aria-label="Notas internas"
+                placeholder="Notas internas (opcional, no las ve el cliente)"
+                value={notaInterna}
+                maxLength={2000}
+                onChange={(e) => setNotaInterna(e.target.value)}
+              />
+            )}
             {esAdmin && (
               <Form.Check
                 type="checkbox"
@@ -132,7 +172,13 @@ export function EstadoCard({
               onClick={cambiar}
               disabled={!nuevoEstado || enCurso || (forzar && !comentario.trim())}
             >
-              {enCurso ? <Spinner size="sm" animation="border" /> : 'Actualizar estado'}
+              {enCurso ? (
+                <Spinner size="sm" animation="border" />
+              ) : abreFormulario ? (
+                'Continuar'
+              ) : (
+                'Actualizar estado'
+              )}
             </Button>
           </>
         )}

@@ -11,7 +11,7 @@ import {
 import { errores } from '../../shared/http/http-error';
 import { generarCodigoPublico } from '../seguimiento/codigo';
 import { saldosDeClientes } from '../cuentas/cuenta-corriente.service';
-import { etiquetaEstado } from '../ordenes/estado-orden';
+import { estadoParaCliente, etiquetaEstado } from '../ordenes/estado-orden';
 
 const LIMITE_ORDENES = 50;
 const LIMITE_MOVIMIENTOS = 50;
@@ -113,8 +113,9 @@ export async function consultarPortal(codigoTaller: string, dni: string, ultimos
       .map(([moneda, saldo]) => ({ moneda, saldo: Math.round(saldo * 100) / 100 })),
     ordenes: ordenes.map((o) => ({
       numeroOrden: o.numeroOrden,
-      estado: o.estado,
-      etiquetaEstado: etiquetaEstado(o.estado),
+      // Un equipo en un taller externo, para el cliente, sigue en reparación.
+      estado: estadoParaCliente(o.estado),
+      etiquetaEstado: etiquetaEstado(estadoParaCliente(o.estado)),
       fechaIngreso: o.fechaIngreso,
       fechaEntrega: o.fechaEntrega,
       equipo: [o.equipo?.tipoEquipo?.nombre, o.equipo?.marca, o.equipo?.modelo].filter(Boolean).join(' · '),

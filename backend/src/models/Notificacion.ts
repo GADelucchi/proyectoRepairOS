@@ -1,7 +1,13 @@
 import { DataTypes, Model, Optional, Sequelize } from 'sequelize';
 
 /** De qué se avisa. Sirve para elegir el ícono y para filtrar. */
-export const TIPOS_NOTIFICACION = ['taller_nuevo', 'usuario_nuevo', 'autorizacion', 'venta'] as const;
+export const TIPOS_NOTIFICACION = [
+  'taller_nuevo',
+  'usuario_nuevo',
+  'autorizacion',
+  'venta',
+  'tercerizacion'
+] as const;
 export type TipoNotificacion = (typeof TIPOS_NOTIFICACION)[number];
 
 /**

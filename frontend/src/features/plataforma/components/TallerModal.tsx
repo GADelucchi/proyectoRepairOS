@@ -125,6 +125,9 @@ export function TallerModal({ tallerId, planes, onCerrar, onActualizado }: Talle
                   Órdenes: {taller.ordenes} ({taller.ordenesUltimos30} en los últimos 30 días)
                 </div>
                 <div>
+                  Ventas: {taller.ventas} ({taller.ventasUltimos30} en los últimos 30 días)
+                </div>
+                <div>
                   Último acceso: {taller.ultimoAcceso ? formatearFechaHora(taller.ultimoAcceso) : 'nunca'}
                 </div>
                 {taller.esDemo && (

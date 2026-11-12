@@ -26,6 +26,7 @@ import { Venta } from './Venta';
 import { VentaItem } from './VentaItem';
 import { VentaPartePago } from './VentaPartePago';
 import { VentaPago } from './VentaPago';
+import { Tercerizacion } from './Tercerizacion';
 
 Taller.initModel(sequelize);
 Plan.initModel(sequelize);
@@ -54,6 +55,7 @@ Venta.initModel(sequelize);
 VentaItem.initModel(sequelize);
 VentaPartePago.initModel(sequelize);
 VentaPago.initModel(sequelize);
+Tercerizacion.initModel(sequelize);
 
 // Taller -> todo lo que se consulta desde la raíz
 Taller.hasOne(Suscripcion, { foreignKey: 'tallerId', as: 'suscripcion' });
@@ -193,6 +195,15 @@ Venta.hasMany(VentaPartePago, { foreignKey: 'ventaId', as: 'partesPago' });
 Venta.hasMany(VentaPago, { foreignKey: 'ventaId', as: 'pagos' });
 VentaPago.belongsTo(User, { foreignKey: 'usuarioId', as: 'usuario' });
 
+// Tercerización: la orden del taller que manda el equipo y, si el destino usa
+// RepairOS, la que se le creó a ese taller.
+Orden.hasMany(Tercerizacion, { foreignKey: 'ordenId', as: 'tercerizaciones' });
+Tercerizacion.belongsTo(Orden, { foreignKey: 'ordenId', as: 'orden' });
+Tercerizacion.belongsTo(Orden, { foreignKey: 'ordenDestinoId', as: 'ordenDestino' });
+Tercerizacion.belongsTo(Taller, { foreignKey: 'tallerId', as: 'taller' });
+Tercerizacion.belongsTo(Taller, { foreignKey: 'tallerDestinoId', as: 'tallerDestino' });
+Tercerizacion.belongsTo(User, { foreignKey: 'enviadaPorId', as: 'enviadaPor' });
+
 export {
   sequelize,
   Taller,
@@ -221,5 +232,6 @@ export {
   Venta,
   VentaItem,
   VentaPartePago,
-  VentaPago
+  VentaPago,
+  Tercerizacion
 };

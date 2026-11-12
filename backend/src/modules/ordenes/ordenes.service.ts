@@ -19,7 +19,14 @@ import { errores } from '../../shared/http/http-error';
 import { exigirTipoDelTaller } from '../configuracion/tipos-equipo.service';
 import { cifrarCredenciales } from '../equipos/equipos.service';
 import { generarNumeroSerieUnico } from '../equipos/numero-serie';
-import { esEstadoFinal, esTransicionValida, etiquetaEstado, transicionesDesde } from './estado-orden';
+import {
+  ESTADOS_CON_FLUJO_PROPIO,
+  esEstadoFinal,
+  esTransicionValida,
+  estadoParaCliente,
+  etiquetaEstado,
+  transicionesDesde
+} from './estado-orden';
 import { generarNumeroOrden } from './numero-orden';
 import { monedaDePais, PAIS_POR_DEFECTO } from '../../shared/utils/paises';
 import { generarCodigoSeguimiento } from '../seguimiento/codigo';
@@ -33,6 +40,7 @@ import {
 } from './ordenes.schemas';
 import { saldoDeCliente, saldosDeCliente } from '../cuentas/cuenta-corriente.service';
 import { notificarCambioEstadoOrden, ResultadoNotificacion } from '../notificaciones/notificaciones.service';
+import { envioActivo, sincronizarTercerizacion } from './tercerizacion.service';
 import type { z } from 'zod';
 
 const USUARIO_RESUMIDO = ['id', 'nombre', 'apellido'];
@@ -347,9 +355,17 @@ export function actualizarOrden(orden: Orden, data: z.infer<typeof actualizarOrd
   return orden.update(data);
 }
 
-/** Avisa al cliente si cambió el estado. El aviso nunca revierte el cambio. */
-async function avisarSiCambio(orden: Orden, estadoAnterior: string): Promise<ResultadoNotificacion | null> {
-  if (orden.estado === estadoAnterior || !orden.cliente) return null;
+/**
+ * Avisa al cliente si cambió el estado. El aviso nunca revierte el cambio.
+ *
+ * Compara lo que ve el cliente: mandar el equipo a un taller externo o traerlo
+ * de vuelta a reparación no le cambia nada, así que no se le avisa.
+ */
+export async function avisarSiCambio(
+  orden: Orden,
+  estadoAnterior: string
+): Promise<ResultadoNotificacion | null> {
+  if (estadoParaCliente(orden.estado) === estadoParaCliente(estadoAnterior) || !orden.cliente) return null;
   return notificarCambioEstadoOrden(orden, orden.cliente);
 }
 
@@ -362,9 +378,21 @@ export async function cambiarEstado(
   const estadoAnterior = orden.estado;
 
   // La entrega mueve plata y tiene su propio endpoint: por acá el equipo
-  // saldría entregado sin registrar cuánto se cobró.
-  if (nuevoEstado === 'entregado') {
-    throw errores.conflicto('Para entregar el equipo hay que registrar el cobro desde la entrega.');
+  // saldría entregado sin registrar cuánto se cobró. Lo mismo tercerizar, que
+  // pide a quién se manda. Ni forzando.
+  // Volver a "externo" sí se puede si el equipo sigue afuera (por ejemplo,
+  // después de que el cliente aprobó lo que cotizó el externo).
+  if (ESTADOS_CON_FLUJO_PROPIO.includes(nuevoEstado)) {
+    const sigueAfuera = nuevoEstado === 'externo' && (await envioActivo(orden.id)) !== null;
+    if (!sigueAfuera) {
+      throw errores.conflicto(
+        nuevoEstado === 'entregado'
+          ? 'Para entregar el equipo hay que registrar el cobro desde la entrega.'
+          : nuevoEstado === 'externo'
+            ? 'Para mandar el equipo a un taller externo hay que indicar a quién se manda.'
+            : 'Una orden no vuelve a "por recibir".'
+      );
+    }
   }
   if (nuevoEstado === estadoAnterior) {
     throw errores.solicitudInvalida(`La orden ya está en estado "${etiquetaEstado(estadoAnterior)}"`);
@@ -389,7 +417,7 @@ export async function cambiarEstado(
     }
   }
 
-  await sequelize.transaction(async (transaction) => {
+  const despues = await sequelize.transaction(async (transaction) => {
     await orden.update({ estado: nuevoEstado }, { transaction });
     await registrarCambioDeEstado(
       {
@@ -402,7 +430,10 @@ export async function cambiarEstado(
       },
       transaction
     );
+    // Volver del externo o recibir un equipo tercerizado actualiza el envío.
+    return sincronizarTercerizacion(orden, estadoAnterior, quien.usuarioId, transaction);
   });
+  await despues?.().catch((err) => console.error('[tercerizacion] aviso:', err));
 
   return { ...orden.get({ plain: true }), notificacion: await avisarSiCambio(orden, estadoAnterior) };
 }
@@ -444,7 +475,8 @@ export async function actualizarPresupuesto(
     // Un monto guardado es un presupuesto nuevo, aunque ya hubiera otro aprobado
     // o rechazado: vuelve a "presupuestado" y espera otra respuesta del cliente.
     // Una orden cerrada (lo corrige un admin) no cambia de estado.
-    if (monto !== null && !esEstadoFinal(estadoAnterior)) {
+    // Tampoco una que todavía no recibió el equipo que le tercerizaron.
+    if (monto !== null && !esEstadoFinal(estadoAnterior) && estadoAnterior !== 'por_recibir') {
       cambios.estado = 'presupuestado';
       cambios.presupuestoAprobado = null;
     }

@@ -31,4 +31,11 @@ describe('estado de la orden (frontend)', () => {
     expect(etiquetaEstado('en_reparacion')).toBe('En reparación');
     expect(etiquetaEstado('en_espera')).toBe('En espera');
   });
+
+  it('"externo" y "por recibir" tienen etiqueta y la misma regla que el backend', () => {
+    expect(etiquetaEstado('externo')).toBe('Externo');
+    expect(etiquetaEstado('por_recibir')).toBe('Por recibir');
+    expect(transicionesDesde('por_recibir')).toEqual(['recibido', 'cancelado']);
+    expect(transicionesDesde('externo')).not.toContain('entregado');
+  });
 });

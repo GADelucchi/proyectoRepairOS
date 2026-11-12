@@ -33,7 +33,10 @@ export function mensajeParaCliente(d: DatosAviso, taller: string): string {
   // El detalle va en su propio párrafo, entre el monto y la pregunta.
   const detalle = d.presupuestoDetalle?.trim() ? `\n\n${d.presupuestoDetalle.trim()}\n\n` : ' ';
 
+  const reparando = `Estamos reparando tu ${equipo} (orden ${d.numeroOrden}). Te avisamos cuando esté listo.`;
   const cuerpo: Record<EstadoOrden, string> = {
+    // El "cliente" de esta orden es el taller que nos tercerizó el equipo.
+    por_recibir: `Ya tenemos armada la orden ${d.numeroOrden} para tu ${equipo}. Cuando nos lo mandes, lo recibimos.`,
     recibido: `Recibimos tu ${equipo} en ${taller}. Tu número de orden es ${d.numeroOrden}.`,
     en_diagnostico: `Estamos revisando tu ${equipo} (orden ${d.numeroOrden}). Te avisamos apenas tengamos el diagnóstico.`,
     presupuestado: monto
@@ -41,7 +44,9 @@ export function mensajeParaCliente(d: DatosAviso, taller: string): string {
       : `Ya tenemos el presupuesto para tu ${equipo} (orden ${d.numeroOrden}). ¿Te lo pasamos?`,
     aprobado: `Gracias por aprobar el presupuesto. Ya empezamos con la reparación de tu ${equipo} (orden ${d.numeroOrden}).`,
     rechazado: `Registramos que no vas a seguir con la reparación de tu ${equipo} (orden ${d.numeroOrden}). Podés pasar a retirarlo por ${lugar}.`,
-    en_reparacion: `Estamos reparando tu ${equipo} (orden ${d.numeroOrden}). Te avisamos cuando esté listo.`,
+    en_reparacion: reparando,
+    // Que esté en un taller externo es cosa del taller: para el cliente, se está reparando.
+    externo: reparando,
     en_espera: `Tu ${equipo} (orden ${d.numeroOrden}) quedó en espera. Te avisamos apenas podamos seguir.`,
     listo_para_retirar: `¡Tu ${equipo} ya está listo para retirar! Te esperamos en ${lugar}. Orden ${d.numeroOrden}${monto ? `, total ${monto}` : ''}.`,
     no_reparado: `No pudimos reparar tu ${equipo} (orden ${d.numeroOrden}). Ya podés pasar a retirarlo por ${lugar}.`,

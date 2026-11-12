@@ -211,3 +211,64 @@ export async function descargarPdf(id: number): Promise<Blob> {
   const { data } = await apiClient.get(`/ordenes/${id}/pdf`, { responseType: 'blob' });
   return data;
 }
+
+// ---------------------------------------------------------------------------
+// Tercerización
+// ---------------------------------------------------------------------------
+
+export interface DestinoEnRepairOS {
+  id: number;
+  nombre: string;
+  razonSocial?: string | null;
+  cuit: string;
+  sucursales: { id: number; nombre: string; direccion?: string | null; telefono?: string | null }[];
+}
+
+export interface DatosDestino {
+  nombre: string;
+  dniCuit?: string | null;
+  direccion?: string | null;
+  telefono?: string | null;
+  email?: string | null;
+}
+
+export interface BusquedaDestino {
+  /** El DNI o CUIT es de un taller que usa RepairOS. */
+  taller: DestinoEnRepairOS | null;
+  /** Los datos con que este taller le mandó un equipo la última vez. */
+  anterior: DatosDestino | null;
+}
+
+export async function buscarDestino(dniCuit: string): Promise<BusquedaDestino> {
+  const { data } = await apiClient.get<BusquedaDestino>('/ordenes/tercerizacion/destino', {
+    params: { dniCuit }
+  });
+  return data;
+}
+
+export interface TercerizarInput extends DatosDestino {
+  /** Qué tiene que hacer el destino. */
+  trabajo: string;
+  notaInterna?: string | null;
+  /** Taller de RepairOS que devolvió `buscarDestino`: se le arma la orden. */
+  tallerDestinoId?: number | null;
+  sucursalDestinoId?: number | null;
+  /** Pasarle la clave de desbloqueo y las cuentas del equipo. */
+  compartirClaves?: boolean;
+}
+
+export async function tercerizarOrden(id: number, input: TercerizarInput): Promise<OrdenConNotificacion> {
+  const { data } = await apiClient.post<OrdenConNotificacion>(`/ordenes/${id}/tercerizar`, input);
+  return data;
+}
+
+/** "Recibí el equipo" en una orden que armó otro taller: con qué tipo de equipo propio se carga. */
+export async function recibirTercerizado(
+  id: number,
+  tipoEquipoPersonalizadoId: number
+): Promise<OrdenConNotificacion> {
+  const { data } = await apiClient.post<OrdenConNotificacion>(`/ordenes/${id}/recepcion`, {
+    tipoEquipoPersonalizadoId
+  });
+  return data;
+}

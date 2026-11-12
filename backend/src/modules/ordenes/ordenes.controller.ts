@@ -13,11 +13,15 @@ import {
   crearOrdenSchema,
   entregaSchema,
   firmaSchema,
+  buscarDestinoQuery,
   listarOrdenesQuery,
   presupuestoSchema,
-  solicitarFiadoSchema
+  recibirTercerizadoSchema,
+  solicitarFiadoSchema,
+  tercerizarSchema
 } from './ordenes.schemas';
 import * as ordenes from './ordenes.service';
+import * as tercerizacion from './tercerizacion.service';
 
 /** La orden de la URL, dentro de la sucursal activa. */
 const ordenDe = (req: Request, opciones?: Parameters<typeof ordenes.buscarOrdenDeSucursal>[2]) =>
@@ -27,10 +31,36 @@ export async function listarOrdenes(req: Request, res: Response): Promise<void> 
   res.json(await ordenes.listarOrdenes(sucursalIdDe(req), listarOrdenesQuery.parse(req.query)));
 }
 
-/** Va con el saldo del cliente, para que la entrega pueda ofrecer aplicar el saldo a favor. */
+/**
+ * Va con el saldo del cliente, para que la entrega pueda ofrecer aplicar el
+ * saldo a favor, y con lo que haya de tercerización (a quién se mandó, o quién
+ * se la mandó).
+ */
 export async function obtenerOrden(req: Request, res: Response): Promise<void> {
   const orden = await ordenDe(req, { include: ordenes.INCLUDES_DETALLE });
-  res.json(await ordenes.conSaldoCliente(orden));
+  const [conSaldo, tercerizada] = await Promise.all([
+    ordenes.conSaldoCliente(orden),
+    tercerizacion.tercerizacionDeOrden(orden)
+  ]);
+  res.json({ ...conSaldo, ...tercerizada });
+}
+
+/** Autocompletar el destino de una tercerización por DNI o CUIT. */
+export async function buscarDestinoTercerizacion(req: Request, res: Response): Promise<void> {
+  const { dniCuit } = buscarDestinoQuery.parse(req.query);
+  res.json(await tercerizacion.buscarDestino(tallerIdDe(req), dniCuit));
+}
+
+/** Manda el equipo a un taller externo (ver `tercerizacion.service`). */
+export async function tercerizar(req: Request, res: Response): Promise<void> {
+  const orden = await ordenDe(req, ordenes.CON_CLIENTE);
+  ordenes.exigirEditable(orden, esAdmin(req));
+  const datos = tercerizarSchema.parse(req.body);
+  const { estadoAnterior } = await tercerizacion.tercerizarOrden(orden, datos, usuarioDe(req).userId);
+  res.json({
+    ...orden.get({ plain: true }),
+    notificacion: await ordenes.avisarSiCambio(orden, estadoAnterior)
+  });
 }
 
 export async function crearOrden(req: Request, res: Response): Promise<void> {
@@ -91,6 +121,23 @@ export async function solicitarFiado(req: Request, res: Response): Promise<void>
     esAdmin: esAdmin(req)
   });
   res.status(201).json(resultado);
+}
+
+/**
+ * El taller destino recibe un equipo que le tercerizaron: elige el tipo de
+ * equipo entre los suyos y la orden pasa a "Recibido", con su checklist.
+ */
+export async function recibirTercerizado(req: Request, res: Response): Promise<void> {
+  const orden = await ordenDe(req, ordenes.CON_CLIENTE);
+  const { tipoEquipoPersonalizadoId } = recibirTercerizadoSchema.parse(req.body);
+  await tercerizacion.elegirTipoAlRecibir(orden, tipoEquipoPersonalizadoId);
+  res.json(
+    await ordenes.cambiarEstado(
+      orden,
+      { estado: 'recibido', notaInterna: null },
+      { usuarioId: usuarioDe(req).userId, esAdmin: esAdmin(req) }
+    )
+  );
 }
 
 /** Monto del presupuesto y/o respuesta del cliente (ver `ordenes.actualizarPresupuesto`). */

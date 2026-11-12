@@ -170,6 +170,8 @@ describe('consola de plataforma', () => {
       .set(plataforma.auth)
       .expect(200);
     expect(detalle.body.usuarios[0].email).toBe(taller.email);
+    // Un taller recién creado: sin ventas, pero el dato viene junto a las órdenes.
+    expect(detalle.body).toMatchObject({ ordenes: 0, ventas: 0, ventasUltimos30: 0 });
     await api().get('/api/plataforma/usuarios?search=test.local').set(plataforma.auth).expect(200);
 
     await api().get('/api/plataforma/talleres').set(taller.auth).expect(403);

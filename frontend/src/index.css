@@ -52,6 +52,8 @@
   --rs-tono-orange: #c2410c;
   --rs-tono-gris-bg: #f4f4f5;
   --rs-tono-gris: #52525b;
+  --rs-tono-teal-bg: #ccfbf1;
+  --rs-tono-teal: #0f766e;
 }
 
 /* ---------- Tokens: tema oscuro (grises neutros, sin tinte azul) ---------- */
@@ -98,6 +100,8 @@
   --rs-tono-orange: #fdba74;
   --rs-tono-gris-bg: rgba(161, 161, 170, 0.15);
   --rs-tono-gris: #d4d4d8;
+  --rs-tono-teal-bg: rgba(45, 212, 191, 0.15);
+  --rs-tono-teal: #5eead4;
 }
 
 /* ---------- Bootstrap 5.3 a partir de los tokens ---------- */
@@ -438,6 +442,16 @@ h6 {
 .badge-gris {
   background-color: var(--rs-tono-gris-bg) !important;
   color: var(--rs-tono-gris) !important;
+}
+.badge-teal {
+  background-color: var(--rs-tono-teal-bg) !important;
+  color: var(--rs-tono-teal) !important;
+}
+/* Por recibir: el equipo todavía no llegó, la orden es un contorno. */
+.badge-pendiente {
+  background-color: transparent !important;
+  color: var(--rs-tono-cyan) !important;
+  border: 1px dashed currentColor;
 }
 
 /* ---------- Listas ---------- */

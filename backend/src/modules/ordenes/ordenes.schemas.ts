@@ -3,6 +3,7 @@ import { ESTADOS_ORDEN } from '../../models/Orden';
 import { MEDIOS_PAGO } from '../../models/CuentaMovimiento';
 import {
   busqueda,
+  emailOpcional,
   fechaIsoOpcional,
   idEnQuery,
   idPositivo,
@@ -143,4 +144,44 @@ export const solicitarFiadoSchema = z
 /** PNG en base64, con o sin el prefijo `data:image/png;base64,`. Tope ~1 MB. */
 export const firmaSchema = z.object({
   firmaBase64: z.string().min(50).max(1_500_000)
+});
+
+/** DNI (7 u 8 dígitos) o CUIT (11), con o sin puntos y guiones. Se guarda solo con los dígitos. */
+const dniCuitOpcional = z
+  .string()
+  .trim()
+  .optional()
+  .nullable()
+  .transform((v) => (v ? v.replace(/\D/g, '') : null))
+  .refine((v) => v === null || [7, 8, 11].includes(v.length), {
+    message: 'El DNI tiene 7 u 8 números y el CUIT 11'
+  });
+
+/**
+ * Mandar el equipo a un taller externo. Con `tallerDestinoId` (el que devolvió
+ * la búsqueda por DNI o CUIT) el destino es un taller de RepairOS y se le arma
+ * la orden.
+ */
+export const tercerizarSchema = z.object({
+  nombre: z.string().trim().min(1, 'Indicá a quién se manda el equipo').max(150),
+  dniCuit: dniCuitOpcional,
+  direccion: textoOpcional(255),
+  telefono: textoOpcional(50),
+  email: emailOpcional,
+  trabajo: z.string().trim().min(1, 'Indicá qué tiene que hacer el taller externo').max(2000),
+  notaInterna,
+  tallerDestinoId: idPositivo.optional().nullable(),
+  sucursalDestinoId: idPositivo.optional().nullable(),
+  /** Pasarle al destino la clave de desbloqueo y las cuentas del equipo. */
+  compartirClaves: z.boolean().optional()
+});
+export type TercerizarInput = z.infer<typeof tercerizarSchema>;
+
+export const buscarDestinoQuery = z.object({
+  dniCuit: z.string().trim().min(1).max(20)
+});
+
+/** "Recibí el equipo" en la orden que armó otro taller al tercerizar: con qué tipo de equipo lo carga. */
+export const recibirTercerizadoSchema = z.object({
+  tipoEquipoPersonalizadoId: idPositivo
 });

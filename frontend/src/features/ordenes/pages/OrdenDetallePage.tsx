@@ -21,6 +21,9 @@ import { datosAvisoDeOrden, urlDeSeguimiento } from '../aviso-cliente';
 import { AvisarWhatsApp } from '../components/AvisarWhatsApp';
 import { EntregaModal, ResultadoEntrega } from '../components/EntregaModal';
 import { EstadoBadge } from '../components/EstadoBadge';
+import { TercerizarModal } from '../components/TercerizarModal';
+import { RecepcionTercerizada } from '../components/detalle/RecepcionTercerizada';
+import { TercerizacionCard } from '../components/detalle/TercerizacionCard';
 import { esEstadoFinal, ETIQUETA_ESTADO } from '../estado-orden';
 
 /** Agrega al mensaje lo que realmente pasó con el aviso al cliente. */
@@ -64,6 +67,7 @@ export function OrdenDetallePage() {
   const [error, setError] = useState<string | null>(null);
   const [mensaje, setMensaje] = useState<string | null>(avisoInicial);
   const [entregando, setEntregando] = useState(false);
+  const [tercerizando, setTercerizando] = useState(false);
   const [linkCopiado, setLinkCopiado] = useState(false);
   const { enCurso: descargando, ejecutar } = useAccion(setError);
 
@@ -153,7 +157,21 @@ export function OrdenDetallePage() {
         </Alert>
       )}
 
+      {orden.tercerizacionRecibida && (
+        <RecepcionTercerizada
+          orden={orden}
+          recibida={orden.tercerizacionRecibida}
+          onActualizada={onActualizada}
+          onError={setError}
+        />
+      )}
+
       <Row className="g-3">
+        {(orden.tercerizaciones?.length ?? 0) > 0 && (
+          <Col md={12}>
+            <TercerizacionCard tercerizaciones={orden.tercerizaciones!} />
+          </Col>
+        )}
         <Col md={6}>
           <ClienteCard cliente={orden.cliente} />
         </Col>
@@ -183,6 +201,7 @@ export function OrdenDetallePage() {
             onActualizada={onActualizada}
             onError={setError}
             onEntregar={() => setEntregando(true)}
+            onTercerizar={() => setTercerizando(true)}
             conAviso={conAviso}
           />
         </Col>
@@ -193,6 +212,16 @@ export function OrdenDetallePage() {
           <HistorialCard historial={orden.historialEstados ?? []} />
         </Col>
       </Row>
+
+      <TercerizarModal
+        orden={orden}
+        show={tercerizando}
+        onCerrar={() => setTercerizando(false)}
+        onTercerizada={(actualizada) => {
+          setTercerizando(false);
+          onActualizada(conAviso('Equipo enviado al taller externo.', actualizada));
+        }}
+      />
 
       <EntregaModal
         orden={orden}

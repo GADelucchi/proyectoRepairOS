@@ -112,7 +112,7 @@ export interface Plan {
   precioMensual?: number | null;
 }
 
-export type TipoNotificacion = 'taller_nuevo' | 'usuario_nuevo' | 'autorizacion' | 'venta';
+export type TipoNotificacion = 'taller_nuevo' | 'usuario_nuevo' | 'autorizacion' | 'venta' | 'tercerizacion';
 
 /** Aviso de la campanita. */
 export interface Notificacion {
@@ -194,12 +194,14 @@ export interface Equipo {
 }
 
 export type EstadoOrden =
+  | 'por_recibir'
   | 'recibido'
   | 'en_diagnostico'
   | 'presupuestado'
   | 'aprobado'
   | 'rechazado'
   | 'en_reparacion'
+  | 'externo'
   | 'en_espera'
   | 'listo_para_retirar'
   | 'no_reparado'
@@ -293,6 +295,45 @@ export interface Orden {
   chequeos?: OrdenChequeo[];
   imagenes?: OrdenImagen[];
   historialEstados?: OrdenHistorialEstado[];
+  /** Envíos del equipo a talleres externos, el más reciente primero. */
+  tercerizaciones?: Tercerizacion[];
+  /** En la orden que se le armó a este taller al tercerizarle un equipo: quién se lo mandó. */
+  tercerizacionRecibida?: TercerizacionRecibida | null;
+}
+
+export type EstadoTercerizacion = 'enviada' | 'recibida' | 'devuelta' | 'cancelada';
+
+/** Un envío del equipo a reparar afuera. */
+export interface Tercerizacion {
+  id: number;
+  estado: EstadoTercerizacion;
+  nombre: string;
+  dniCuit?: string | null;
+  direccion?: string | null;
+  telefono?: string | null;
+  email?: string | null;
+  trabajo: string;
+  /** El destino usa RepairOS: tiene su orden y se ve cómo avanza. */
+  enRepairOS: boolean;
+  ordenDestino?: {
+    numeroOrden: string;
+    estado: EstadoOrden;
+    etiquetaEstado: string;
+    codigoSeguimiento?: string | null;
+  } | null;
+  enviadaPor?: UsuarioResumen | null;
+  createdAt: string;
+  recibidaEn?: string | null;
+  devueltaEn?: string | null;
+  canceladaEn?: string | null;
+}
+
+export interface TercerizacionRecibida {
+  taller: string | null;
+  /** El número de orden del taller que lo mandó: con eso se ubican entre ellos. */
+  numeroOrden: string | null;
+  trabajo: string;
+  createdAt: string;
 }
 
 /** Detalle de qué pasó al avisarle al cliente un cambio de estado. */

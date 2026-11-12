@@ -11,12 +11,16 @@ import type { OrdenPrecio } from './OrdenPrecio';
 import { MONEDA_POR_DEFECTO, Moneda } from '../shared/utils/dinero';
 
 export const ESTADOS_ORDEN = [
+  // Orden que le armó otro taller al tercerizarle un equipo: todavía no llegó.
+  'por_recibir',
   'recibido',
   'en_diagnostico',
   'presupuestado',
   'aprobado',
   'rechazado',
   'en_reparacion',
+  // El equipo está en un taller externo. El cliente ve "En reparación".
+  'externo',
   'en_espera',
   'listo_para_retirar',
   'no_reparado',

@@ -22,6 +22,7 @@ const PASOS: { estados: EstadoOrden[]; etiqueta: string }[] = [
 
 /** Qué tiene que hacer el cliente según el estado, en una línea. */
 const QUE_SIGUE: Partial<Record<EstadoOrden, string>> = {
+  por_recibir: 'Todavía no recibimos el equipo. Te avisamos cuando llegue.',
   recibido: 'Tu equipo está en el taller. En breve empezamos a revisarlo.',
   en_diagnostico: 'Estamos revisando tu equipo para saber qué tiene.',
   presupuestado: 'Ya tenemos el presupuesto: esperamos tu respuesta para seguir.',

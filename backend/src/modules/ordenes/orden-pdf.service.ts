@@ -10,7 +10,7 @@ import { aNumero, formatearMonto, redondearMonto } from '../../shared/utils/dine
 import { formatearFechaHora as fechaHoraEnZona, formatearFechaIso } from '../../shared/utils/fechas';
 import { nombreCompleto } from '../../shared/utils/texto';
 import { urlDeSeguimiento } from '../seguimiento/codigo';
-import { etiquetaEstado } from './estado-orden';
+import { estadoParaCliente, etiquetaEstado, historialParaCliente } from './estado-orden';
 
 /**
  * Remito de la orden en PDF: datos del equipo, checklist, cobro, términos del
@@ -69,7 +69,16 @@ export async function generarOrdenPdf(orden: Orden): Promise<Buffer> {
   const { cliente, equipo, sucursal } = orden;
   if (!cliente || !equipo) throw new Error('La orden tiene que venir con cliente y equipo cargados');
   const chequeos = orden.chequeos ?? [];
-  const historial = orden.historialEstados ?? [];
+  // El remito es del cliente: un equipo en un taller externo figura "En reparación".
+  const historial = historialParaCliente(
+    (orden.historialEstados ?? []).map((h) => ({
+      estadoAnterior: h.estadoAnterior,
+      estadoNuevo: h.estadoNuevo,
+      comentario: h.comentario,
+      createdAt: h.createdAt,
+      usuario: h.usuario
+    }))
+  );
   const tipoEquipoNombre = equipo.tipoEquipo?.nombre ?? 'Sin especificar';
   const tecnicoNombre = nombreCompleto(orden.tecnico);
 
@@ -105,7 +114,7 @@ export async function generarOrdenPdf(orden: Orden): Promise<Buffer> {
   dato('Técnico que recibió', tecnicoNombre || '-');
   dato('Fecha de ingreso', formatearFechaHora(orden.fechaIngreso));
   if (orden.fechaPactada) dato('Fecha pactada de entrega', formatearFechaIso(orden.fechaPactada));
-  dato('Estado actual', etiquetaEstado(orden.estado));
+  dato('Estado actual', etiquetaEstado(estadoParaCliente(orden.estado)));
 
   // QR al link público de seguimiento, arriba a la derecha: el cliente lo
   // escanea con el celular y ve el estado sin tener que llamar.

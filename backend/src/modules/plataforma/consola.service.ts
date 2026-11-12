@@ -48,14 +48,17 @@ interface FilaTaller {
   sucursales: number;
   ordenes: number;
   ordenesUltimos30: number;
+  /** Ventas de equipos completadas: las reservas, señas, canceladas y anuladas no cuentan. */
+  ventas: number;
+  ventasUltimos30: number;
   ultimoAcceso: string | null;
   duenoNombre: string | null;
   duenoEmail: string | null;
 }
 
 /**
- * Talleres con lo que hace falta para saber si están vivos: usuarios, órdenes
- * del último mes y el último acceso de cualquiera de sus usuarios. Cada número
+ * Talleres con lo que hace falta para saber si están vivos: usuarios, órdenes y
+ * ventas del último mes y el último acceso de cualquiera de sus usuarios. Cada número
  * es una subconsulta para que un JOIN no multiplique los conteos.
  */
 async function filasDeTalleres(filtro: { search?: string; tallerId?: number }): Promise<FilaTaller[]> {
@@ -75,6 +78,9 @@ async function filasDeTalleres(filtro: { search?: string; tallerId?: number }): 
             (SELECT COUNT(*) FROM ordenes o WHERE o.taller_id = t.id) AS ordenes,
             (SELECT COUNT(*) FROM ordenes o WHERE o.taller_id = t.id AND o.created_at >= :hace30)
               AS ordenesUltimos30,
+            (SELECT COUNT(*) FROM ventas v WHERE v.taller_id = t.id AND v.estado = 'completada') AS ventas,
+            (SELECT COUNT(*) FROM ventas v WHERE v.taller_id = t.id AND v.estado = 'completada'
+                AND v.completada_en >= :hace30) AS ventasUltimos30,
             (SELECT MAX(u.ultimo_acceso_at) FROM users u WHERE u.taller_id = t.id) AS ultimoAcceso,
             (SELECT CONCAT(u.nombre, ' ', u.apellido) FROM users u
               WHERE u.taller_id = t.id AND u.rol = 'admin' ORDER BY u.id LIMIT 1) AS duenoNombre,
@@ -95,7 +101,9 @@ async function filasDeTalleres(filtro: { search?: string; tallerId?: number }): 
     usuarios: Number(f.usuarios),
     sucursales: Number(f.sucursales),
     ordenes: Number(f.ordenes),
-    ordenesUltimos30: Number(f.ordenesUltimos30)
+    ordenesUltimos30: Number(f.ordenesUltimos30),
+    ventas: Number(f.ventas),
+    ventasUltimos30: Number(f.ventasUltimos30)
   }));
 }
 

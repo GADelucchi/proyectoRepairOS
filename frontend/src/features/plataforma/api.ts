@@ -10,6 +10,9 @@ export interface TallerPlataforma {
   sucursales: number;
   ordenes: number;
   ordenesUltimos30: number;
+  /** Ventas de equipos completadas (sin reservas, señas, canceladas ni anuladas). */
+  ventas: number;
+  ventasUltimos30: number;
   /** El último uso de la app de cualquiera de sus usuarios. */
   ultimoAcceso: string | null;
   duenoNombre: string | null;

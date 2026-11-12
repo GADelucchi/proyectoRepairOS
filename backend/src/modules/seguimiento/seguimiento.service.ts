@@ -9,7 +9,7 @@ import {
   Cliente
 } from '../../models';
 import { errores } from '../../shared/http/http-error';
-import { etiquetaEstado } from '../ordenes/estado-orden';
+import { estadoParaCliente, etiquetaEstado, historialParaCliente } from '../ordenes/estado-orden';
 
 /**
  * Lo que ve el cliente con el link de seguimiento.
@@ -18,6 +18,8 @@ import { etiquetaEstado } from '../ordenes/estado-orden';
  * completo, ni teléfono, ni número de serie, ni las notas internas del taller.
  * Del historial solo salen los comentarios, que son los mismos que se imprimen
  * en el remito que el cliente ya tiene.
+ *
+ * Un equipo en un taller externo se ve "En reparación" (`estadoParaCliente`).
  */
 export async function seguimientoPublico(codigo: string) {
   const orden = await Orden.findOne({
@@ -42,18 +44,19 @@ export async function seguimientoPublico(codigo: string) {
       {
         model: OrdenHistorialEstado,
         as: 'historialEstados',
-        attributes: ['estadoNuevo', 'comentario', 'createdAt'],
+        attributes: ['estadoAnterior', 'estadoNuevo', 'comentario', 'createdAt'],
         separate: true,
         order: [['createdAt', 'ASC']]
       }
     ]
   });
   if (!orden) throw errores.noEncontrado('Orden');
+  const estado = estadoParaCliente(orden.estado);
 
   return {
     numeroOrden: orden.numeroOrden,
-    estado: orden.estado,
-    etiquetaEstado: etiquetaEstado(orden.estado),
+    estado,
+    etiquetaEstado: etiquetaEstado(estado),
     nombreCliente: orden.cliente?.nombre ?? null,
     fechaIngreso: orden.fechaIngreso,
     fechaPactada: orden.fechaPactada,
@@ -88,7 +91,14 @@ export async function seguimientoPublico(codigo: string) {
           telefono: orden.sucursal.telefono
         }
       : null,
-    historial: (orden.historialEstados ?? []).map((h) => ({
+    historial: historialParaCliente(
+      (orden.historialEstados ?? []).map(({ estadoAnterior, estadoNuevo, comentario, createdAt }) => ({
+        estadoAnterior,
+        estadoNuevo,
+        comentario,
+        createdAt
+      }))
+    ).map((h) => ({
       estado: h.estadoNuevo,
       etiqueta: etiquetaEstado(h.estadoNuevo),
       comentario: h.comentario,

@@ -4,7 +4,7 @@ import { getEmailProvider } from '../../integrations/email';
 import { getWhatsAppProvider } from '../../integrations/whatsapp';
 import { formatearMonto } from '../../shared/utils/dinero';
 import { escaparHtml } from '../../shared/utils/texto';
-import { etiquetaEstado } from '../ordenes/estado-orden';
+import { estadoParaCliente, etiquetaEstado } from '../ordenes/estado-orden';
 
 /** Qué pasó realmente al intentar avisarle al cliente. */
 export interface ResultadoNotificacion {
@@ -50,7 +50,7 @@ async function avisarPorEmail(orden: Orden, cliente: Cliente): Promise<Canales['
       html: `
         <p>Hola ${escaparHtml(cliente.nombre)},</p>
         <p>El estado de tu orden <strong>${escaparHtml(orden.numeroOrden)}</strong> cambió a:
-           <strong>${escaparHtml(etiquetaEstado(orden.estado))}</strong>.</p>
+           <strong>${escaparHtml(etiquetaEstado(estadoParaCliente(orden.estado)))}</strong>.</p>
         ${presupuestoEnHtml(orden)}
         <p>Ante cualquier consulta, contactanos respondiendo este email.</p>`
     });
@@ -69,7 +69,7 @@ async function avisarPorWhatsApp(orden: Orden, cliente: Cliente): Promise<Canale
   try {
     await proveedor.send({
       to: cliente.telefono,
-      body: `Tu orden ${orden.numeroOrden} cambió de estado a: ${etiquetaEstado(orden.estado)}.`
+      body: `Tu orden ${orden.numeroOrden} cambió de estado a: ${etiquetaEstado(estadoParaCliente(orden.estado))}.`
     });
     return 'enviado';
   } catch (err) {
