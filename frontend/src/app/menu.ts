@@ -48,6 +48,7 @@ export const ITEMS_MENU: ItemMenu[] = [
     etiqueta: 'Inventario',
     icono: Boxes,
     tono: 'cyan',
+    tour: 'nav-inventario',
     title: 'Repuestos, accesorios y servicios'
   },
   {

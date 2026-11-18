@@ -237,6 +237,16 @@ const EQUIPOS = [
     modelo: 'iPhone 13',
     color: 'Blanco',
     serie: 'G99KL1MM4T'
+  },
+  {
+    clave: 'mac-gomez',
+    cliente: 'gomez',
+    tipo: 'notebook',
+    sucursal: 'central',
+    marca: 'Apple',
+    modelo: 'MacBook Air M1',
+    color: 'Oro',
+    serie: 'C02FK1QXQ6L4'
   }
 ];
 
@@ -287,6 +297,7 @@ const ORDENES = [
     esteticos: 'Tapa con rayones de uso.',
     presupuesto: 142000,
     aprobado: true,
+    repuestos: ['pantalla-156'],
     chequeosFallados: ['Pantalla sin píxeles muertos']
   },
   {
@@ -313,6 +324,7 @@ const ORDENES = [
     presupuesto: 68000,
     aprobado: true,
     notas: 'Se cambió pasta térmica y se limpió el disipador. Probada 2 hs sin throttling.',
+    servicios: ['limpieza-nb'],
     chequeosFallados: ['Ventilador sin ruido']
   },
   {
@@ -326,7 +338,8 @@ const ORDENES = [
     presupuesto: 72000,
     aprobado: true,
     montoTotal: 72000,
-    montoAbonado: 72000
+    montoAbonado: 72000,
+    servicios: ['bateria-ip13']
   },
   {
     equipo: 'ipad-ledesma',
@@ -340,7 +353,23 @@ const ORDENES = [
     aprobado: true,
     montoTotal: 54000,
     montoAbonado: 54000,
+    repuestos: ['pin-ipad9'],
     chequeosFallados: ['Puerto de carga']
+  },
+  {
+    equipo: 'ip12-gomez',
+    sucursal: 'central',
+    tecnico: 'tecnico',
+    diasAtras: 26,
+    historial: ['recibido', 'en_diagnostico', 'presupuestado', 'aprobado', 'listo_para_retirar', 'entregado'],
+    reparacion: 'Pantalla rota: cambio de módulo.',
+    esteticos: 'Vidrio astillado en la esquina superior.',
+    presupuesto: 95000,
+    aprobado: true,
+    montoTotal: 95000,
+    montoAbonado: 95000,
+    repuestos: ['mod-ip12'],
+    chequeosFallados: ['Pantalla sin fisuras']
   },
   {
     equipo: 'moto-sosa',
@@ -363,6 +392,28 @@ const ORDENES = [
     reparacion: 'Consulta por cambio de glass.',
     esteticos: 'Sin daños.',
     notas: 'El cliente se llevó el equipo sin dejarlo en reparación.'
+  },
+  {
+    equipo: 'mac-gomez',
+    sucursal: 'central',
+    tecnico: 'admin',
+    diasAtras: 9,
+    historial: ['recibido', 'en_diagnostico', 'presupuestado', 'aprobado', 'en_reparacion', 'externo'],
+    reparacion: 'No enciende después de que se le volcó café en el teclado.',
+    esteticos: 'Restos de líquido seco entre las teclas.',
+    presupuesto: 260000,
+    aprobado: true,
+    notas: 'La placa necesita microsoldadura: se mandó afuera.',
+    chequeosFallados: ['Enciende', 'Teclado completo'],
+    // Se manda a un técnico que no usa RepairOS; lo que cobra entra al informe de ganancia.
+    tercerizacion: {
+      nombre: 'Microsoldadura Paz',
+      telefono: '11 3012-4478',
+      direccion: 'Av. Corrientes 5320, CABA',
+      trabajo: 'Revisar la placa por derrame de líquido y reparar el circuito de encendido.',
+      diasAtras: 3,
+      costo: { moneda: 'ARS', monto: 120000, cotizacion: 1450 }
+    }
   }
 ];
 
@@ -695,6 +746,213 @@ const VENTAS = [
     items: [{ equipo: 'ip14pro-reservado', precio: 950 }],
     reservadaPorDias: 3,
     pagos: []
+  },
+  {
+    // Accesorios del inventario, con cantidad y al precio de efectivo.
+    cliente: 'gomez',
+    sucursal: 'central',
+    vendedor: 'tecnico',
+    diasAtras: 2,
+    estado: 'completada',
+    moneda: 'ARS',
+    cotizacion: COTIZACION_ARS,
+    items: [
+      { articulo: 'funda-ip15', cantidad: 1, precio: 15000 },
+      { articulo: 'vidrio-61', cantidad: 2, precio: 6500 },
+      { articulo: 'cargador-20w', cantidad: 2, precio: 21000 }
+    ],
+    pagos: [{ monto: 70000, medio: 'efectivo' }]
+  }
+];
+
+/**
+ * Inventario: categorías del taller (el tercer nivel, debajo de Repuesto,
+ * Accesorio o Servicio).
+ */
+const CATEGORIAS_INVENTARIO = [
+  { clave: 'modulos', grupo: 'repuesto', nombre: 'Módulos' },
+  { clave: 'baterias', grupo: 'repuesto', nombre: 'Baterías' },
+  { clave: 'pines', grupo: 'repuesto', nombre: 'Pines de carga' },
+  { clave: 'notebook', grupo: 'repuesto', nombre: 'Notebook' },
+  { clave: 'fundas', grupo: 'accesorio', nombre: 'Fundas' },
+  { clave: 'vidrios', grupo: 'accesorio', nombre: 'Vidrios templados' },
+  { clave: 'cargadores', grupo: 'accesorio', nombre: 'Cargadores' },
+  { clave: 'mantenimiento', grupo: 'servicio', nombre: 'Mantenimiento' },
+  { clave: 'celulares', grupo: 'servicio', nombre: 'Celulares' }
+];
+
+/**
+ * Productos y servicios. Los precios van en el orden de la configuración de
+ * fábrica (Lista, Efectivo, Tarjeta). Cada entrada es una compra con su costo
+ * por unidad; lo que usan las órdenes, la venta y el pase sale de acá
+ * por antigüedad, como en la app.
+ *
+ * Cubre lo que tiene que mostrar la demo: el mismo módulo comprado dos veces a
+ * distinto costo, compras en pesos, un repuesto sin stock, un accesorio por
+ * debajo del mínimo y servicios que llevan repuestos.
+ */
+const ARTICULOS = [
+  {
+    clave: 'mod-ip15pro',
+    tipo: 'repuesto',
+    categoria: 'modulos',
+    nombre: 'Módulo iPhone 15 Pro OLED IC',
+    codigoBarras: '7798000150011',
+    stockMinimo: 2,
+    entradas: [
+      { sucursal: 'central', diasAtras: 52, cantidad: 5, costo: 100, proveedor: 'Importadora Once' },
+      { sucursal: 'central', diasAtras: 12, cantidad: 5, costo: 120, proveedor: 'Importadora Once' }
+    ]
+  },
+  {
+    clave: 'mod-ip12',
+    tipo: 'repuesto',
+    categoria: 'modulos',
+    nombre: 'Módulo iPhone 12 Incell',
+    stockMinimo: 1,
+    entradas: [{ sucursal: 'central', diasAtras: 45, cantidad: 3, costo: 28, proveedor: 'Importadora Once' }]
+  },
+  {
+    clave: 'mod-g84',
+    tipo: 'repuesto',
+    categoria: 'modulos',
+    nombre: 'Módulo Moto G84 OLED',
+    stockMinimo: 1,
+    entradas: [
+      {
+        sucursal: 'central',
+        diasAtras: 30,
+        cantidad: 2,
+        moneda: 'ARS',
+        costo: 52000,
+        cotizacion: 1430,
+        proveedor: 'Distribuidora Sur'
+      }
+    ]
+  },
+  {
+    clave: 'bat-ip13',
+    tipo: 'repuesto',
+    categoria: 'baterias',
+    nombre: 'Batería iPhone 13',
+    stockMinimo: 2,
+    entradas: [
+      { sucursal: 'central', diasAtras: 42, cantidad: 3, costo: 17, proveedor: 'Importadora Once' },
+      { sucursal: 'norte', diasAtras: 25, cantidad: 4, costo: 18, proveedor: 'Importadora Once' }
+    ]
+  },
+  {
+    clave: 'pin-ipad9',
+    tipo: 'repuesto',
+    categoria: 'pines',
+    nombre: 'Pin de carga iPad 9na gen',
+    entradas: [{ sucursal: 'norte', diasAtras: 30, cantidad: 3, costo: 6, proveedor: 'Importadora Once' }]
+  },
+  {
+    clave: 'pantalla-156',
+    tipo: 'repuesto',
+    categoria: 'notebook',
+    nombre: 'Pantalla 15.6" FHD 30 pines',
+    entradas: [{ sucursal: 'central', diasAtras: 25, cantidad: 2, costo: 55, proveedor: 'Distribuidora Sur' }]
+  },
+  {
+    // Sin compras: el teclado de la orden del sindicato está pedido al proveedor.
+    clave: 'teclado-hp',
+    tipo: 'repuesto',
+    categoria: 'notebook',
+    nombre: 'Teclado HP ProBook 440 G8',
+    stockMinimo: 1,
+    entradas: []
+  },
+  {
+    clave: 'pasta-mx4',
+    tipo: 'repuesto',
+    categoria: 'notebook',
+    nombre: 'Pasta térmica Arctic MX-4 (4 g)',
+    entradas: [
+      { sucursal: 'central', diasAtras: 50, cantidad: 10, costo: 1.2, proveedor: 'Distribuidora Sur' }
+    ]
+  },
+  {
+    clave: 'funda-ip15',
+    tipo: 'accesorio',
+    categoria: 'fundas',
+    nombre: 'Funda de silicona iPhone 15',
+    codigoBarras: '7798000150028',
+    precios: [18000, 15000, 20000],
+    stockMinimo: 5,
+    entradas: [
+      { sucursal: 'central', diasAtras: 40, cantidad: 20, costo: 2.5, proveedor: 'Mayorista Accesorios' }
+    ]
+  },
+  {
+    clave: 'vidrio-61',
+    tipo: 'accesorio',
+    categoria: 'vidrios',
+    nombre: 'Vidrio templado 9D 6.1"',
+    codigoBarras: '7798000150035',
+    precios: [8000, 6500, 9000],
+    stockMinimo: 10,
+    entradas: [
+      {
+        sucursal: 'central',
+        diasAtras: 35,
+        cantidad: 50,
+        moneda: 'ARS',
+        costo: 700,
+        cotizacion: 1420,
+        proveedor: 'Mayorista Accesorios'
+      }
+    ]
+  },
+  {
+    // Queda por debajo del mínimo con la venta de la demo: sale el aviso.
+    clave: 'cargador-20w',
+    tipo: 'accesorio',
+    categoria: 'cargadores',
+    nombre: 'Cargador USB-C 20 W',
+    precios: [25000, 21000, 28000],
+    stockMinimo: 5,
+    entradas: [
+      { sucursal: 'central', diasAtras: 28, cantidad: 5, costo: 7, proveedor: 'Mayorista Accesorios' }
+    ]
+  },
+  {
+    clave: 'limpieza-nb',
+    tipo: 'servicio',
+    categoria: 'mantenimiento',
+    nombre: 'Limpieza y cambio de pasta térmica',
+    precios: [45000, 40000, 50000],
+    repuestos: [{ articulo: 'pasta-mx4', cantidad: 1 }]
+  },
+  {
+    clave: 'bateria-ip13',
+    tipo: 'servicio',
+    categoria: 'celulares',
+    nombre: 'Cambio de batería iPhone 13',
+    precios: [72000, 65000, 78000],
+    repuestos: [{ articulo: 'bat-ip13', cantidad: 1 }]
+  },
+  {
+    clave: 'software',
+    tipo: 'servicio',
+    categoria: 'celulares',
+    nombre: 'Actualización y respaldo de datos',
+    precios: [20000, 18000, 22000]
+  }
+];
+
+/** Prefijos de fábrica de los códigos (`modules/inventario/config.ts`). */
+const PREFIJO_CODIGO = { repuesto: 'R-', accesorio: 'A-', servicio: 'S-' };
+
+/** Pases entre sucursales: uno en camino, para que Norte tenga algo que recibir. */
+const PASES = [
+  {
+    origen: 'central',
+    destino: 'norte',
+    diasAtras: 1,
+    nota: 'Para reponer el mostrador de Norte.',
+    items: [{ articulo: 'vidrio-61', cantidad: 5 }]
   }
 ];
 
@@ -754,7 +1012,27 @@ async function borrarDemo(queryInterface) {
 
   const r = { replacements: [tallerId] };
 
-  // Stock y ventas primero: las ventas apuntan a clientes, sucursales y users, y
+  // El inventario primero: sus movimientos y consumos apuntan a órdenes, ventas,
+  // equipos del stock y pases.
+  await sequelize.query('DELETE FROM inventario_movimientos WHERE taller_id = ?', r);
+  await sequelize.query('DELETE FROM inventario_consumos WHERE taller_id = ?', r);
+  await sequelize.query(
+    'DELETE i FROM pase_items i JOIN pases p ON p.id = i.pase_id WHERE p.taller_id = ?',
+    r
+  );
+  await sequelize.query('DELETE FROM orden_servicios WHERE taller_id = ?', r);
+  await sequelize.query(
+    'UPDATE inventario_entradas SET entrada_origen_id = NULL, pase_id = NULL WHERE taller_id = ?',
+    r
+  );
+  await sequelize.query('DELETE FROM inventario_entradas WHERE taller_id = ?', r);
+  await sequelize.query('DELETE FROM pases WHERE taller_id = ?', r);
+  await sequelize.query(
+    'DELETE s FROM servicio_repuestos s JOIN articulos a ON a.id = s.servicio_id WHERE a.taller_id = ?',
+    r
+  );
+
+  // Stock y ventas: las ventas apuntan a clientes, sucursales y users, y
   // un equipo del stock a la venta en la que entró como parte de pago.
   await sequelize.query('DELETE FROM venta_pagos WHERE taller_id = ?', r);
   await sequelize.query(
@@ -769,6 +1047,9 @@ async function borrarDemo(queryInterface) {
   await sequelize.query('UPDATE equipos_stock SET recibido_en_venta_id = NULL WHERE taller_id = ?', r);
   await sequelize.query('DELETE FROM ventas WHERE taller_id = ?', r);
   await sequelize.query('DELETE FROM equipos_stock WHERE taller_id = ?', r);
+  // Los artículos, recién cuando ya no hay renglones de venta que los nombren.
+  await sequelize.query('DELETE FROM articulos WHERE taller_id = ?', r);
+  await sequelize.query('DELETE FROM inventario_categorias WHERE taller_id = ?', r);
 
   await sequelize.query(
     `DELETE oc FROM orden_chequeos oc
@@ -793,6 +1074,7 @@ async function borrarDemo(queryInterface) {
   );
   await sequelize.query('DELETE FROM cuenta_movimientos WHERE taller_id = ?', r);
   await sequelize.query('DELETE FROM solicitudes WHERE taller_id = ?', r);
+  await sequelize.query('DELETE FROM tercerizaciones WHERE taller_id = ?', r);
   await sequelize.query(
     `DELETE a FROM accesos_sensibles a
        JOIN equipos e ON e.id = a.equipo_id
@@ -830,7 +1112,16 @@ async function borrarDemo(queryInterface) {
   await sequelize.query('DELETE FROM sucursales WHERE taller_id = ?', r);
   await sequelize.query('DELETE FROM suscripciones WHERE taller_id = ?', r);
   await sequelize.query('DELETE FROM contadores WHERE clave IN (?)', {
-    replacements: [['orden:' + tallerId, 'stock:' + tallerId, 'venta:' + tallerId]]
+    replacements: [
+      [
+        'orden:' + tallerId,
+        'stock:' + tallerId,
+        'venta:' + tallerId,
+        'entrada:' + tallerId,
+        'pase:' + tallerId,
+        ...Object.keys(PREFIJO_CODIGO).map((tipo) => 'articulo:' + tipo + ':' + tallerId)
+      ]
+    ]
   });
   await sequelize.query('DELETE FROM talleres WHERE id = ?', r);
 
@@ -1007,6 +1298,8 @@ async function crearDemo(queryInterface) {
     });
   }
 
+  const inventario = await crearInventario(sequelize, { tallerId, sucursalIds, usuarioIds });
+
   let numero = NUMERO_ORDEN_BASE;
   // De más vieja a más nueva, para que la numeración siga el orden cronológico.
   const ordenesOrdenadas = [...ORDENES].sort((a, b) => b.diasAtras - a.diasAtras);
@@ -1039,6 +1332,8 @@ async function crearDemo(queryInterface) {
       monto_abonado: ord.montoAbonado || null,
       credito_aplicado: null,
       fecha_entrega: entregada ? haceDias(Math.max(ord.diasAtras - 9, 0)) : null,
+      // Con la que se pasa lo cobrado a dólares en el informe de costo y ganancia.
+      cotizacion_cobro: entregada ? COTIZACION_ARS : null,
       created_at: ingreso,
       updated_at: ahora
     });
@@ -1075,6 +1370,59 @@ async function crearDemo(queryInterface) {
         updated_at: ingreso
       });
     }
+
+    // Repuestos y servicios: se descuentan del stock de la sucursal de la orden.
+    const usadoEl = haceDias(Math.max(ord.diasAtras - 3, 0));
+    const ctxOrden = { sucursal: ord.sucursal, usuarioId: usuarioIds[ord.tecnico], fecha: usadoEl };
+    for (const clave of ord.servicios || []) {
+      const servicio = inventario.articulo(clave);
+      const ordenServicioId = await insertarYObtenerId(sequelize, 'orden_servicios', {
+        taller_id: tallerId,
+        orden_id: ordenId,
+        servicio_id: servicio.id,
+        nombre: servicio.nombre,
+        usuario_id: usuarioIds[ord.tecnico],
+        created_at: usadoEl,
+        updated_at: usadoEl
+      });
+      for (const incluido of servicio.repuestos || []) {
+        await inventario.consumir(incluido.articulo, incluido.cantidad, {
+          ...ctxOrden,
+          origen: 'orden',
+          ordenId,
+          ordenServicioId,
+          nota: servicio.nombre
+        });
+      }
+    }
+    for (const clave of ord.repuestos || []) {
+      await inventario.consumir(clave, 1, { ...ctxOrden, origen: 'orden', ordenId });
+    }
+
+    if (ord.tercerizacion) {
+      const t = ord.tercerizacion;
+      const enviada = haceDias(t.diasAtras);
+      await insertarYObtenerId(sequelize, 'tercerizaciones', {
+        taller_id: tallerId,
+        orden_id: ordenId,
+        estado: 'enviada',
+        nombre: t.nombre,
+        dni_cuit: null,
+        direccion: t.direccion,
+        telefono: t.telefono,
+        email: null,
+        trabajo: t.trabajo,
+        taller_destino_id: null,
+        orden_destino_id: null,
+        enviada_por_id: usuarioIds[ord.tecnico],
+        costo_moneda: t.costo.moneda,
+        costo: t.costo.monto,
+        costo_cotizacion: t.costo.moneda === 'USD' ? null : t.costo.cotizacion,
+        costo_usd: aDolares(t.costo.monto, t.costo.moneda, t.costo.cotizacion),
+        created_at: enviada,
+        updated_at: enviada
+      });
+    }
   }
 
   // El contador arranca donde terminó la siembra: la próxima orden que cargue
@@ -1085,7 +1433,14 @@ async function crearDemo(queryInterface) {
     { replacements: ['orden:' + tallerId, numero] }
   );
 
-  const stock = await crearStockYVentas(sequelize, { tallerId, sucursalIds, usuarioIds, clienteIds });
+  const stock = await crearStockYVentas(sequelize, {
+    tallerId,
+    sucursalIds,
+    usuarioIds,
+    clienteIds,
+    inventario
+  });
+  await inventario.terminar();
 
   return {
     tallerId,
@@ -1093,7 +1448,267 @@ async function crearDemo(queryInterface) {
     clientes: CLIENTES.length,
     equipos: EQUIPOS.length,
     stock: stock.equipos,
-    ventas: VENTAS.length
+    ventas: VENTAS.length,
+    articulos: ARTICULOS.length
+  };
+}
+
+/** Costo por unidad en dólares, con 4 decimales como `inventario_entradas.costo_usd`. */
+const costoUsdDe = (costo, moneda, cotizacion) =>
+  moneda === 'USD' ? costo : Math.round((costo / cotizacion) * 10000) / 10000;
+
+/**
+ * Carga el inventario de la demo (categorías, productos, servicios y compras) y
+ * devuelve con qué descontarlo, para que las órdenes y las ventas lo usen como
+ * lo hace la app: por antigüedad, con consumo y movimiento.
+ *
+ * `terminar()` arma los pases, deja los contadores donde quedaron y manda el
+ * aviso de stock mínimo de lo que haya quedado por debajo.
+ */
+async function crearInventario(sequelize, { tallerId, sucursalIds, usuarioIds }) {
+  const ahora = new Date();
+  const adminId = usuarioIds.admin;
+
+  const categoriaIds = {};
+  for (const c of CATEGORIAS_INVENTARIO) {
+    categoriaIds[c.clave] = await insertarYObtenerId(sequelize, 'inventario_categorias', {
+      taller_id: tallerId,
+      grupo: c.grupo,
+      nombre: c.nombre,
+      created_at: ahora,
+      updated_at: ahora
+    });
+  }
+
+  const numeroPorTipo = { repuesto: 0, accesorio: 0, servicio: 0 };
+  const articulos = {};
+  for (const a of ARTICULOS) {
+    numeroPorTipo[a.tipo] += 1;
+    const precios = a.precios || [];
+    const fila = {
+      taller_id: tallerId,
+      tipo: a.tipo,
+      categoria_id: categoriaIds[a.categoria],
+      codigo: PREFIJO_CODIGO[a.tipo] + String(numeroPorTipo[a.tipo]).padStart(4, '0'),
+      codigo_barras: a.codigoBarras || null,
+      nombre: a.nombre,
+      stock_minimo: a.stockMinimo || 0,
+      activo: true,
+      created_at: haceDias(60),
+      updated_at: ahora
+    };
+    for (let i = 0; i < 3; i++) {
+      fila['precio' + (i + 1)] = precios[i] == null ? null : precios[i];
+      fila['moneda' + (i + 1)] = precios[i] == null ? null : 'ARS';
+    }
+    const id = await insertarYObtenerId(sequelize, 'articulos', fila);
+    articulos[a.clave] = { ...a, id, entradas: [] };
+  }
+
+  // Los repuestos que lleva cada servicio.
+  for (const a of ARTICULOS) {
+    for (const r of a.repuestos || []) {
+      await insertarYObtenerId(sequelize, 'servicio_repuestos', {
+        servicio_id: articulos[a.clave].id,
+        repuesto_id: articulos[r.articulo].id,
+        cantidad: r.cantidad,
+        created_at: ahora,
+        updated_at: ahora
+      });
+    }
+  }
+
+  // Las compras, de la más vieja a la más nueva: el número de entrada sigue la fecha.
+  const compras = ARTICULOS.flatMap((a) => (a.entradas || []).map((e) => ({ ...e, articulo: a.clave }))).sort(
+    (x, y) => y.diasAtras - x.diasAtras
+  );
+  let numeroEntrada = 0;
+  for (const e of compras) {
+    numeroEntrada += 1;
+    const fecha = haceDias(e.diasAtras);
+    const moneda = e.moneda || 'USD';
+    const costoUsd = costoUsdDe(e.costo, moneda, e.cotizacion);
+    const articulo = articulos[e.articulo];
+    const id = await insertarYObtenerId(sequelize, 'inventario_entradas', {
+      taller_id: tallerId,
+      sucursal_id: sucursalIds[e.sucursal],
+      articulo_id: articulo.id,
+      numero: numeroEntrada,
+      origen: 'compra',
+      fecha: soloFecha(fecha),
+      cantidad: e.cantidad,
+      disponible: e.cantidad,
+      moneda,
+      costo: e.costo,
+      cotizacion: moneda === 'USD' ? null : e.cotizacion,
+      costo_usd: costoUsd,
+      proveedor: e.proveedor,
+      nota: null,
+      cargada_por_id: adminId,
+      created_at: fecha,
+      updated_at: fecha
+    });
+    articulo.entradas.push({ id, sucursal: e.sucursal, disponible: e.cantidad, costoUsd });
+    await insertarYObtenerId(sequelize, 'inventario_movimientos', {
+      taller_id: tallerId,
+      sucursal_id: sucursalIds[e.sucursal],
+      articulo_id: articulo.id,
+      entrada_id: id,
+      tipo: 'entrada',
+      cantidad: e.cantidad,
+      usuario_id: adminId,
+      nota: e.proveedor,
+      created_at: fecha,
+      updated_at: fecha
+    });
+  }
+
+  /** Lo que quedó por debajo del mínimo, para avisarlo al final. */
+  const avisos = [];
+
+  /** Lo que queda de un producto en una sucursal. */
+  const quedan = (articulo, sucursal) =>
+    articulo.entradas.filter((e) => e.sucursal === sucursal).reduce((t, e) => t + e.disponible, 0);
+
+  /**
+   * Saca `cantidad` unidades de la sucursal, de la compra más vieja a la más
+   * nueva. Con `origen` deja el consumo (orden o venta: lo que suma al costo);
+   * sin él, solo el movimiento (un pase).
+   */
+  async function sacar(clave, cantidad, d) {
+    const articulo = articulos[clave];
+    const antes = quedan(articulo, d.sucursal);
+    let falta = cantidad;
+    for (const entrada of articulo.entradas) {
+      if (falta === 0) break;
+      if (entrada.sucursal !== d.sucursal || entrada.disponible === 0) continue;
+      const tomar = Math.min(entrada.disponible, falta);
+      entrada.disponible -= tomar;
+      falta -= tomar;
+      await sequelize.query('UPDATE inventario_entradas SET disponible = ? WHERE id = ?', {
+        replacements: [entrada.disponible, entrada.id]
+      });
+      if (d.origen) {
+        await insertarYObtenerId(sequelize, 'inventario_consumos', {
+          taller_id: tallerId,
+          sucursal_id: sucursalIds[d.sucursal],
+          articulo_id: articulo.id,
+          entrada_id: entrada.id,
+          cantidad: tomar,
+          costo_usd: entrada.costoUsd,
+          origen: d.origen,
+          orden_id: d.ordenId || null,
+          orden_servicio_id: d.ordenServicioId || null,
+          venta_item_id: d.ventaItemId || null,
+          equipo_stock_costo_id: null,
+          estado: 'usado',
+          motivo: null,
+          usuario_id: d.usuarioId,
+          created_at: d.fecha,
+          updated_at: d.fecha
+        });
+      }
+      if (d.paseId) {
+        await insertarYObtenerId(sequelize, 'pase_items', {
+          pase_id: d.paseId,
+          articulo_id: articulo.id,
+          entrada_id: entrada.id,
+          equipo_stock_id: null,
+          cantidad: tomar,
+          created_at: d.fecha,
+          updated_at: d.fecha
+        });
+      }
+      await insertarYObtenerId(sequelize, 'inventario_movimientos', {
+        taller_id: tallerId,
+        sucursal_id: sucursalIds[d.sucursal],
+        articulo_id: articulo.id,
+        entrada_id: entrada.id,
+        tipo: d.tipo || d.origen,
+        cantidad: -tomar,
+        orden_id: d.ordenId || null,
+        venta_id: d.ventaId || null,
+        pase_id: d.paseId || null,
+        usuario_id: d.usuarioId,
+        nota: d.nota || null,
+        created_at: d.fecha,
+        updated_at: d.fecha
+      });
+    }
+    if (falta > 0)
+      throw new Error('Demo: no alcanza el stock de ' + articulo.nombre + ' en ' + d.sucursal + '.');
+
+    // Cruzó el mínimo: el aviso que manda la app a la campanita.
+    const despues = quedan(articulo, d.sucursal);
+    if (articulo.stockMinimo && despues < articulo.stockMinimo && antes >= articulo.stockMinimo) {
+      avisos.push({ articulo, sucursal: d.sucursal, quedan: despues, fecha: d.fecha });
+    }
+  }
+
+  async function terminar() {
+    let numeroPase = 0;
+    for (const p of PASES) {
+      numeroPase += 1;
+      const fecha = haceDias(p.diasAtras);
+      const paseId = await insertarYObtenerId(sequelize, 'pases', {
+        taller_id: tallerId,
+        numero: numeroPase,
+        sucursal_origen_id: sucursalIds[p.origen],
+        sucursal_destino_id: sucursalIds[p.destino],
+        estado: 'en_camino',
+        nota: p.nota,
+        enviado_por_id: adminId,
+        created_at: fecha,
+        updated_at: fecha
+      });
+      const destino = SUCURSALES.find((s) => s.clave === p.destino);
+      for (const item of p.items) {
+        await sacar(item.articulo, item.cantidad, {
+          sucursal: p.origen,
+          usuarioId: adminId,
+          fecha,
+          tipo: 'pase_salida',
+          paseId,
+          nota: 'A ' + destino.nombre
+        });
+      }
+    }
+
+    // Les llega a los admins y a quien trabaja en esa sucursal, como `avisarASucursal`.
+    for (const aviso of avisos) {
+      const sucursal = SUCURSALES.find((s) => s.clave === aviso.sucursal);
+      const destinatarios = aviso.sucursal === 'central' ? [adminId, usuarioIds.tecnico] : [adminId];
+      for (const usuarioId of destinatarios) {
+        await insertarYObtenerId(sequelize, 'notificaciones', {
+          usuario_id: usuarioId,
+          tipo: 'inventario',
+          titulo: 'Quedan ' + aviso.quedan + ' de ' + aviso.articulo.nombre,
+          mensaje: sucursal.nombre + ' quedó por debajo del mínimo (' + aviso.articulo.stockMinimo + ').',
+          link: '/inventario/articulos/' + aviso.articulo.id,
+          leida_en: null,
+          created_at: aviso.fecha
+        });
+      }
+    }
+
+    const contadores = [
+      ['entrada:' + tallerId, numeroEntrada],
+      ['pase:' + tallerId, numeroPase],
+      ...Object.entries(numeroPorTipo).map(([tipo, n]) => ['articulo:' + tipo + ':' + tallerId, n])
+    ];
+    for (const [clave, valor] of contadores) {
+      await sequelize.query(
+        'INSERT INTO contadores (clave, valor, created_at, updated_at) VALUES (?, ?, NOW(), NOW()) ' +
+          'ON DUPLICATE KEY UPDATE valor = VALUES(valor), updated_at = NOW()',
+        { replacements: [clave, valor] }
+      );
+    }
+  }
+
+  return {
+    articulo: (clave) => articulos[clave],
+    consumir: sacar,
+    terminar
   };
 }
 
@@ -1102,7 +1717,7 @@ async function crearDemo(queryInterface) {
  * apartados o vendidos cambian de estado, lo que deja el cliente en parte de
  * pago entra al stock y la plata queda en `venta_pagos` (es lo que suma la caja).
  */
-async function crearStockYVentas(sequelize, { tallerId, sucursalIds, usuarioIds, clienteIds }) {
+async function crearStockYVentas(sequelize, { tallerId, sucursalIds, usuarioIds, clienteIds, inventario }) {
   const ahora = new Date();
   let numeroStock = 0;
   let indiceImei = 0;
@@ -1149,7 +1764,9 @@ async function crearStockYVentas(sequelize, { tallerId, sucursalIds, usuarioIds,
   const ESTADO_EQUIPO = { completada: 'vendido', senada: 'senado', reservada: 'reservado' };
   const estadoPorEquipo = {};
   for (const venta of VENTAS) {
-    for (const item of venta.items) estadoPorEquipo[item.equipo] = ESTADO_EQUIPO[venta.estado];
+    for (const item of venta.items) {
+      if (item.equipo) estadoPorEquipo[item.equipo] = ESTADO_EQUIPO[venta.estado];
+    }
   }
 
   const stockIds = {};
@@ -1194,7 +1811,7 @@ async function crearStockYVentas(sequelize, { tallerId, sucursalIds, usuarioIds,
     const fecha = haceDias(v.diasAtras);
     const sucursalId = sucursalIds[v.sucursal];
     const vendedorId = usuarioIds[v.vendedor];
-    const subtotal = v.items.reduce((t, i) => t + i.precio, 0);
+    const subtotal = v.items.reduce((t, i) => t + i.precio * (i.cantidad || 1), 0);
     const descuento = v.descuento ? v.descuento.valor : 0;
     const total = subtotal - descuento;
     const partePago = v.partePago ? v.partePago.monto : 0;
@@ -1236,13 +1853,25 @@ async function crearStockYVentas(sequelize, { tallerId, sucursalIds, usuarioIds,
     });
 
     for (const item of v.items) {
-      await insertarYObtenerId(sequelize, 'venta_items', {
+      const ventaItemId = await insertarYObtenerId(sequelize, 'venta_items', {
         venta_id: ventaId,
-        equipo_stock_id: stockIds[item.equipo],
+        equipo_stock_id: item.equipo ? stockIds[item.equipo] : null,
+        articulo_id: item.articulo ? inventario.articulo(item.articulo).id : null,
+        cantidad: item.cantidad || 1,
         precio: item.precio,
         created_at: fecha,
         updated_at: fecha
       });
+      if (item.articulo) {
+        await inventario.consumir(item.articulo, item.cantidad, {
+          sucursal: v.sucursal,
+          usuarioId: vendedorId,
+          fecha,
+          origen: 'venta',
+          ventaItemId,
+          ventaId
+        });
+      }
     }
 
     for (const p of pagos) {

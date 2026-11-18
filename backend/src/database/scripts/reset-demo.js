@@ -44,7 +44,9 @@ async function main() {
         resumen.stock +
         ' equipos en stock, ' +
         resumen.ventas +
-        ' ventas.'
+        ' ventas, ' +
+        resumen.articulos +
+        ' productos y servicios en el inventario.'
     );
     console.log('  Acceso: ' + DEMO_EMAIL + ' / ' + DEMO_PASSWORD);
   } finally {

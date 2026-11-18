@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { env } from '../../config/env';
 import { api, crearOrden, tallerConSucursal, type Sesion } from './helpers';
 
 const PESOS_CUIT = [5, 4, 3, 2, 7, 6, 5, 4, 3, 2];
@@ -161,6 +162,37 @@ describe('tercerizar a un taller que usa RepairOS', () => {
       .set(origen.auth)
       .send({ nombre: 'X', dniCuit: cuitAlAzar(), trabajo: 'Algo', tallerDestinoId: destino.tallerId })
       .expect(400);
+  });
+
+  it('la demo pública no ve talleres reales ni la ven a ella', async () => {
+    const real = await tallerConSucursal();
+    const cuitReal = await conCuit(real);
+    const demo = await tallerConSucursal({ email: env.plataforma.demoEmail });
+    const otro = await tallerConSucursal();
+
+    // Desde la demo, el CUIT de un taller real no autocompleta nada...
+    const busqueda = await api()
+      .get('/api/ordenes/tercerizacion/destino')
+      .query({ dniCuit: cuitReal })
+      .set(demo.auth)
+      .expect(200);
+    expect(busqueda.body.taller).toBeNull();
+    // ...ni se le puede mandar una orden.
+    const orden = await crearOrden(demo);
+    await api()
+      .post(`/api/ordenes/${orden.id}/tercerizar`)
+      .set(demo.auth)
+      .send({ nombre: 'X', dniCuit: cuitReal, trabajo: 'Algo', tallerDestinoId: real.tallerId })
+      .expect(400);
+
+    // Y si un visitante le carga a la demo un CUIT, nadie la encuentra con él.
+    const cuitDemo = await conCuit(demo);
+    const desdeOtro = await api()
+      .get('/api/ordenes/tercerizacion/destino')
+      .query({ dniCuit: cuitDemo })
+      .set(otro.auth)
+      .expect(200);
+    expect(desdeOtro.body.taller).toBeNull();
   });
 });
 

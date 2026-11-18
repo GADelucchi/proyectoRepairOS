@@ -823,12 +823,15 @@ export async function proveedoresDeInventario(tallerId: number): Promise<string[
  * La última cotización que usó el taller para esa moneda (en una compra, una
  * venta o un cobro): para sugerirla en los formularios y estimar la ganancia
  * de una orden presupuestada en pesos.
+ *
+ * De las entradas cuentan solo las compras: una que llega por un pase o por un
+ * ajuste copia la cotización de una compra vieja y tiene fecha de hoy.
  */
 export async function ultimaCotizacion(tallerId: number, moneda: Moneda): Promise<number | null> {
   if (moneda === 'USD') return 1;
   const [entrada, venta, orden] = await Promise.all([
     InventarioEntrada.findOne({
-      where: { tallerId, moneda, cotizacion: { [Op.ne]: null } },
+      where: { tallerId, moneda, origen: 'compra', cotizacion: { [Op.ne]: null } },
       attributes: ['cotizacion', 'createdAt'],
       order: [['id', 'DESC']]
     }),

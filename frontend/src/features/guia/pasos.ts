@@ -48,7 +48,7 @@ export const PASOS_GUIA: PasoGuia[] = [
     objetivo: 'nav-ordenes',
     titulo: 'Órdenes',
     texto:
-      'Cada equipo que entra: cliente, checklist, fotos, presupuesto y firma. Desde la orden le avisás al cliente por WhatsApp, y él sigue el estado con el QR del remito.'
+      'Cada equipo que entra: cliente, checklist, fotos, presupuesto y firma. Desde la orden le avisás al cliente por WhatsApp, y él sigue el estado con el QR del remito. Si lo mandás a reparar afuera, pasalo a "Externo": queda anotado a quién y cuánto te cobró, y el cliente sigue viendo "En reparación".'
   },
   {
     objetivo: 'nav-escanear',
@@ -63,10 +63,16 @@ export const PASOS_GUIA: PasoGuia[] = [
       'Los equipos que tenés para vender, cada uno con su número (#0042), su costo y su precio. Si es usado, cargá la salud de la batería. El IMEI o el serial se pueden escanear de la caja, y si ya está cargado te avisa. El costo lo ve solo un admin, que también puede publicar el stock con sus precios en un link para tus clientes (Ajustes → Configuración).'
   },
   {
+    objetivo: 'nav-inventario',
+    titulo: 'Inventario',
+    texto:
+      'Repuestos, accesorios y servicios, con su código y hasta tres precios (lista, efectivo, tarjeta). Cada compra guarda su costo, y lo que usás sale primero de lo más viejo. Los repuestos se cargan en la orden y bajan el stock; un servicio descuenta los repuestos que lleva. Con un pase mandás mercadería a otra sucursal, que confirma cuando le llega. Si algo baja del mínimo, te avisa.'
+  },
+  {
     objetivo: 'nav-ventas',
     titulo: 'Ventas',
     texto:
-      'Buscá o escaneá el equipo del stock y elegí: reservarlo hasta una fecha (si no vuelven, se libera solo), dejarlo señado o venderlo. Si el cliente entrega su equipo en parte de pago, entra al stock como usado. Se puede cobrar en varias monedas, y el comprobante sale con tus términos de venta.'
+      'Buscá o escaneá el equipo del stock y elegí: reservarlo hasta una fecha (si no vuelven, se libera solo), dejarlo señado o venderlo. También se venden accesorios y repuestos del inventario, por cantidad. Si el cliente entrega su equipo en parte de pago, entra al stock como usado. Se puede cobrar en varias monedas, y el comprobante sale con tus términos de venta.'
   },
   {
     objetivo: 'nav-caja',
@@ -79,7 +85,7 @@ export const PASOS_GUIA: PasoGuia[] = [
     soloAdmin: true,
     titulo: 'Reportes',
     texto:
-      'Tiempo promedio de reparación, presupuestos aprobados, trabajo de cada técnico y equipos que nadie vino a buscar. También el informe de ventas de equipos, con la ganancia de cada una en dólares. Todo se puede bajar a Excel.'
+      'Tiempo promedio de reparación, presupuestos aprobados, trabajo de cada técnico y equipos que nadie vino a buscar. También el informe de ventas, con la ganancia de cada una en dólares, y el de costo y ganancia de las reparaciones: lo cobrado menos los repuestos y lo que cobró el taller externo. Todo se puede bajar a Excel.'
   },
   {
     objetivo: 'campanita',

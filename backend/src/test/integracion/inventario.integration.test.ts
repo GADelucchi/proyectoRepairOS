@@ -407,6 +407,16 @@ describe('inventario: pases entre sucursales', () => {
       })
       .expect(201);
     const norte = await otraSucursal(taller);
+    // Una compra en pesos posterior a la del módulo, con otra cotización.
+    await api()
+      .post('/api/inventario/articulos')
+      .set(taller.auth)
+      .send({
+        tipo: 'accesorio',
+        nombre: 'Funda',
+        entrada: { cantidad: 1, moneda: 'ARS', costo: 2600, cotizacion: 1300, fecha: '2026-11-15' }
+      })
+      .expect(201);
 
     const pase = await api()
       .post('/api/inventario/pases')
@@ -442,6 +452,14 @@ describe('inventario: pases entre sucursales', () => {
     });
     const equipoNorte = await api().get(`/api/stock/${equipo.body.id}`).set(norte.auth).expect(200);
     expect(equipoNorte.body).toMatchObject({ estado: 'disponible', sucursalId: norte.id });
+
+    // Lo recibido copia la cotización de la compra vieja: no cuenta como la última.
+    const sugerida = await api()
+      .get('/api/inventario/cotizacion')
+      .query({ moneda: 'ARS' })
+      .set(norte.auth)
+      .expect(200);
+    expect(sugerida.body.cotizacion).toBe(1300);
   });
 
   it('cancelar un pase en camino devuelve todo a la sucursal origen', async () => {

@@ -21,6 +21,7 @@ import { type Moneda, enDolares } from '../../shared/utils/dinero';
 import { monedaDePais, PAIS_POR_DEFECTO } from '../../shared/utils/paises';
 import { generarNumeroSerieUnico } from '../equipos/numero-serie';
 import { avisarASucursal } from '../notificaciones/notificaciones.service';
+import { idTallerDemo } from '../plataforma/demo';
 import { generarCodigoSeguimiento } from '../seguimiento/codigo';
 import { esTransicionValida, etiquetaEstado } from './estado-orden';
 import { generarNumeroOrden } from './numero-orden';
@@ -59,12 +60,22 @@ export function patronDeCuit(documento: string): string | { [Op.like]: string } 
   return null;
 }
 
-/** El taller de RepairOS con ese DNI o CUIT, con sus sucursales activas. Nunca el propio. */
+/**
+ * El taller de RepairOS con ese DNI o CUIT, con sus sucursales activas. Nunca
+ * el propio.
+ *
+ * La demo pública queda afuera para los dos lados: cualquiera que entra a
+ * probarla podría armarle órdenes y clientes a un taller real, o cargarle a la
+ * demo el CUIT de un taller real para quedarse con sus envíos. Desde la demo,
+ * todo destino es "de afuera".
+ */
 async function tallerDeRepairOS(documento: string, tallerPropioId: number) {
   const cuit = patronDeCuit(documento);
   if (!cuit) return null;
+  const demoId = await idTallerDemo();
+  if (demoId === tallerPropioId) return null;
   return Taller.findOne({
-    where: { cuit, activo: true, id: { [Op.ne]: tallerPropioId } },
+    where: { cuit, activo: true, id: { [Op.notIn]: demoId ? [tallerPropioId, demoId] : [tallerPropioId] } },
     attributes: ['id', 'nombre', 'razonSocial', 'cuit', 'domicilioFiscal', 'pais'],
     include: [
       {

@@ -1,11 +1,11 @@
 import { QueryTypes } from 'sequelize';
 import { z } from 'zod';
-import { env } from '../../config/env';
 import { sequelize, Plan, Sucursal, Suscripcion, Taller, User } from '../../models';
 import { errores } from '../../shared/http/http-error';
 import { invalidarCacheCompleta } from '../../shared/middlewares/auth.middleware';
 import { excesoDelPlan } from '../suscripciones/limites.service';
 import { aPublica, hoyEnElTaller, SuscripcionPublica } from '../suscripciones/suscripcion.service';
+import { idTallerDemo } from './demo';
 import { actualizarSuscripcionSchema } from './plataforma.schemas';
 
 /**
@@ -28,16 +28,6 @@ async function suscripcionesPorTaller(tallerIds?: number[]): Promise<Map<number,
   });
   const hoy = hoyEnElTaller();
   return new Map(suscripciones.map((s) => [s.tallerId, aPublica(s, hoy)]));
-}
-
-/** Id del taller de demo pública, para marcarlo y no confundirlo con un cliente real. */
-async function idTallerDemo(): Promise<number | null> {
-  if (!env.plataforma.demoEmail) return null;
-  const usuario = await User.findOne({
-    where: { email: env.plataforma.demoEmail },
-    attributes: ['tallerId']
-  });
-  return usuario?.tallerId ?? null;
 }
 
 interface FilaTaller {
