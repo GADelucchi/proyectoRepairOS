@@ -1,4 +1,5 @@
 import { DataTypes, Model, NonAttribute, Optional, Sequelize } from 'sequelize';
+import type { Moneda } from '../shared/utils/dinero';
 import type { Orden } from './Orden';
 import type { Taller } from './Taller';
 import type { User } from './User';
@@ -40,6 +41,10 @@ export interface TercerizacionAttributes {
   recibidaEn?: Date | null;
   devueltaEn?: Date | null;
   canceladaEn?: Date | null;
+  costoMoneda?: Moneda | null;
+  costo?: string | null;
+  costoCotizacion?: string | null;
+  costoUsd?: string | null;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -58,6 +63,10 @@ export type TercerizacionCreationAttributes = Optional<
   | 'recibidaEn'
   | 'devueltaEn'
   | 'canceladaEn'
+  | 'costoMoneda'
+  | 'costo'
+  | 'costoCotizacion'
+  | 'costoUsd'
   | 'createdAt'
   | 'updatedAt'
 >;
@@ -82,6 +91,12 @@ export class Tercerizacion
   declare recibidaEn: Date | null;
   declare devueltaEn: Date | null;
   declare canceladaEn: Date | null;
+  /** Lo que cobró el externo (solo lo ve un admin). Suma al costo de la orden en el informe. */
+  declare costoMoneda: Moneda | null;
+  declare costo: string | null;
+  /** 1 US$ en `costoMoneda`. Vacío si es en dólares. */
+  declare costoCotizacion: string | null;
+  declare costoUsd: string | null;
   declare readonly createdAt: Date;
   declare readonly updatedAt: Date;
 
@@ -113,7 +128,11 @@ export class Tercerizacion
         enviadaPorId: { type: DataTypes.INTEGER, allowNull: true, field: 'enviada_por_id' },
         recibidaEn: { type: DataTypes.DATE, allowNull: true, field: 'recibida_en' },
         devueltaEn: { type: DataTypes.DATE, allowNull: true, field: 'devuelta_en' },
-        canceladaEn: { type: DataTypes.DATE, allowNull: true, field: 'cancelada_en' }
+        canceladaEn: { type: DataTypes.DATE, allowNull: true, field: 'cancelada_en' },
+        costoMoneda: { type: DataTypes.STRING(3), allowNull: true, field: 'costo_moneda' },
+        costo: { type: DataTypes.DECIMAL(12, 2), allowNull: true },
+        costoCotizacion: { type: DataTypes.DECIMAL(14, 4), allowNull: true, field: 'costo_cotizacion' },
+        costoUsd: { type: DataTypes.DECIMAL(12, 2), allowNull: true, field: 'costo_usd' }
       },
       {
         sequelize,

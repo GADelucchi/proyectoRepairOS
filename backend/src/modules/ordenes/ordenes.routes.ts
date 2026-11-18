@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { authenticate, requireSucursal } from '../../shared/middlewares/auth.middleware';
+import { authenticate, requireRole, requireSucursal } from '../../shared/middlewares/auth.middleware';
 import { MAX_ARCHIVOS, upload } from '../../shared/middlewares/upload.middleware';
 import * as ordenes from './ordenes.controller';
 
@@ -17,6 +17,20 @@ ordenesRoutes.put('/:id/presupuesto', ordenes.actualizarPresupuesto);
 ordenesRoutes.put('/:id/chequeos', ordenes.reemplazarChequeos);
 ordenesRoutes.post('/:id/tercerizar', ordenes.tercerizar);
 ordenesRoutes.post('/:id/recepcion', ordenes.recibirTercerizado);
+
+// Servicios y repuestos del inventario: se descuentan del stock al agregarlos.
+ordenesRoutes.post('/:id/repuestos', ordenes.agregarRepuesto);
+ordenesRoutes.delete('/:id/repuestos/:consumoId', ordenes.quitarRepuesto);
+ordenesRoutes.post('/:id/repuestos/:consumoId/perdido', ordenes.repuestoPerdido);
+ordenesRoutes.post('/:id/repuestos/:consumoId/entrada', ordenes.cambiarEntradaRepuesto);
+ordenesRoutes.delete('/:id/servicios/:servicioId', ordenes.quitarServicio);
+// Costos: solo admin.
+ordenesRoutes.put('/:id/cotizacion', requireRole('admin'), ordenes.guardarCotizacion);
+ordenesRoutes.put(
+  '/:id/tercerizaciones/:tercerizacionId/costo',
+  requireRole('admin'),
+  ordenes.guardarCostoExterno
+);
 
 ordenesRoutes.post('/:id/entrega', ordenes.entregarOrden);
 ordenesRoutes.post('/:id/entrega/solicitar', ordenes.solicitarFiado);

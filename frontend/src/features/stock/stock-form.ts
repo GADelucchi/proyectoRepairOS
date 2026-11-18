@@ -6,6 +6,7 @@ import type { EquipoStockInput } from './api';
 
 export const ETIQUETA_ESTADO_STOCK: Record<EstadoStock, string> = {
   disponible: 'Disponible',
+  en_camino: 'En camino',
   reservado: 'Reservado',
   senado: 'Señado',
   vendido: 'Vendido',
@@ -15,6 +16,7 @@ export const ETIQUETA_ESTADO_STOCK: Record<EstadoStock, string> = {
 /** Color del badge de cada estado (variantes de Bootstrap). */
 export const VARIANTE_ESTADO_STOCK: Record<EstadoStock, string> = {
   disponible: 'success',
+  en_camino: 'info',
   reservado: 'primary',
   senado: 'warning',
   vendido: 'secondary',

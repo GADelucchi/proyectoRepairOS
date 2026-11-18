@@ -1,6 +1,15 @@
 import { DataTypes, Model, Optional, Sequelize } from 'sequelize';
 import type { CondicionIvaEmisor } from '../shared/utils/fiscal';
 
+/** Lo que guarda el taller de la configuración del inventario; lo que falta toma el valor de fábrica. */
+export type ConfigInventarioGuardada = Partial<{
+  precios: (string | null)[];
+  stockMinimoPorDefecto: number;
+  avisoApp: boolean;
+  avisoEmail: boolean;
+  prefijos: Partial<Record<'repuesto' | 'accesorio' | 'servicio', string>>;
+}>;
+
 /**
  * Taller: el inquilino del sistema.
  *
@@ -23,6 +32,7 @@ export interface TallerAttributes {
   stockEntreSucursales?: boolean;
   catalogoPublico?: boolean;
   terminosVenta?: string | null;
+  inventarioConfig?: ConfigInventarioGuardada | null;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -43,6 +53,7 @@ export type TallerCreationAttributes = Optional<
   | 'stockEntreSucursales'
   | 'catalogoPublico'
   | 'terminosVenta'
+  | 'inventarioConfig'
   | 'createdAt'
   | 'updatedAt'
 >;
@@ -81,6 +92,8 @@ export class Taller extends Model<TallerAttributes, TallerCreationAttributes> im
   declare catalogoPublico: boolean;
   /** Términos y condiciones que se imprimen en el comprobante de cada venta de equipos. */
   declare terminosVenta: string | null;
+  /** Nombres de los precios, stock mínimo y avisos del inventario. Vacío: los de fábrica (ver `configDeInventario`). */
+  declare inventarioConfig: ConfigInventarioGuardada | null;
   declare readonly createdAt: Date;
   declare readonly updatedAt: Date;
 
@@ -111,7 +124,8 @@ export class Taller extends Model<TallerAttributes, TallerCreationAttributes> im
           defaultValue: false,
           field: 'catalogo_publico'
         },
-        terminosVenta: { type: DataTypes.TEXT, allowNull: true, field: 'terminos_venta' }
+        terminosVenta: { type: DataTypes.TEXT, allowNull: true, field: 'terminos_venta' },
+        inventarioConfig: { type: DataTypes.JSON, allowNull: true, field: 'inventario_config' }
       },
       {
         sequelize,

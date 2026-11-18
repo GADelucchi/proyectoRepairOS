@@ -161,10 +161,19 @@ export async function generarVentaPdf(venta: Venta, taller: Taller): Promise<Buf
   if (cliente.direccion) dato('Dirección', [cliente.direccion, cliente.ciudad].filter(Boolean).join(', '));
 
   // ---------- Lo que se lleva ----------
-  seccion(venta.items && venta.items.length > 1 ? 'Equipos que se lleva' : 'Equipo que se lleva');
+  const soloUnEquipo = venta.items?.length === 1 && venta.items[0].equipo;
+  seccion(soloUnEquipo ? 'Equipo que se lleva' : 'Lo que se lleva');
   for (const item of venta.items ?? []) {
-    if (!item.equipo) continue;
-    renglon(titulo(item.equipo), plata(item.precio), { sub: detalleDe(item.equipo) });
+    if (item.equipo) {
+      renglon(titulo(item.equipo), plata(item.precio), { sub: detalleDe(item.equipo) });
+    } else if (item.articulo) {
+      const total = Number(item.precio) * item.cantidad;
+      renglon(
+        item.cantidad > 1 ? `${item.cantidad} × ${item.articulo.nombre}` : item.articulo.nombre,
+        plata(total),
+        { sub: item.cantidad > 1 ? `${plata(item.precio)} c/u` : item.articulo.codigo }
+      );
+    }
   }
 
   // ---------- Lo que deja ----------

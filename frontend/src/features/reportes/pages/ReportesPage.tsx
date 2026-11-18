@@ -4,6 +4,7 @@ import { useSearchParams } from 'react-router';
 import { ArrowDownToLine, CircleCheck, PackageCheck, Timer } from 'lucide-react';
 import { useAuth } from '@/features/auth/useAuth';
 import { InformeVentas } from '@/features/ventas/components/InformeVentas';
+import { InformeReparaciones } from '../components/InformeReparaciones';
 import { AlertaError } from '@/shared/components/AlertaError';
 import { Cargando } from '@/shared/components/Cargando';
 import { FechaFiltro } from '@/shared/components/FechaFiltro';
@@ -66,7 +67,8 @@ function Seccion({
 
 const SinDatos = () => <p className="text-muted small p-3 mb-0">Sin datos en el período.</p>;
 
-type Seccion = 'reparaciones' | 'ventas';
+type Seccion = 'reparaciones' | 'ganancia' | 'ventas';
+const SECCIONES: Seccion[] = ['reparaciones', 'ganancia', 'ventas'];
 
 /**
  * Reportes del período, en dos solapas con el mismo período y sucursales:
@@ -77,7 +79,8 @@ type Seccion = 'reparaciones' | 'ventas';
 export function ReportesPage() {
   const { esAdmin } = useAuth();
   const [params, setParams] = useSearchParams();
-  const seccion: Seccion = params.get('seccion') === 'ventas' ? 'ventas' : 'reparaciones';
+  const pedida = params.get('seccion') as Seccion | null;
+  const seccion: Seccion = pedida && SECCIONES.includes(pedida) ? pedida : 'reparaciones';
   const [rango, setRango] = useState(() => periodo('30'));
   const [todas, setTodas] = useState(false);
   const verTodas = esAdmin && todas;
@@ -145,14 +148,19 @@ export function ReportesPage() {
 
       <Tabs
         activeKey={seccion}
-        onSelect={(clave) => setParams(clave === 'ventas' ? { seccion: 'ventas' } : {}, { replace: true })}
+        onSelect={(clave) =>
+          setParams(clave && clave !== 'reparaciones' ? { seccion: clave } : {}, { replace: true })
+        }
         className="mb-3"
         mountOnEnter
       >
         <Tab eventKey="reparaciones" title="Reparaciones">
           <ReporteReparaciones rango={rango} todasLasSucursales={verTodas} />
         </Tab>
-        <Tab eventKey="ventas" title="Ventas de equipos">
+        <Tab eventKey="ganancia" title="Costo y ganancia de reparaciones">
+          <InformeReparaciones desde={rango.desde} hasta={rango.hasta} todasLasSucursales={verTodas} />
+        </Tab>
+        <Tab eventKey="ventas" title="Ventas">
           <InformeVentas desde={rango.desde} hasta={rango.hasta} todasLasSucursales={verTodas} />
         </Tab>
       </Tabs>

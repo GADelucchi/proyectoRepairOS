@@ -29,6 +29,8 @@ export interface EntregaInput {
   notaInterna?: string | null;
   /** En qué moneda se cobra. Sin indicar, la del presupuesto. */
   moneda?: Moneda;
+  /** 1 US$ en la moneda del cobro: para el informe de reparaciones, que es en dólares. */
+  cotizacion?: number | null;
   /** Entregar desde un estado fuera del circuito (solo si `puedeForzar`). */
   forzar?: boolean;
   puedeForzar: boolean;
@@ -131,6 +133,7 @@ export async function ejecutarEntrega(input: EntregaInput): Promise<ResultadoEnt
       {
         estado: 'entregado',
         monedaCobro: moneda,
+        cotizacionCobro: moneda !== 'USD' && input.cotizacion ? input.cotizacion.toFixed(4) : null,
         montoTotal: total.toFixed(2),
         montoAbonado: abonado.toFixed(2),
         creditoAplicado: creditoAplicado.toFixed(2),

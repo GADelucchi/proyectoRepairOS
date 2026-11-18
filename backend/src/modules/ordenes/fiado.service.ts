@@ -16,7 +16,7 @@ import { solicitarFiadoSchema } from './ordenes.schemas';
  */
 export async function solicitarFiado(
   orden: Orden,
-  { montoTotal, montoAbonado, moneda, medioPago, motivo }: z.infer<typeof solicitarFiadoSchema>,
+  { montoTotal, montoAbonado, moneda, medioPago, cotizacion, motivo }: z.infer<typeof solicitarFiadoSchema>,
   quien: { usuarioId: number; sucursalId: number; esAdmin: boolean }
 ) {
   const cliente = orden.cliente!;
@@ -43,7 +43,7 @@ export async function solicitarFiado(
     pendiente,
     moneda: monedaCobro,
     motivo,
-    datos: { montoTotal, montoAbonado, medioPago: medioPago ?? null }
+    datos: { montoTotal, montoAbonado, medioPago: medioPago ?? null, cotizacion: cotizacion ?? null }
   };
 
   if (!quien.esAdmin) {

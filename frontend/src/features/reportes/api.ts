@@ -1,5 +1,5 @@
 import { apiClient } from '@/shared/api/client';
-import type { EstadoOrden, Moneda } from '@/shared/types';
+import type { EstadoOrden, InformeReparaciones, Moneda } from '@/shared/types';
 import type { RangoCaja } from '@/features/caja/api';
 
 /** Una orden en las listas del tablero y de los reportes. */
@@ -99,3 +99,19 @@ export const datosAvisoDeLista = (o: OrdenEnLista) => ({
   marca: o.marca,
   modelo: o.modelo
 });
+
+/** Cobrado, repuestos, externos y ganancia de las órdenes entregadas en el período, en US$ (solo admin). */
+export async function obtenerInformeReparaciones(rango: {
+  desde: string;
+  hasta: string;
+  todasLasSucursales?: boolean;
+}): Promise<InformeReparaciones> {
+  const { data } = await apiClient.get<InformeReparaciones>('/reportes/reparaciones', {
+    params: {
+      desde: rango.desde,
+      hasta: rango.hasta,
+      todasLasSucursales: rango.todasLasSucursales ? 'true' : undefined
+    }
+  });
+  return data;
+}

@@ -1,8 +1,13 @@
-import { Badge, Card, ListGroup } from 'react-bootstrap';
+import { useState } from 'react';
+import { Badge, Button, Card, Form, ListGroup, Spinner } from 'react-bootstrap';
 import { ExternalLink } from 'lucide-react';
-import type { EstadoTercerizacion, Tercerizacion } from '@/shared/types';
+import { SelectorMoneda } from '@/shared/components/SelectorMoneda';
+import { useAccion } from '@/shared/hooks/useAccion';
+import type { EstadoTercerizacion, Moneda, Tercerizacion } from '@/shared/types';
+import { aNumero, formatearMonto } from '@/shared/utils/dinero';
 import { formatearFecha } from '@/shared/utils/fechas';
 import { nombreCompleto } from '@/shared/utils/texto';
+import * as ordenesApi from '../../api';
 import { urlDeSeguimiento } from '../../aviso-cliente';
 import { EstadoBadge } from '../EstadoBadge';
 
@@ -30,7 +35,21 @@ function fechasDelEnvio(t: Tercerizacion): string {
  * orden y el link de seguimiento de ese taller (con su presupuesto, si lo cargó).
  * Solo lo ve el taller: el cliente sigue viendo "En reparación".
  */
-export function TercerizacionCard({ tercerizaciones }: { tercerizaciones: Tercerizacion[] }) {
+export function TercerizacionCard({
+  ordenId,
+  tercerizaciones,
+  esAdmin,
+  monedaLocal,
+  onActualizada,
+  onError
+}: {
+  ordenId: number;
+  tercerizaciones: Tercerizacion[];
+  esAdmin: boolean;
+  monedaLocal: Moneda;
+  onActualizada: (mensaje?: string) => void;
+  onError: (mensaje: string) => void;
+}) {
   return (
     <Card>
       <Card.Header>Taller externo</Card.Header>
@@ -81,10 +100,116 @@ export function TercerizacionCard({ tercerizaciones }: { tercerizaciones: Tercer
                 {fechasDelEnvio(t)}
                 {t.enviadaPor && ` · por ${nombreCompleto(t.enviadaPor)}`}
               </div>
+
+              {esAdmin && t.estado !== 'cancelada' && (
+                <CostoExterno
+                  ordenId={ordenId}
+                  tercerizacion={t}
+                  monedaLocal={monedaLocal}
+                  onActualizada={onActualizada}
+                  onError={onError}
+                />
+              )}
             </ListGroup.Item>
           );
         })}
       </ListGroup>
     </Card>
+  );
+}
+
+/**
+ * Lo que cobró el externo por el trabajo (solo admin): suma al costo de la
+ * orden en el informe de reparaciones. Se carga al mandarlo o cuando vuelve.
+ */
+function CostoExterno({
+  ordenId,
+  tercerizacion: t,
+  monedaLocal,
+  onActualizada,
+  onError
+}: {
+  ordenId: number;
+  tercerizacion: Tercerizacion;
+  monedaLocal: Moneda;
+  onActualizada: (mensaje?: string) => void;
+  onError: (mensaje: string) => void;
+}) {
+  const [editando, setEditando] = useState(false);
+  const [moneda, setMoneda] = useState<Moneda>(t.costo?.moneda ?? monedaLocal);
+  const [monto, setMonto] = useState(t.costo ? String(t.costo.monto) : '');
+  const [cotizacion, setCotizacion] = useState(t.costo?.cotizacion ? String(t.costo.cotizacion) : '');
+  const { enCurso, ejecutar } = useAccion(onError);
+
+  async function guardar() {
+    if (aNumero(monto) < 0 || monto.trim() === '') return onError('Indicá cuánto cobró.');
+    if (moneda !== 'USD' && aNumero(cotizacion) <= 0) return onError('Indicá la cotización del dólar.');
+    const ok = await ejecutar(
+      () =>
+        ordenesApi.guardarCostoExterno(ordenId, t.id, {
+          moneda,
+          monto: aNumero(monto),
+          cotizacion: moneda === 'USD' ? null : aNumero(cotizacion)
+        }),
+      'No se pudo guardar el costo'
+    );
+    if (ok) {
+      setEditando(false);
+      onActualizada('Costo del externo guardado.');
+    }
+  }
+
+  if (!editando) {
+    return (
+      <div className="small mt-2 d-flex align-items-center gap-2 flex-wrap border-top pt-2">
+        <span className="text-muted">Cuánto cobró:</span>
+        {t.costo ? (
+          <strong>
+            {formatearMonto(t.costo.monto, t.costo.moneda)}
+            {t.costo.moneda !== 'USD' && t.costo.usd != null && ` (${formatearMonto(t.costo.usd, 'USD')})`}
+          </strong>
+        ) : (
+          <span className="text-muted">sin cargar</span>
+        )}
+        <Button size="sm" variant="link" className="p-0" onClick={() => setEditando(true)}>
+          {t.costo ? 'Cambiar' : 'Cargar'}
+        </Button>
+        <span className="badge badge-gris">Solo admins</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-2 border-top pt-2">
+      <div className="small mb-1">Cuánto cobró el externo (suma al costo de la orden)</div>
+      <div className="d-flex gap-2 flex-wrap align-items-center">
+        <SelectorMoneda value={moneda} onChange={setMoneda} />
+        <Form.Control
+          size="sm"
+          style={{ maxWidth: 140 }}
+          inputMode="decimal"
+          aria-label="Monto que cobró el externo"
+          value={monto}
+          onChange={(e) => setMonto(e.target.value)}
+        />
+        {moneda !== 'USD' && (
+          <Form.Control
+            size="sm"
+            style={{ maxWidth: 140 }}
+            inputMode="decimal"
+            aria-label="Cotización del dólar"
+            placeholder={`${moneda} por US$ 1`}
+            value={cotizacion}
+            onChange={(e) => setCotizacion(e.target.value)}
+          />
+        )}
+        <Button size="sm" onClick={guardar} disabled={enCurso}>
+          {enCurso ? <Spinner size="sm" animation="border" /> : 'Guardar'}
+        </Button>
+        <Button size="sm" variant="outline-secondary" onClick={() => setEditando(false)}>
+          Cancelar
+        </Button>
+      </div>
+    </div>
   );
 }

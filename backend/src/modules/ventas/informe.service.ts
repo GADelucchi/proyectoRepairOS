@@ -1,5 +1,6 @@
 import { Op } from 'sequelize';
-import { Cliente, EquipoStock, User, Venta, VentaItem } from '../../models';
+import { Articulo, Cliente, EquipoStock, InventarioConsumo, User, Venta, VentaItem } from '../../models';
+import { CONSUMO_CON_COSTO } from '../../models/InventarioConsumo';
 import { aNumero, enDolares, redondearMonto } from '../../shared/utils/dinero';
 import { nombreCompleto } from '../../shared/utils/texto';
 import type { FiltroCaja } from '../reportes/caja.service';
@@ -29,7 +30,22 @@ export async function informeVentas(filtro: FiltroCaja) {
     include: [
       { model: Cliente, as: 'cliente', attributes: ['id', 'nombre', 'apellido'] },
       { model: User, as: 'vendedor', attributes: ['id', 'nombre', 'apellido'] },
-      { model: VentaItem, as: 'items', include: [{ model: EquipoStock, as: 'equipo' }] }
+      {
+        model: VentaItem,
+        as: 'items',
+        include: [
+          { model: EquipoStock, as: 'equipo' },
+          { model: Articulo, as: 'articulo', attributes: ['id', 'codigo', 'nombre', 'tipo'] },
+          // Lo que costaron las unidades de un accesorio o repuesto: el de la entrada de la que salió cada una.
+          {
+            model: InventarioConsumo,
+            as: 'consumos',
+            attributes: ['cantidad', 'costoUsd'],
+            where: { estado: CONSUMO_CON_COSTO },
+            required: false
+          }
+        ]
+      }
     ],
     order: [['completadaEn', 'DESC']],
     limit: LIMITE
@@ -39,7 +55,13 @@ export async function informeVentas(filtro: FiltroCaja) {
     const items = venta.items ?? [];
     const brutoUsd = enDolares(venta.total, venta.moneda, venta.cotizacion);
     const costoUsd = redondearMonto(
-      items.reduce((total, i) => total + (i.equipo ? costoTotalUsd(i.equipo) : 0), 0)
+      items.reduce(
+        (total, i) =>
+          total +
+          (i.equipo ? costoTotalUsd(i.equipo) : 0) +
+          (i.consumos ?? []).reduce((t, c) => t + c.cantidad * aNumero(c.costoUsd), 0),
+        0
+      )
     );
     return {
       id: venta.id,
@@ -50,12 +72,17 @@ export async function informeVentas(filtro: FiltroCaja) {
       moneda: venta.moneda,
       total: aNumero(venta.total),
       cotizacion: venta.cotizacion == null ? null : aNumero(venta.cotizacion),
-      equipos: items.map((i) => ({
-        numero: i.equipo?.numero ?? null,
-        marca: i.equipo?.marca ?? '',
-        modelo: i.equipo?.modelo ?? '',
-        almacenamientoGb: i.equipo?.almacenamientoGb ?? null
-      })),
+      equipos: items
+        .filter((i) => i.equipo)
+        .map((i) => ({
+          numero: i.equipo!.numero,
+          marca: i.equipo!.marca,
+          modelo: i.equipo!.modelo,
+          almacenamientoGb: i.equipo!.almacenamientoGb ?? null
+        })),
+      articulos: items
+        .filter((i) => i.articulo)
+        .map((i) => ({ codigo: i.articulo!.codigo, nombre: i.articulo!.nombre, cantidad: i.cantidad })),
       brutoUsd,
       costoUsd,
       gananciaUsd: redondearMonto(brutoUsd - costoUsd),

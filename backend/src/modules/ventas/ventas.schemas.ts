@@ -54,9 +54,19 @@ export const crearVentaSchema = z
     clienteId: idPositivo.optional(),
     nuevoCliente: clienteSchema.optional(),
     items: z
-      .array(z.object({ equipoStockId: idPositivo, precio: monto }))
-      .min(1, 'Agregá al menos un equipo')
-      .max(20),
+      .array(
+        z.union([
+          z.object({ equipoStockId: idPositivo, precio: monto }),
+          /** Un accesorio o un repuesto suelto: salen del stock de la sucursal, de la entrada más vieja. */
+          z.object({
+            articuloId: idPositivo,
+            cantidad: z.number().int().positive('La cantidad tiene que ser mayor a cero').max(10_000),
+            precio: monto
+          })
+        ])
+      )
+      .min(1, 'Agregá al menos un artículo')
+      .max(50),
     moneda,
     /** 1 US$ en la moneda de la venta, ese día. */
     cotizacion: z.number().positive().max(99_999_999).optional().nullable(),
@@ -78,10 +88,14 @@ export const crearVentaSchema = z
     message: 'Elegí un cliente o cargá uno nuevo',
     path: ['clienteId']
   })
-  .refine((v) => new Set(v.items.map((i) => i.equipoStockId)).size === v.items.length, {
-    message: 'El mismo equipo está dos veces',
-    path: ['items']
-  })
+  .refine(
+    (v) => {
+      const equipos = v.items.flatMap((i) => ('equipoStockId' in i ? [i.equipoStockId] : []));
+      const articulos = v.items.flatMap((i) => ('articuloId' in i ? [i.articuloId] : []));
+      return new Set(equipos).size === equipos.length && new Set(articulos).size === articulos.length;
+    },
+    { message: 'El mismo artículo está dos veces: cambiá la cantidad', path: ['items'] }
+  )
   .refine((v) => v.moneda === 'USD' || v.cotizacion, {
     message: 'Indicá cuánto vale el dólar hoy: el informe de ventas se calcula en US$',
     path: ['cotizacion']

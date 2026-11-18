@@ -1,6 +1,8 @@
 import { apiClient } from '@/shared/api/client';
 import type {
+  CostosDeOrden,
   EstadoOrden,
+  InventarioDeOrden,
   MedioPago,
   Moneda,
   OpcionChequeo,
@@ -78,6 +80,14 @@ export interface CambioEstadoInput {
   /** Solo para el taller: queda en el historial pero no se imprime. */
   notaInterna?: string;
   forzar?: boolean;
+  /** Al cancelar o dejar sin reparar: qué pasa con cada repuesto que tenía puesto. */
+  repuestos?: DestinoRepuesto[];
+}
+
+export interface DestinoRepuesto {
+  consumoId: number;
+  destino: 'stock' | 'perdido';
+  motivo?: string | null;
 }
 
 export async function cambiarEstadoOrden(
@@ -101,6 +111,8 @@ export interface EntregaInput {
   /** En qué moneda se cobra. Sin indicar, la del presupuesto. */
   moneda?: Moneda;
   medioPago?: MedioPago | null;
+  /** 1 US$ en la moneda del cobro: para el informe de reparaciones. */
+  cotizacion?: number | null;
   comentario?: string | null;
   notaInterna?: string | null;
   forzar?: boolean;
@@ -127,6 +139,7 @@ export interface SolicitudFiadoInput {
   montoAbonado: number;
   moneda?: Moneda;
   medioPago?: MedioPago | null;
+  cotizacion?: number | null;
   motivo: string;
 }
 
@@ -271,4 +284,77 @@ export async function recibirTercerizado(
     tipoEquipoPersonalizadoId
   });
   return data;
+}
+
+/** Lo que devuelven las acciones sobre los repuestos: cómo quedó la orden y, para un admin, su costo. */
+export interface InventarioActualizado {
+  inventario: InventarioDeOrden;
+  costos: CostosDeOrden | null;
+}
+
+/** Agrega un servicio (con sus repuestos) o un repuesto suelto: salen del stock de la sucursal. */
+export async function agregarRepuesto(
+  id: number,
+  input: { servicioId?: number; articuloId?: number; cantidad?: number; entradaId?: number | null }
+): Promise<InventarioActualizado> {
+  const { data } = await apiClient.post<InventarioActualizado>(`/ordenes/${id}/repuestos`, input);
+  return data;
+}
+
+/** Saca un repuesto: vuelve a la entrada de la que salió. */
+export async function quitarRepuesto(id: number, consumoId: number): Promise<InventarioActualizado> {
+  const { data } = await apiClient.delete<InventarioActualizado>(`/ordenes/${id}/repuestos/${consumoId}`);
+  return data;
+}
+
+/** Saca un servicio: sus repuestos vuelven al stock. */
+export async function quitarServicio(id: number, ordenServicioId: number): Promise<InventarioActualizado> {
+  const { data } = await apiClient.delete<InventarioActualizado>(
+    `/ordenes/${id}/servicios/${ordenServicioId}`
+  );
+  return data;
+}
+
+/** Se rompió al colocarlo: no vuelve al stock y queda como costo. */
+export async function repuestoPerdido(
+  id: number,
+  consumoId: number,
+  motivo: string | null
+): Promise<InventarioActualizado> {
+  const { data } = await apiClient.post<InventarioActualizado>(
+    `/ordenes/${id}/repuestos/${consumoId}/perdido`,
+    {
+      motivo
+    }
+  );
+  return data;
+}
+
+export async function cambiarEntradaRepuesto(
+  id: number,
+  consumoId: number,
+  entradaId: number
+): Promise<InventarioActualizado> {
+  const { data } = await apiClient.post<InventarioActualizado>(
+    `/ordenes/${id}/repuestos/${consumoId}/entrada`,
+    {
+      entradaId
+    }
+  );
+  return data;
+}
+
+/** La cotización del cobro, si no se cargó al entregar (solo admin). */
+export async function guardarCotizacion(id: number, cotizacion: number): Promise<InventarioActualizado> {
+  const { data } = await apiClient.put<InventarioActualizado>(`/ordenes/${id}/cotizacion`, { cotizacion });
+  return data;
+}
+
+/** Lo que cobró el taller externo (solo admin). */
+export async function guardarCostoExterno(
+  id: number,
+  tercerizacionId: number,
+  input: { moneda: Moneda; monto: number; cotizacion: number | null }
+): Promise<void> {
+  await apiClient.put(`/ordenes/${id}/tercerizaciones/${tercerizacionId}/costo`, input);
 }

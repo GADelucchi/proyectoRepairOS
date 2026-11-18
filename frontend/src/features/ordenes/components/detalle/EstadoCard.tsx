@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Button, Card, Form, Spinner } from 'react-bootstrap';
 import { useAccion } from '@/shared/hooks/useAccion';
-import type { EstadoOrden } from '@/shared/types';
+import type { EstadoOrden, RepuestoEnOrden } from '@/shared/types';
 import * as ordenesApi from '../../api';
 import {
   ESTADOS_CON_FLUJO_PROPIO,
@@ -46,7 +46,18 @@ export function EstadoCard({
   const [comentario, setComentario] = useState('');
   const [notaInterna, setNotaInterna] = useState('');
   const [forzar, setForzar] = useState(false);
+  /** Al cancelar o dejar sin reparar: qué pasa con cada repuesto que la orden tiene puesto. */
+  const [destinos, setDestinos] = useState<Record<number, { destino: 'stock' | 'perdido'; motivo: string }>>(
+    {}
+  );
   const { enCurso, ejecutar } = useAccion(onError);
+
+  const enUso: RepuestoEnOrden[] = [
+    ...(orden.inventario?.servicios.flatMap((s) => s.repuestos) ?? []),
+    ...(orden.inventario?.repuestos ?? [])
+  ].filter((r) => r.estado === 'usado');
+  const liberaRepuestos = (nuevoEstado === 'cancelado' || nuevoEstado === 'no_reparado') && enUso.length > 0;
+  const faltaDecidir = liberaRepuestos && enUso.some((r) => !destinos[r.id]);
 
   const sigueAfuera = (orden.tercerizaciones ?? []).some(
     (t) => t.estado === 'enviada' || t.estado === 'recibida'
@@ -78,7 +89,14 @@ export function EstadoCard({
         estado: nuevoEstado,
         comentario: (nuevoEstado !== 'externo' && comentario.trim()) || undefined,
         notaInterna: notaInterna.trim() || undefined,
-        forzar: forzar || undefined
+        forzar: forzar || undefined,
+        repuestos: liberaRepuestos
+          ? enUso.map((r) => ({
+              consumoId: r.id,
+              destino: destinos[r.id].destino,
+              motivo: destinos[r.id].motivo.trim() || null
+            }))
+          : undefined
       });
     }, 'No se pudo cambiar el estado');
     if (ok && actualizada) {
@@ -86,6 +104,7 @@ export function EstadoCard({
       setComentario('');
       setNotaInterna('');
       setForzar(false);
+      setDestinos({});
       onActualizada(conAviso('Estado actualizado.', actualizada));
     }
   }
@@ -129,6 +148,55 @@ export function EstadoCard({
                 reparación&quot;.
               </Form.Text>
             )}
+            {liberaRepuestos && (
+              <div className="border rounded p-2 mb-2">
+                <div className="small mb-2">La orden tiene repuestos puestos. ¿Qué pasa con cada uno?</div>
+                {enUso.map((r) => (
+                  <div key={r.id} className="mb-2">
+                    <div className="small fw-semibold">
+                      {r.cantidad > 1 ? `${r.cantidad} × ` : ''}
+                      {r.articulo.nombre}
+                    </div>
+                    <div
+                      className="d-flex gap-3 flex-wrap"
+                      role="radiogroup"
+                      aria-label={`Qué pasa con ${r.articulo.nombre}`}
+                    >
+                      {(['stock', 'perdido'] as const).map((d) => (
+                        <Form.Check
+                          key={d}
+                          type="radio"
+                          id={`destino-${r.id}-${d}`}
+                          name={`destino-${r.id}`}
+                          label={d === 'stock' ? 'Vuelve al stock' : 'Se perdió'}
+                          checked={destinos[r.id]?.destino === d}
+                          onChange={() =>
+                            setDestinos({
+                              ...destinos,
+                              [r.id]: { destino: d, motivo: destinos[r.id]?.motivo ?? '' }
+                            })
+                          }
+                        />
+                      ))}
+                    </div>
+                    {destinos[r.id]?.destino === 'perdido' && (
+                      <Form.Control
+                        size="sm"
+                        className="mt-1"
+                        aria-label={`Por qué se perdió ${r.articulo.nombre}`}
+                        placeholder="Qué pasó (opcional)"
+                        maxLength={255}
+                        value={destinos[r.id].motivo}
+                        onChange={(e) =>
+                          setDestinos({ ...destinos, [r.id]: { destino: 'perdido', motivo: e.target.value } })
+                        }
+                      />
+                    )}
+                  </div>
+                ))}
+                <div className="small text-muted">Lo que se perdió queda como costo de esta orden.</div>
+              </div>
+            )}
             {nuevoEstado !== 'externo' && (
               <Form.Control
                 className="mb-2"
@@ -170,7 +238,7 @@ export function EstadoCard({
             <Button
               size="sm"
               onClick={cambiar}
-              disabled={!nuevoEstado || enCurso || (forzar && !comentario.trim())}
+              disabled={!nuevoEstado || enCurso || (forzar && !comentario.trim()) || faltaDecidir}
             >
               {enCurso ? (
                 <Spinner size="sm" animation="border" />

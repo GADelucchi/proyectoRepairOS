@@ -80,6 +80,14 @@ const EscanearQrPage = diferida(() => import('@/features/equipos/pages/EscanearQ
 const StockPage = diferida(() => import('@/features/stock/pages/StockPage'), 'StockPage');
 const EquipoStockPage = diferida(() => import('@/features/stock/pages/EquipoStockPage'), 'EquipoStockPage');
 const VentasPage = diferida(() => import('@/features/ventas/pages/VentasPage'), 'VentasPage');
+const InventarioPage = diferida(() => import('@/features/inventario/pages/InventarioPage'), 'InventarioPage');
+const ArticuloPage = diferida(() => import('@/features/inventario/pages/ArticuloPage'), 'ArticuloPage');
+const ArticuloFormPage = diferida(
+  () => import('@/features/inventario/pages/ArticuloFormPage'),
+  'ArticuloFormPage'
+);
+const EntradaPage = diferida(() => import('@/features/inventario/pages/EntradaPage'), 'EntradaPage');
+const PasesPage = diferida(() => import('@/features/inventario/pages/PasesPage'), 'PasesPage');
 const VentaNuevaPage = diferida(() => import('@/features/ventas/pages/VentaNuevaPage'), 'VentaNuevaPage');
 const VentaDetallePage = diferida(
   () => import('@/features/ventas/pages/VentaDetallePage'),
@@ -150,6 +158,12 @@ export function App() {
               <Route path="/stock" element={<StockPage />} />
               <Route path="/stock/nuevo" element={<EquipoStockPage />} />
               <Route path="/stock/:id" element={<EquipoStockPage />} />
+              <Route path="/inventario" element={<InventarioPage />} />
+              <Route path="/inventario/nuevo" element={<ArticuloFormPage />} />
+              <Route path="/inventario/articulos/:id" element={<ArticuloPage />} />
+              <Route path="/inventario/articulos/:id/editar" element={<ArticuloFormPage />} />
+              <Route path="/inventario/entradas/nueva" element={<EntradaPage />} />
+              <Route path="/inventario/pases" element={<PasesPage />} />
               <Route path="/ventas" element={<VentasPage />} />
               <Route path="/ventas/nueva" element={<VentaNuevaPage />} />
               <Route path="/ventas/:id" element={<VentaDetallePage />} />

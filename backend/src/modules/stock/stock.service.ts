@@ -3,9 +3,11 @@ import { z } from 'zod';
 import { sequelize } from '../../config/database';
 import { env } from '../../config/env';
 import {
+  Articulo,
   Contador,
   EquipoStock,
   EquipoStockCosto,
+  InventarioConsumo,
   Sucursal,
   Taller,
   User,
@@ -18,6 +20,7 @@ import { aNumero, enDolares, redondearMonto } from '../../shared/utils/dinero';
 import { fechaEnZona } from '../../shared/utils/fechas';
 import { etiquetaVenta } from '../ventas/calculos';
 import { CostoReparacionInput, EquipoStockInput, listarStockQuery } from './stock.schemas';
+import { consumir, devolverConsumo } from '../inventario/existencias.service';
 
 /** Quién opera: el stock se carga y se ve desde la sucursal elegida. Los costos los ve solo un admin. */
 export interface ContextoStock {
@@ -515,6 +518,72 @@ export async function anularCosto(ctx: ContextoStock, equipo: EquipoStock, costo
     if (!costo) throw errores.noEncontrado('Costo');
     if (costo.anuladoEn) throw errores.conflicto('El costo ya está anulado.');
     await costo.update({ anuladoEn: new Date(), anuladoPorId: ctx.usuarioId }, { transaction });
+    // Si era un repuesto del inventario, vuelve a su entrada.
+    const consumos = await InventarioConsumo.findAll({
+      where: { equipoStockCostoId: costo.id, estado: 'usado' },
+      lock: transaction.LOCK.UPDATE,
+      transaction
+    });
+    for (const consumo of consumos) {
+      await devolverConsumo(
+        ctx,
+        consumo,
+        { equipoStockId: equipo.id, nota: 'Se anuló el costo' },
+        transaction
+      );
+    }
+    await recalcularReparaciones(equipo.id, transaction);
+  });
+}
+
+/**
+ * Pone un repuesto del inventario en el equipo: las unidades salen del stock
+ * de la sucursal del equipo (de la entrada más vieja, o de la elegida) y su
+ * costo se suma al equipo como un costo más. Anular ese costo las devuelve.
+ */
+export async function usarRepuesto(
+  ctx: ContextoStock,
+  equipo: EquipoStock,
+  datos: { articuloId: number; cantidad: number; entradaId?: number | null }
+) {
+  if (equipo.estado === 'baja') throw errores.conflicto('El equipo está dado de baja.');
+  await sequelize.transaction(async (transaction) => {
+    await bloquearEquipo(equipo, transaction);
+    const articulo = await Articulo.findOne({
+      where: { id: datos.articuloId, tallerId: ctx.tallerId },
+      transaction
+    });
+    if (!articulo) throw errores.noEncontrado('Artículo');
+    const { consumos, costoUsd } = await consumir(
+      ctx,
+      {
+        articulo,
+        sucursalId: equipo.sucursalId,
+        cantidad: datos.cantidad,
+        entradaPreferida: datos.entradaId,
+        destino: { origen: 'equipo_stock', equipoStockId: equipo.id },
+        nota: `${etiquetaNumero(equipo.numero)} ${equipo.marca} ${equipo.modelo}`
+      },
+      transaction
+    );
+    const costo = await EquipoStockCosto.create(
+      {
+        tallerId: ctx.tallerId,
+        equipoStockId: equipo.id,
+        concepto: `${datos.cantidad > 1 ? `${datos.cantidad} × ` : ''}${articulo.nombre}`.slice(0, 150),
+        fecha: fechaEnZona(new Date(), env.timezone),
+        moneda: 'USD',
+        monto: costoUsd.toFixed(2),
+        cotizacion: null,
+        montoUsd: costoUsd.toFixed(2),
+        usuarioId: ctx.usuarioId
+      },
+      { transaction }
+    );
+    await InventarioConsumo.update(
+      { equipoStockCostoId: costo.id },
+      { where: { id: consumos.map((c) => c.id) }, transaction }
+    );
     await recalcularReparaciones(equipo.id, transaction);
   });
 }

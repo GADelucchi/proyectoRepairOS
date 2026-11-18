@@ -61,6 +61,8 @@ export function EntregaModal({
   const [montoTotal, setMontoTotal] = useState('');
   const [montoAbonado, setMontoAbonado] = useState('');
   const [medioPago, setMedioPago] = useState<MedioPago>('efectivo');
+  /** 1 US$ en la moneda del cobro: el informe de reparaciones se calcula en dólares. */
+  const [cotizacion, setCotizacion] = useState('');
   const [comentario, setComentario] = useState('');
   const [notaInterna, setNotaInterna] = useState('');
   const [forzar, setForzar] = useState(false);
@@ -98,13 +100,14 @@ export function EntregaModal({
     setMontoTotal(inicial);
     setMontoAbonado(String(Math.max(0, presupuesto - Math.min(creditoDelPresupuesto, presupuesto))));
     setMedioPago('efectivo');
+    setCotizacion(orden.cotizacionSugerida ? String(orden.cotizacionSugerida) : '');
     setComentario('');
     setNotaInterna('');
     setForzar(false);
     setError(null);
     setPidiendoAutorizacion(false);
     setMotivo('');
-  }, [show, presupuesto, creditoDelPresupuesto, orden.moneda]);
+  }, [show, presupuesto, creditoDelPresupuesto, orden.moneda, orden.cotizacionSugerida]);
 
   /** Trae el precio elegido, con el saldo a favor de su moneda ya descontado. */
   function elegirPrecio(indice: number) {
@@ -127,6 +130,7 @@ export function EntregaModal({
 
   const total = aNumero(montoTotal);
   const abonado = aNumero(montoAbonado);
+  const cotizacionCobro = moneda !== 'USD' && aNumero(cotizacion) > 0 ? aNumero(cotizacion) : null;
 
   // El saldo a favor cubre lo que no se abona, antes de generar deuda nueva.
   // Mismo cálculo que `repartirEntrega` en el backend, para anticipar el resultado.
@@ -158,6 +162,7 @@ export function EntregaModal({
         montoAbonado: abonado,
         moneda,
         medioPago: abonado > 0 ? medioPago : null,
+        cotizacion: cotizacionCobro,
         comentario: comentario.trim() || null,
         notaInterna: notaInterna.trim() || null,
         forzar: forzar || undefined
@@ -179,6 +184,7 @@ export function EntregaModal({
         montoAbonado: abonado,
         moneda,
         medioPago: abonado > 0 ? medioPago : null,
+        cotizacion: cotizacionCobro,
         motivo: motivo.trim()
       });
       // Un admin no espera su propia firma: la entrega ya quedó hecha.
@@ -314,6 +320,22 @@ export function EntregaModal({
                   </option>
                 ))}
               </Form.Select>
+            </Form.Group>
+          )}
+
+          {moneda !== 'USD' && (
+            <Form.Group className="mt-3" controlId="entrega-cotizacion">
+              <Form.Label>Cotización del dólar</Form.Label>
+              <Form.Control
+                inputMode="decimal"
+                placeholder={`${moneda} por US$ 1`}
+                value={cotizacion}
+                onChange={(e) => setCotizacion(e.target.value)}
+                disabled={guardando}
+              />
+              <Form.Text className="text-muted">
+                Para el informe de reparaciones, que es en dólares. Si no la sabés, la carga después un admin.
+              </Form.Text>
             </Form.Group>
           )}
 

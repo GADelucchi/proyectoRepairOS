@@ -137,7 +137,14 @@ export function VentasPage() {
                   </div>
                 </td>
                 <td>{nombreCompleto(v.cliente)}</td>
-                <td className="small">{v.equipos.map((e) => describirEquipoStock(e)).join(' + ')}</td>
+                <td className="small">
+                  {[
+                    ...v.equipos.map((e) => describirEquipoStock(e)),
+                    ...(v.articulos ?? []).map((a) =>
+                      a.cantidad > 1 ? `${a.cantidad} × ${a.nombre}` : a.nombre
+                    )
+                  ].join(' + ')}
+                </td>
                 <td>
                   <EstadoEnLista venta={v} />
                 </td>

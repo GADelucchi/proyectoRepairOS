@@ -27,6 +27,14 @@ import { VentaItem } from './VentaItem';
 import { VentaPartePago } from './VentaPartePago';
 import { VentaPago } from './VentaPago';
 import { Tercerizacion } from './Tercerizacion';
+import { Articulo } from './Articulo';
+import { InventarioCategoria } from './InventarioCategoria';
+import { ServicioRepuesto } from './ServicioRepuesto';
+import { InventarioEntrada } from './InventarioEntrada';
+import { InventarioConsumo } from './InventarioConsumo';
+import { InventarioMovimiento } from './InventarioMovimiento';
+import { OrdenServicio } from './OrdenServicio';
+import { Pase, PaseItem } from './Pase';
 
 Taller.initModel(sequelize);
 Plan.initModel(sequelize);
@@ -56,6 +64,15 @@ VentaItem.initModel(sequelize);
 VentaPartePago.initModel(sequelize);
 VentaPago.initModel(sequelize);
 Tercerizacion.initModel(sequelize);
+InventarioCategoria.initModel(sequelize);
+Articulo.initModel(sequelize);
+ServicioRepuesto.initModel(sequelize);
+Pase.initModel(sequelize);
+PaseItem.initModel(sequelize);
+InventarioEntrada.initModel(sequelize);
+OrdenServicio.initModel(sequelize);
+InventarioConsumo.initModel(sequelize);
+InventarioMovimiento.initModel(sequelize);
 
 // Taller -> todo lo que se consulta desde la raíz
 Taller.hasOne(Suscripcion, { foreignKey: 'tallerId', as: 'suscripcion' });
@@ -204,6 +221,39 @@ Tercerizacion.belongsTo(Taller, { foreignKey: 'tallerId', as: 'taller' });
 Tercerizacion.belongsTo(Taller, { foreignKey: 'tallerDestinoId', as: 'tallerDestino' });
 Tercerizacion.belongsTo(User, { foreignKey: 'enviadaPorId', as: 'enviadaPor' });
 
+// Inventario: repuestos, accesorios y servicios, con sus entradas por sucursal
+Articulo.belongsTo(InventarioCategoria, { foreignKey: 'categoriaId', as: 'categoria' });
+Articulo.hasMany(ServicioRepuesto, { foreignKey: 'servicioId', as: 'repuestos' });
+ServicioRepuesto.belongsTo(Articulo, { foreignKey: 'repuestoId', as: 'repuesto' });
+Articulo.hasMany(InventarioEntrada, { foreignKey: 'articuloId', as: 'entradas' });
+InventarioEntrada.belongsTo(Articulo, { foreignKey: 'articuloId', as: 'articulo' });
+InventarioEntrada.belongsTo(Sucursal, { foreignKey: 'sucursalId', as: 'sucursal' });
+InventarioEntrada.belongsTo(User, { foreignKey: 'cargadaPorId', as: 'cargadaPor' });
+InventarioEntrada.belongsTo(InventarioEntrada, { foreignKey: 'entradaOrigenId', as: 'entradaOrigen' });
+InventarioConsumo.belongsTo(Articulo, { foreignKey: 'articuloId', as: 'articulo' });
+InventarioConsumo.belongsTo(InventarioEntrada, { foreignKey: 'entradaId', as: 'entrada' });
+InventarioConsumo.belongsTo(User, { foreignKey: 'usuarioId', as: 'usuario' });
+InventarioMovimiento.belongsTo(InventarioEntrada, { foreignKey: 'entradaId', as: 'entrada' });
+InventarioMovimiento.belongsTo(User, { foreignKey: 'usuarioId', as: 'usuario' });
+InventarioMovimiento.belongsTo(Orden, { foreignKey: 'ordenId', as: 'orden' });
+InventarioMovimiento.belongsTo(Venta, { foreignKey: 'ventaId', as: 'venta' });
+InventarioMovimiento.belongsTo(Pase, { foreignKey: 'paseId', as: 'pase' });
+InventarioMovimiento.belongsTo(EquipoStock, { foreignKey: 'equipoStockId', as: 'equipoStock' });
+Orden.hasMany(OrdenServicio, { foreignKey: 'ordenId', as: 'servicios' });
+OrdenServicio.belongsTo(User, { foreignKey: 'usuarioId', as: 'usuario' });
+Orden.hasMany(InventarioConsumo, { foreignKey: 'ordenId', as: 'consumos' });
+VentaItem.belongsTo(Articulo, { foreignKey: 'articuloId', as: 'articulo' });
+VentaItem.hasMany(InventarioConsumo, { foreignKey: 'ventaItemId', as: 'consumos' });
+Pase.hasMany(PaseItem, { foreignKey: 'paseId', as: 'items' });
+Pase.belongsTo(Sucursal, { foreignKey: 'sucursalOrigenId', as: 'sucursalOrigen' });
+Pase.belongsTo(Sucursal, { foreignKey: 'sucursalDestinoId', as: 'sucursalDestino' });
+Pase.belongsTo(User, { foreignKey: 'enviadoPorId', as: 'enviadoPor' });
+Pase.belongsTo(User, { foreignKey: 'recibidoPorId', as: 'recibidoPor' });
+Pase.belongsTo(User, { foreignKey: 'canceladoPorId', as: 'canceladoPor' });
+PaseItem.belongsTo(Articulo, { foreignKey: 'articuloId', as: 'articulo' });
+PaseItem.belongsTo(InventarioEntrada, { foreignKey: 'entradaId', as: 'entrada' });
+PaseItem.belongsTo(EquipoStock, { foreignKey: 'equipoStockId', as: 'equipo' });
+
 export {
   sequelize,
   Taller,
@@ -233,5 +283,14 @@ export {
   VentaItem,
   VentaPartePago,
   VentaPago,
-  Tercerizacion
+  Tercerizacion,
+  Articulo,
+  InventarioCategoria,
+  ServicioRepuesto,
+  InventarioEntrada,
+  InventarioConsumo,
+  InventarioMovimiento,
+  OrdenServicio,
+  Pase,
+  PaseItem
 };

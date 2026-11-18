@@ -14,9 +14,11 @@ import { DetallesCard } from '../components/detalle/DetallesCard';
 import { EquipoCard } from '../components/detalle/EquipoCard';
 import { EstadoCard } from '../components/detalle/EstadoCard';
 import { FirmaCard } from '../components/detalle/FirmaCard';
+import { GananciaCard } from '../components/detalle/GananciaCard';
 import { HistorialCard } from '../components/detalle/HistorialCard';
 import { ImagenesCard } from '../components/detalle/ImagenesCard';
 import { PresupuestoCard } from '../components/detalle/PresupuestoCard';
+import { RepuestosCard } from '../components/detalle/RepuestosCard';
 import { datosAvisoDeOrden, urlDeSeguimiento } from '../aviso-cliente';
 import { AvisarWhatsApp } from '../components/AvisarWhatsApp';
 import { EntregaModal, ResultadoEntrega } from '../components/EntregaModal';
@@ -169,7 +171,14 @@ export function OrdenDetallePage() {
       <Row className="g-3">
         {(orden.tercerizaciones?.length ?? 0) > 0 && (
           <Col md={12}>
-            <TercerizacionCard tercerizaciones={orden.tercerizaciones!} />
+            <TercerizacionCard
+              ordenId={orden.id}
+              tercerizaciones={orden.tercerizaciones!}
+              esAdmin={esAdmin}
+              monedaLocal={orden.moneda}
+              onActualizada={onActualizada}
+              onError={setError}
+            />
           </Col>
         )}
         <Col md={6}>
@@ -187,6 +196,19 @@ export function OrdenDetallePage() {
         <Col md={12}>
           <ChequeosCard {...seccion} />
         </Col>
+        <Col lg={orden.costos ? 8 : 12}>
+          <RepuestosCard {...seccion} esAdmin={esAdmin} />
+        </Col>
+        {orden.costos && (
+          <Col lg={4}>
+            <GananciaCard
+              orden={orden}
+              costos={orden.costos}
+              onActualizada={onActualizada}
+              onError={setError}
+            />
+          </Col>
+        )}
         <Col md={6}>
           <PresupuestoCard
             key={`${orden.presupuestoMonto}-${orden.moneda}-${orden.presupuestoDetalle}-${JSON.stringify(orden.precios)}`}

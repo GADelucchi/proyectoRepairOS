@@ -5,6 +5,7 @@ import { fechaEnZona } from '../../shared/utils/fechas';
 import { nombreCompleto } from '../../shared/utils/texto';
 import { notificarEnLaApp } from '../notificaciones/notificaciones.service';
 import { etiquetaVenta } from './calculos';
+import { devolverArticulosDeVenta } from '../inventario/existencias.service';
 
 /** Días con una seña sin completar a partir de los que se avisa a los admins. */
 export const DIAS_AVISO_SENA = 15;
@@ -27,7 +28,7 @@ async function vencerReservas(tallerId: number) {
   const hoy = fechaEnZona(new Date(), env.timezone);
   const vencidas = await Venta.findAll({
     where: { tallerId, estado: 'reservada', reservadaHasta: { [Op.lt]: hoy } },
-    attributes: ['id'],
+    attributes: ['id', 'numero', 'vendedorId'],
     include: [{ model: VentaItem, as: 'items', attributes: ['equipoStockId'] }]
   });
 
@@ -42,9 +43,18 @@ async function vencerReservas(tallerId: number) {
       await EquipoStock.update(
         { estado: 'disponible' },
         {
-          where: { id: (venta.items ?? []).map((i) => i.equipoStockId), estado: 'reservado' },
+          where: {
+            id: (venta.items ?? []).flatMap((i) => (i.equipoStockId ? [i.equipoStockId] : [])),
+            estado: 'reservado'
+          },
           transaction
         }
+      );
+      await devolverArticulosDeVenta(
+        { tallerId, usuarioId: venta.vendedorId ?? null },
+        venta.id,
+        `${etiquetaVenta(venta.numero)} vencida`,
+        transaction
       );
     });
   }

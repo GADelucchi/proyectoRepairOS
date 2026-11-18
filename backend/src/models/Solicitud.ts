@@ -15,6 +15,8 @@ export interface DatosFiado {
   montoTotal: number;
   montoAbonado: number;
   medioPago?: MedioPago | null;
+  /** 1 US$ en la moneda del cobro, para el informe de reparaciones. */
+  cotizacion?: number | null;
 }
 
 /** Hacia dónde mueve el saldo un ajuste aprobado. */

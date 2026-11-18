@@ -5,6 +5,7 @@ import {
   PARTE_VACIA,
   conPreciosDeLista,
   formularioAVentaInput,
+  precioDeArticulo,
   precioEnMoneda,
   totalesDelFormulario,
   validarVenta,
@@ -89,5 +90,45 @@ describe('totales y pagos', () => {
     const reserva = venta({ modo: 'reserva', reservadaHasta: '10/11/2026' });
     expect(validarVenta(reserva, HOY)).toBeNull();
     expect(formularioAVentaInput(reserva)).toMatchObject({ pagos: [], reservadaHasta: '2026-11-10' });
+  });
+});
+
+describe('accesorios en la venta', () => {
+  const funda = {
+    id: 3,
+    tipo: 'accesorio',
+    codigo: 'A-0003',
+    nombre: 'Funda',
+    precios: [
+      { posicion: 1, nombre: 'Lista', monto: 15000, moneda: 'ARS' },
+      { posicion: 2, nombre: 'Efectivo', monto: 10, moneda: 'USD' }
+    ]
+  } as unknown as Parameters<typeof precioDeArticulo>[0];
+
+  it('el precio elegido sigue a la moneda y la cotización de la venta', () => {
+    const f = conPreciosDeLista({
+      ...venta({ items: [] }),
+      moneda: 'ARS',
+      cotizacion: '1200',
+      articulos: [{ articulo: funda, cantidad: '2', precio: '', posicion: 2 }]
+    });
+    expect(f.articulos[0].precio).toBe('12000');
+    expect(precioDeArticulo(funda, 1, 'USD', 0)).toBeNull();
+  });
+
+  it('suma precio por cantidad y manda cada artículo con su cantidad', () => {
+    const f = venta({
+      articulos: [{ articulo: funda, cantidad: '2', precio: '10', posicion: null }],
+      pagos: [efectivo('1170')]
+    });
+    expect(totalesDelFormulario(f).total).toBe(1170);
+    expect(validarVenta(f, HOY)).toBeNull();
+    expect(formularioAVentaInput(f).items).toEqual([
+      { equipoStockId: 7, precio: 1150 },
+      { articuloId: 3, cantidad: 2, precio: 10 }
+    ]);
+    expect(validarVenta({ ...f, articulos: [{ ...f.articulos[0], cantidad: '0' }] }, HOY)).toBe(
+      'Poné cuántos se lleva de cada artículo.'
+    );
   });
 });

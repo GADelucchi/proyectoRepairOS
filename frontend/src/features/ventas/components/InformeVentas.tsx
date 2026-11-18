@@ -8,6 +8,7 @@ import { TablaApilable } from '@/shared/components/TablaApilable';
 import { TarjetaDato } from '@/shared/components/TarjetaDato';
 import { useConsulta } from '@/shared/hooks/useConsulta';
 import { descargarCsv } from '@/shared/utils/csv';
+import type { InformeVentas as TipoInformeVentas } from '@/shared/types';
 import { formatearMonto } from '@/shared/utils/dinero';
 import { formatearFecha } from '@/shared/utils/fechas';
 import { filaClickeable } from '@/shared/utils/filas';
@@ -19,6 +20,16 @@ interface InformeVentasProps {
   desde: string;
   hasta: string;
   todasLasSucursales: boolean;
+}
+
+/** "iPhone 13 128 GB + 2 × Funda": los equipos y artículos de una venta del informe. */
+function queSeLlevo(v: TipoInformeVentas['ventas'][number]): string {
+  return [
+    ...v.equipos.map((e) =>
+      [e.marca, e.modelo, textoAlmacenamiento(e.almacenamientoGb)].filter(Boolean).join(' ')
+    ),
+    ...(v.articulos ?? []).map((a) => (a.cantidad > 1 ? `${a.cantidad} × ${a.nombre}` : a.nombre))
+  ].join(' + ');
 }
 
 /**
@@ -64,9 +75,7 @@ export function InformeVentas({ desde, hasta, todasLasSucursales }: InformeVenta
         formatearFecha(v.completadaEn),
         v.cliente,
         v.vendedor,
-        v.equipos
-          .map((e) => [e.marca, e.modelo, textoAlmacenamiento(e.almacenamientoGb)].filter(Boolean).join(' '))
-          .join(' + '),
+        queSeLlevo(v),
         v.moneda,
         v.total,
         v.cotizacion,
@@ -165,15 +174,7 @@ export function InformeVentas({ desde, hasta, todasLasSucursales }: InformeVenta
                         {v.cliente}
                         {v.vendedor && <div className="small text-muted">{v.vendedor}</div>}
                       </td>
-                      <td className="small">
-                        {v.equipos
-                          .map((e) =>
-                            [e.marca, e.modelo, textoAlmacenamiento(e.almacenamientoGb)]
-                              .filter(Boolean)
-                              .join(' ')
-                          )
-                          .join(' + ')}
-                      </td>
+                      <td className="small">{queSeLlevo(v)}</td>
                       <td className="text-end text-nowrap">
                         {usd(v.brutoUsd)}
                         {v.moneda !== 'USD' && (

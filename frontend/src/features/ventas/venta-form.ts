@@ -1,5 +1,5 @@
 import { esImeiValido, soloDigitos } from '@/features/stock/stock-form';
-import type { EquipoStock, EstadoVenta, MedioPago, Moneda, TipoDescuento } from '@/shared/types';
+import type { Articulo, EquipoStock, EstadoVenta, MedioPago, Moneda, TipoDescuento } from '@/shared/types';
 import { aNumero, redondear } from '@/shared/utils/dinero';
 import { convertirAFormatoBackend } from '@/shared/utils/fechas';
 import { textoONull } from '@/shared/utils/texto';
@@ -37,6 +37,18 @@ export interface ItemVentaForm {
   equipo: EquipoStock;
   precio: string;
   editado: boolean;
+}
+
+/**
+ * Un accesorio o repuesto en la venta. `posicion` es el precio del producto que
+ * se eligió (Lista, Efectivo…), que sigue a la moneda y cotización de la venta;
+ * null si el vendedor escribió otro.
+ */
+export interface ArticuloVentaForm {
+  articulo: Articulo;
+  cantidad: string;
+  precio: string;
+  posicion: number | null;
 }
 
 /** Un equipo que deja el cliente, todo como texto. */
@@ -118,6 +130,7 @@ export interface VentaForm {
   /** 1 US$ en la moneda de la venta. */
   cotizacion: string;
   items: ItemVentaForm[];
+  articulos: ArticuloVentaForm[];
   descuentoTipo: TipoDescuento;
   descuentoValor: string;
   partes: PartePagoForm[];
@@ -134,6 +147,7 @@ export function ventaVacia(moneda: Moneda): VentaForm {
     moneda,
     cotizacion: '',
     items: [],
+    articulos: [],
     descuentoTipo: 'porcentaje',
     descuentoValor: '',
     partes: [],
@@ -159,6 +173,31 @@ export function precioEnMoneda(equipo: EquipoStock, moneda: Moneda, cotizacion: 
   return null;
 }
 
+/** Un monto de otra moneda en la de la venta, con la cotización contra el dólar. null si no se puede. */
+export function convertirMonto(
+  monto: number,
+  desde: Moneda,
+  hacia: Moneda,
+  cotizacion: number
+): number | null {
+  if (desde === hacia) return monto;
+  if (desde === 'USD' && cotizacion > 0) return redondear(monto * cotizacion);
+  if (hacia === 'USD' && cotizacion > 0) return redondear(monto / cotizacion);
+  return null;
+}
+
+/** El precio elegido de un artículo (Lista, Efectivo…) en la moneda de la venta. */
+export function precioDeArticulo(
+  articulo: Articulo,
+  posicion: number | null,
+  moneda: Moneda,
+  cotizacion: number
+): number | null {
+  const precio = articulo.precios.find((p) => p.posicion === posicion);
+  if (!precio || precio.monto == null || !precio.moneda) return null;
+  return convertirMonto(precio.monto, precio.moneda, moneda, cotizacion);
+}
+
 /** Los precios que no tocó el vendedor siguen al de lista, en la moneda y cotización actuales. */
 export function conPreciosDeLista(f: VentaForm): VentaForm {
   const cotizacion = aNumero(f.cotizacion);
@@ -169,6 +208,11 @@ export function conPreciosDeLista(f: VentaForm): VentaForm {
       const precio = precioEnMoneda(item.equipo, f.moneda, cotizacion);
       // Sin poder convertir, mejor vacío que el número de otra moneda.
       return { ...item, precio: precio != null ? String(precio) : '' };
+    }),
+    articulos: f.articulos.map((a) => {
+      if (a.posicion === null) return a;
+      const precio = precioDeArticulo(a.articulo, a.posicion, f.moneda, cotizacion);
+      return { ...a, precio: precio != null ? String(precio) : '' };
     })
   };
 }
@@ -208,7 +252,10 @@ function descuentoDe(f: VentaForm) {
 
 export function totalesDelFormulario(f: VentaForm): TotalesVenta {
   return totalesDeVenta(
-    f.items.map((i) => aNumero(i.precio)),
+    [
+      ...f.items.map((i) => aNumero(i.precio)),
+      ...f.articulos.map((a) => aNumero(a.precio) * aNumero(a.cantidad))
+    ],
     descuentoDe(f),
     f.partes.map((p) => aNumero(p.monto))
   );
@@ -303,8 +350,11 @@ export function parteAInput(p: PartePagoForm): PartePagoInput {
 
 /** Lo que falta o está mal para confirmar la venta, o null. */
 export function validarVenta(f: VentaForm, hoyIso: string): string | null {
-  if (f.items.length === 0) return 'Agregá al menos un equipo del stock.';
+  if (f.items.length === 0 && f.articulos.length === 0) return 'Agregá al menos un equipo o un artículo.';
   if (f.items.some((i) => !i.precio.trim() || aNumero(i.precio) < 0)) return 'Poné el precio de cada equipo.';
+  if (f.articulos.some((a) => !(aNumero(a.cantidad) >= 1))) return 'Poné cuántos se lleva de cada artículo.';
+  if (f.articulos.some((a) => !a.precio.trim() || aNumero(a.precio) < 0))
+    return 'Poné el precio de cada artículo.';
   if (f.moneda !== 'USD' && !(aNumero(f.cotizacion) > 0)) {
     return 'Indicá cuánto vale el dólar hoy: el informe de ventas se calcula en US$.';
   }
@@ -341,7 +391,14 @@ export function validarVenta(f: VentaForm, hoyIso: string): string | null {
 export function formularioAVentaInput(f: VentaForm): Omit<CrearVentaInput, 'clienteId' | 'nuevoCliente'> {
   const t = totalesDelFormulario(f);
   return {
-    items: f.items.map((i) => ({ equipoStockId: i.equipo.id, precio: aNumero(i.precio) })),
+    items: [
+      ...f.items.map((i) => ({ equipoStockId: i.equipo.id, precio: aNumero(i.precio) })),
+      ...f.articulos.map((a) => ({
+        articuloId: a.articulo.id,
+        cantidad: Math.round(aNumero(a.cantidad)),
+        precio: aNumero(a.precio)
+      }))
+    ],
     moneda: f.moneda,
     cotizacion: f.moneda === 'USD' ? null : aNumero(f.cotizacion),
     descuento: descuentoDe(f),

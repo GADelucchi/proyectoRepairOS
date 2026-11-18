@@ -103,3 +103,9 @@ export async function anularCosto(id: number, costoId: number): Promise<EquipoSt
   const { data } = await apiClient.post<EquipoStock>(`/stock/${id}/costos/${costoId}/anular`);
   return data;
 }
+
+/** Pone un repuesto del inventario en el equipo: sale del stock y suma a su costo (solo admin). */
+export async function usarRepuesto(id: number, articuloId: number, cantidad: number): Promise<EquipoStock> {
+  const { data } = await apiClient.post<EquipoStock>(`/stock/${id}/repuestos`, { articuloId, cantidad });
+  return data;
+}

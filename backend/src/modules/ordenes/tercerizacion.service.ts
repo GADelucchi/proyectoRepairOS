@@ -11,18 +11,16 @@ import {
   Taller,
   Tercerizacion,
   TipoEquipoPersonalizado,
-  User,
-  UsuarioSucursal
+  User
 } from '../../models';
 import type { EstadoOrden } from '../../models/Orden';
 import { OPCIONES_CHEQUEO_POR_DEFECTO } from '../../models/OrdenChequeo';
 import { TERCERIZACION_ACTIVA } from '../../models/Tercerizacion';
-import { getEmailProvider } from '../../integrations/email';
 import { errores } from '../../shared/http/http-error';
+import { type Moneda, enDolares } from '../../shared/utils/dinero';
 import { monedaDePais, PAIS_POR_DEFECTO } from '../../shared/utils/paises';
-import { escaparHtml } from '../../shared/utils/texto';
 import { generarNumeroSerieUnico } from '../equipos/numero-serie';
-import { notificarEnLaApp } from '../notificaciones/notificaciones.service';
+import { avisarASucursal } from '../notificaciones/notificaciones.service';
 import { generarCodigoSeguimiento } from '../seguimiento/codigo';
 import { esTransicionValida, etiquetaEstado } from './estado-orden';
 import { generarNumeroOrden } from './numero-orden';
@@ -122,41 +120,6 @@ export async function buscarDestino(tallerId: number, documento: string) {
 }
 
 /** Admins del taller y usuarios con permiso en la sucursal: los que ven sus órdenes. */
-async function usuariosDeSucursal(tallerId: number, sucursalId: number): Promise<User[]> {
-  const conPermiso = await UsuarioSucursal.findAll({ where: { sucursalId }, attributes: ['usuarioId'] });
-  return User.findAll({
-    where: {
-      tallerId,
-      activo: true,
-      [Op.or]: [{ rol: 'admin' }, { id: conPermiso.map((p) => p.usuarioId) }]
-    },
-    attributes: ['id', 'email', 'rol']
-  });
-}
-
-async function avisarASucursal(
-  tallerId: number,
-  sucursalId: number,
-  aviso: { titulo: string; mensaje: string; link: string },
-  email?: { asunto: string; parrafos: string[] }
-): Promise<void> {
-  const usuarios = await usuariosDeSucursal(tallerId, sucursalId);
-  await notificarEnLaApp(
-    usuarios.map((u) => u.id),
-    { tipo: 'tercerizacion', ...aviso }
-  );
-
-  const proveedor = getEmailProvider();
-  if (!email || !proveedor.estaConfigurado()) return;
-  const html = email.parrafos.map((p) => `<p>${escaparHtml(p)}</p>`).join('');
-  // Por email, solo a los admins: los técnicos lo ven en la campanita.
-  await Promise.allSettled(
-    usuarios
-      .filter((u) => u.rol === 'admin')
-      .map((u) => proveedor.send({ to: u.email, subject: email.asunto, html }))
-  );
-}
-
 /**
  * El cliente del taller destino es el taller de origen, cargado como cliente
  * de gremio. Se reusa el de un envío anterior o el que tenga su CUIT.
@@ -451,6 +414,7 @@ export async function tercerizarOrden(
   if (destino && ordenDestino) {
     const que = [equipo.marca, equipo.modelo].filter(Boolean).join(' ') || 'un equipo';
     await avisarASucursal(
+      'tercerizacion',
       destino.taller.id,
       destino.sucursal.id,
       {
@@ -544,7 +508,7 @@ async function volvioDelExterno(orden: Orden, usuarioId: number, transaction: Tr
     { transaction }
   );
   return () =>
-    avisarASucursal(destino.tallerId, destino.sucursalId, {
+    avisarASucursal('tercerizacion', destino.tallerId, destino.sucursalId, {
       titulo: `${origen?.nombre ?? 'El taller'} canceló un envío`,
       mensaje: `La orden ${destino.numeroOrden} quedó cancelada: el equipo no te lo van a mandar.`,
       link: `/ordenes/${destino.id}`
@@ -581,7 +545,7 @@ async function respuestaDelDestino(orden: Orden, usuarioId: number, transaction:
 
   const origen = envio.orden;
   return () =>
-    avisarASucursal(origen.tallerId, origen.sucursalId, {
+    avisarASucursal('tercerizacion', origen.tallerId, origen.sucursalId, {
       titulo: rechazada
         ? `${nombre} no va a recibir el equipo de la orden ${origen.numeroOrden}`
         : `${nombre} recibió el equipo de la orden ${origen.numeroOrden}`,
@@ -600,7 +564,7 @@ async function respuestaDelDestino(orden: Orden, usuarioId: number, transaction:
  * Del otro taller no sale nada más que su nombre, el número y estado de la
  * orden, y el link de seguimiento que ya ve cualquiera que lo tenga.
  */
-export async function tercerizacionDeOrden(orden: Orden) {
+export async function tercerizacionDeOrden(orden: Orden, verCostos = false) {
   const [enviadas, recibida] = await Promise.all([
     Tercerizacion.findAll({
       where: { ordenId: orden.id },
@@ -647,7 +611,17 @@ export async function tercerizacionDeOrden(orden: Orden) {
       createdAt: t.createdAt,
       recibidaEn: t.recibidaEn,
       devueltaEn: t.devueltaEn,
-      canceladaEn: t.canceladaEn
+      canceladaEn: t.canceladaEn,
+      // Lo que cobró el externo: es costo, solo para un admin.
+      costo:
+        verCostos && t.costo != null
+          ? {
+              moneda: t.costoMoneda,
+              monto: Number(t.costo),
+              cotizacion: t.costoCotizacion == null ? null : Number(t.costoCotizacion),
+              usd: t.costoUsd == null ? null : Number(t.costoUsd)
+            }
+          : null
     })),
     tercerizacionRecibida: recibida
       ? {
@@ -678,4 +652,24 @@ export async function elegirTipoAlRecibir(orden: Orden, tipoEquipoPersonalizadoI
     { tipoEquipoPersonalizadoId: tipo.id },
     { where: { id: orden.equipoId, tallerId: orden.tallerId } }
   );
+}
+
+/**
+ * Lo que cobró el taller externo por el trabajo (solo admin). Se carga al
+ * mandarlo o cuando vuelve, y suma al costo de la orden en el informe.
+ */
+export async function guardarCostoExterno(
+  orden: Orden,
+  tercerizacionId: number,
+  datos: { moneda: Moneda; monto: number; cotizacion?: number | null }
+) {
+  const envio = await Tercerizacion.findOne({ where: { id: tercerizacionId, ordenId: orden.id } });
+  if (!envio) throw errores.noEncontrado('Tercerización');
+  const cotizacion = datos.moneda === 'USD' ? null : (datos.cotizacion ?? null);
+  await envio.update({
+    costoMoneda: datos.moneda,
+    costo: datos.monto.toFixed(2),
+    costoCotizacion: cotizacion?.toFixed(4) ?? null,
+    costoUsd: enDolares(datos.monto, datos.moneda, cotizacion).toFixed(2)
+  });
 }

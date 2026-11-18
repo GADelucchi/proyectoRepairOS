@@ -9,6 +9,7 @@ import {
   verificarStockQuery
 } from './stock.schemas';
 import * as stock from './stock.service';
+import { repuestoEnEquipoSchema } from '../inventario/inventario.schemas';
 
 function contexto(req: Request): stock.ContextoStock {
   return {
@@ -50,6 +51,15 @@ export async function anularCosto(req: Request, res: Response): Promise<void> {
   const equipo = await stock.equipoVisible(ctx, paramId(req));
   await stock.anularCosto(ctx, equipo, paramId(req, 'costoId'));
   res.json(await detalle(ctx, equipo.id));
+}
+
+/** Usa un repuesto del inventario en el equipo: sale del stock de la sucursal y suma a su costo (solo admin). */
+export async function usarRepuesto(req: Request, res: Response): Promise<void> {
+  const ctx = contexto(req);
+  const datos = repuestoEnEquipoSchema.parse(req.body);
+  const equipo = await stock.equipoVisible(ctx, paramId(req));
+  await stock.usarRepuesto(ctx, equipo, datos);
+  res.status(201).json(await detalle(ctx, equipo.id));
 }
 
 /** Si el IMEI o el serial ya están en el stock: el formulario avisa antes de guardar. */

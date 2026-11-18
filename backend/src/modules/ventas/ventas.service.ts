@@ -2,6 +2,7 @@ import { Op, Transaction, WhereOptions } from 'sequelize';
 import { z } from 'zod';
 import { env } from '../../config/env';
 import {
+  Articulo,
   Cliente,
   Contador,
   EquipoStock,
@@ -39,6 +40,7 @@ import {
   totalesDeVenta
 } from './calculos';
 import { revisarVencimientos } from './vencimientos.service';
+import { consumir, devolverArticulosDeVenta } from '../inventario/existencias.service';
 import {
   NuevaVenta,
   PagoVentaInput,
@@ -73,7 +75,14 @@ const INCLUDES_DETALLE = [
   { model: Sucursal, as: 'sucursal', attributes: ['id', 'nombre', 'direccion', 'telefono'] },
   { model: User, as: 'vendedor', attributes: USUARIO_RESUMIDO },
   { model: User, as: 'canceladaPor', attributes: USUARIO_RESUMIDO },
-  { model: VentaItem, as: 'items', include: [{ model: EquipoStock, as: 'equipo' }] },
+  {
+    model: VentaItem,
+    as: 'items',
+    include: [
+      { model: EquipoStock, as: 'equipo' },
+      { model: Articulo, as: 'articulo', attributes: ['id', 'tipo', 'codigo', 'nombre'] }
+    ]
+  },
   { model: VentaPartePago, as: 'partesPago' },
   { model: VentaPago, as: 'pagos', include: [{ model: User, as: 'usuario', attributes: USUARIO_RESUMIDO }] }
 ];
@@ -209,7 +218,8 @@ async function cambiarEstadoEquipos(
 ) {
   const ids = (
     await VentaItem.findAll({ where: { ventaId: venta.id }, attributes: ['equipoStockId'], transaction })
-  ).map((i) => i.equipoStockId);
+  ).flatMap((i) => (i.equipoStockId ? [i.equipoStockId] : []));
+  if (ids.length === 0) return;
   await EquipoStock.update(
     { estado },
     { where: { id: ids, ...(desde ? { estado: desde } : {}) }, transaction }
@@ -300,7 +310,7 @@ export async function crearVenta(ctx: ContextoVenta, datos: NuevaVenta) {
   await revisarVencimientos(ctx.tallerId);
 
   const totales = totalesDeVenta(
-    datos.items.map((i) => i.precio),
+    datos.items.map((i) => i.precio * ('cantidad' in i ? i.cantidad : 1)),
     datos.descuento,
     datos.partesPago.map((p) => p.monto)
   );
@@ -325,11 +335,8 @@ export async function crearVenta(ctx: ContextoVenta, datos: NuevaVenta) {
   const estados = ESTADO_INICIAL[datos.modo];
   const id = await sequelize.transaction(async (transaction) => {
     const clienteId = await resolverCliente(ctx, datos, transaction);
-    await equiposParaVender(
-      ctx,
-      datos.items.map((i) => i.equipoStockId),
-      transaction
-    );
+    const equipoIds = datos.items.flatMap((i) => ('equipoStockId' in i ? [i.equipoStockId] : []));
+    if (equipoIds.length) await equiposParaVender(ctx, equipoIds, transaction);
     // Un equipo que deja el cliente y ya está en el stock es un error de carga: mejor saberlo ahora.
     for (const parte of datos.partesPago) await exigirSinRepetidos(ctx.tallerId, parte, { transaction });
 
@@ -358,14 +365,41 @@ export async function crearVenta(ctx: ContextoVenta, datos: NuevaVenta) {
       { transaction }
     );
 
-    await VentaItem.bulkCreate(
-      datos.items.map((i) => ({
-        ventaId: venta.id,
-        equipoStockId: i.equipoStockId,
-        precio: i.precio.toFixed(2)
-      })),
-      { transaction }
-    );
+    for (const item of datos.items) {
+      if ('equipoStockId' in item) {
+        await VentaItem.create(
+          { ventaId: venta.id, equipoStockId: item.equipoStockId, precio: item.precio.toFixed(2) },
+          { transaction }
+        );
+        continue;
+      }
+      // Un accesorio o un repuesto: las unidades salen del stock ya, también en una reserva o una seña.
+      const articulo = await Articulo.findOne({
+        where: { id: item.articuloId, tallerId: ctx.tallerId },
+        transaction
+      });
+      if (!articulo) throw errores.noEncontrado('Artículo');
+      const renglon = await VentaItem.create(
+        {
+          ventaId: venta.id,
+          articuloId: articulo.id,
+          cantidad: item.cantidad,
+          precio: item.precio.toFixed(2)
+        },
+        { transaction }
+      );
+      await consumir(
+        ctx,
+        {
+          articulo,
+          sucursalId: ctx.sucursalId,
+          cantidad: item.cantidad,
+          destino: { origen: 'venta', ventaId: venta.id, ventaItemId: renglon.id },
+          nota: etiquetaVenta(numero)
+        },
+        transaction
+      );
+    }
     await VentaPartePago.bulkCreate(
       datos.partesPago.map((p: PartePagoInput) => ({ ...p, ventaId: venta.id, monto: p.monto.toFixed(2) })),
       { transaction }
@@ -462,6 +496,7 @@ async function cerrarVenta(
   }
   const apartados: EstadoStock[] = estado === 'anulada' ? ['vendido'] : ['reservado', 'senado'];
   await cambiarEstadoEquipos(venta, 'disponible', transaction, apartados);
+  await devolverArticulosDeVenta(ctx, venta.id, `${etiquetaVenta(venta.numero)} ${estado}`, transaction);
   await venta.update(
     { estado, canceladaEn: new Date(), canceladaPorId: ctx.usuarioId, motivoCancelacion: motivo },
     { transaction }
@@ -666,8 +701,9 @@ export async function listarVentas(ctx: ContextoVenta, filtros: z.infer<typeof l
       {
         model: VentaItem,
         as: 'items',
-        attributes: ['id', 'precio', 'equipoStockId'],
+        attributes: ['id', 'precio', 'equipoStockId', 'articuloId', 'cantidad'],
         include: [
+          { model: Articulo, as: 'articulo', attributes: ['id', 'codigo', 'nombre', 'tipo'] },
           {
             model: EquipoStock,
             as: 'equipo',
@@ -711,7 +747,10 @@ export async function listarVentas(ctx: ContextoVenta, filtros: z.infer<typeof l
       senadaDesde: Number.isFinite(primeraSena) ? new Date(primeraSena) : null,
       createdAt: venta.createdAt,
       completadaEn: venta.completadaEn,
-      equipos: (venta.items ?? []).map((i) => i.equipo)
+      equipos: (venta.items ?? []).flatMap((i) => (i.equipo ? [i.equipo] : [])),
+      articulos: (venta.items ?? []).flatMap((i) =>
+        i.articulo ? [{ ...i.articulo.get({ plain: true }), cantidad: i.cantidad }] : []
+      )
     };
   });
 }

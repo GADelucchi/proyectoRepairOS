@@ -154,7 +154,9 @@ export function VentaDetallePage() {
           </Card>
 
           <Card>
-            <Card.Header>{v.items.length > 1 ? 'Equipos que se lleva' : 'Equipo que se lleva'}</Card.Header>
+            <Card.Header>
+              {v.items.length === 1 && v.items[0].equipo ? 'Equipo que se lleva' : 'Lo que se lleva'}
+            </Card.Header>
             <Card.Body className="p-0">
               <Table className="mb-0 align-middle" responsive>
                 <tbody>
@@ -176,9 +178,23 @@ export function VentaDetallePage() {
                             </div>
                           </>
                         )}
+                        {item.articulo && (
+                          <>
+                            <div className="fw-semibold">
+                              {item.cantidad > 1 && `${item.cantidad} × `}
+                              <Link to={`/inventario/articulos/${item.articulo.id}`}>
+                                {item.articulo.nombre}
+                              </Link>
+                            </div>
+                            <div className="small text-muted font-mono">{item.articulo.codigo}</div>
+                          </>
+                        )}
                       </td>
                       <td className="text-end text-nowrap">
-                        {plata(item.precio)}
+                        {plata(aNumero(item.precio) * item.cantidad)}
+                        {item.cantidad > 1 && (
+                          <div className="small text-muted">{plata(item.precio)} c/u</div>
+                        )}
                         {item.equipo?.costoUsd != null && (
                           <div className="small text-muted">
                             Costo {formatearMonto(item.equipo.costoUsd, 'USD')}

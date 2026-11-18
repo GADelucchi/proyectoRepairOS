@@ -1,9 +1,13 @@
 import { FormEvent, useState } from 'react';
 import { Button, Card, Col, Form, InputGroup, Row, Table } from 'react-bootstrap';
+import * as inventarioApi from '@/features/inventario/api';
 import { AlertaError } from '@/shared/components/AlertaError';
+import { BuscadorConSugerencias } from '@/shared/components/BuscadorConSugerencias';
 import { SelectorMoneda } from '@/shared/components/SelectorMoneda';
 import { useAccion } from '@/shared/hooks/useAccion';
-import type { CostoReparacion, EquipoStock, Moneda } from '@/shared/types';
+import { useConsulta } from '@/shared/hooks/useConsulta';
+import { useDebounce } from '@/shared/hooks/useDebounce';
+import type { Articulo, CostoReparacion, EquipoStock, Moneda } from '@/shared/types';
 import { aNumero, formatearMonto } from '@/shared/utils/dinero';
 import { convertirDesdeBackend } from '@/shared/utils/fechas';
 import { nombreCompleto } from '@/shared/utils/texto';
@@ -171,7 +175,7 @@ export function CostosReparacion({ equipo: inicial }: CostosReparacionProps) {
                 </Button>
               </Col>
             </Row>
-            <Form.Text className="text-muted">
+            <Form.Text className="text-muted d-block">
               {montoUsd != null && montoUsd > 0
                 ? `Suma ${usd(montoUsd)} al costo del equipo.`
                 : 'Suma al costo del equipo y baja la ganancia cuando se venda.'}
@@ -179,7 +183,89 @@ export function CostosReparacion({ equipo: inicial }: CostosReparacionProps) {
             </Form.Text>
           </fieldset>
         </Form>
+
+        {equipo.estado !== 'baja' && (
+          <RepuestoDelInventario equipo={equipo} onUsado={setEquipo} onError={setError} />
+        )}
       </Card.Body>
     </Card>
+  );
+}
+
+/**
+ * Un repuesto del inventario puesto en el equipo: sale del stock de la
+ * sucursal del equipo (de la entrada más vieja) y su costo se suma solo.
+ * Anular ese costo devuelve el repuesto al stock.
+ */
+function RepuestoDelInventario({
+  equipo,
+  onUsado,
+  onError
+}: {
+  equipo: EquipoStock;
+  onUsado: (equipo: EquipoStock) => void;
+  onError: (mensaje: string) => void;
+}) {
+  const [texto, setTexto] = useState('');
+  const [cantidad, setCantidad] = useState('1');
+  const buscado = useDebounce(texto);
+  const { enCurso, ejecutar } = useAccion(onError);
+  const { datos } = useConsulta(
+    () =>
+      buscado.trim().length < 2
+        ? Promise.resolve(null)
+        : inventarioApi.listarArticulos({ tipo: 'productos', search: buscado.trim() }),
+    [buscado],
+    'No se pudo buscar en el inventario'
+  );
+  const sugerencias = (datos?.articulos ?? []).filter((a) => (a.cantidad ?? 0) > 0);
+
+  async function usar(articulo: Articulo) {
+    const ok = await ejecutar(
+      async () =>
+        onUsado(await stockApi.usarRepuesto(equipo.id, articulo.id, Math.max(1, Number(cantidad) || 1))),
+      'No se pudo usar el repuesto'
+    );
+    if (ok) {
+      setTexto('');
+      setCantidad('1');
+    }
+  }
+
+  return (
+    <div className="border-top mt-3 pt-3">
+      <div className="small fw-semibold mb-2">O un repuesto del inventario</div>
+      <Row className="g-2">
+        <Col>
+          <BuscadorConSugerencias
+            texto={texto}
+            onTextoChange={setTexto}
+            sugerencias={sugerencias}
+            claveDe={(a) => a.id}
+            mostrar={(a) => (
+              <>
+                {a.nombre}
+                <span className="small text-muted"> · hay {a.cantidad}</span>
+              </>
+            )}
+            onElegir={usar}
+            disabled={enCurso}
+            placeholder="Buscar el repuesto que se le puso"
+          />
+        </Col>
+        <Col xs={3} sm={2}>
+          <Form.Control
+            type="number"
+            min={1}
+            aria-label="Cantidad"
+            value={cantidad}
+            onChange={(e) => setCantidad(e.target.value)}
+          />
+        </Col>
+      </Row>
+      <Form.Text className="text-muted">
+        Sale del stock de la sucursal del equipo, al costo de su entrada.
+      </Form.Text>
+    </div>
   );
 }

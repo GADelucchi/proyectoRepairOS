@@ -112,7 +112,8 @@ export interface Plan {
   precioMensual?: number | null;
 }
 
-export type TipoNotificacion = 'taller_nuevo' | 'usuario_nuevo' | 'autorizacion' | 'venta' | 'tercerizacion';
+export type TipoNotificacion =
+  'taller_nuevo' | 'usuario_nuevo' | 'autorizacion' | 'venta' | 'tercerizacion' | 'inventario';
 
 /** Aviso de la campanita. */
 export interface Notificacion {
@@ -299,6 +300,14 @@ export interface Orden {
   tercerizaciones?: Tercerizacion[];
   /** En la orden que se le armó a este taller al tercerizarle un equipo: quién se lo mandó. */
   tercerizacionRecibida?: TercerizacionRecibida | null;
+  /** 1 US$ en la moneda del cobro, si se cargó al entregar. */
+  cotizacionCobro?: Monto | null;
+  /** Servicios y repuestos del inventario puestos en la orden. */
+  inventario?: InventarioDeOrden;
+  /** Costo y ganancia (solo para un admin; null para el resto). */
+  costos?: CostosDeOrden | null;
+  /** La última cotización que usó el taller: para proponerla al entregar. */
+  cotizacionSugerida?: number | null;
 }
 
 export type EstadoTercerizacion = 'enviada' | 'recibida' | 'devuelta' | 'cancelada';
@@ -326,6 +335,8 @@ export interface Tercerizacion {
   recibidaEn?: string | null;
   devueltaEn?: string | null;
   canceladaEn?: string | null;
+  /** Lo que cobró el externo (solo para un admin). */
+  costo?: { moneda: Moneda; monto: number; cotizacion: number | null; usd: number | null } | null;
 }
 
 export interface TercerizacionRecibida {
@@ -460,8 +471,8 @@ export interface MovimientoCaja {
 
 export type CondicionEquipo = 'nuevo' | 'usado';
 
-/** Disponible se puede vender; reservado es sin pago y señado con pago parcial. */
-export type EstadoStock = 'disponible' | 'reservado' | 'senado' | 'vendido' | 'baja';
+/** Disponible se puede vender; reservado es sin pago y señado con pago parcial. En camino: va en un pase a otra sucursal. */
+export type EstadoStock = 'disponible' | 'en_camino' | 'reservado' | 'senado' | 'vendido' | 'baja';
 
 /** Un costo agregado a un equipo del stock: "Batería US$ 35". Anulado, queda como registro y no suma. */
 export interface CostoReparacion {
@@ -557,10 +568,13 @@ export type TipoPagoVenta = 'sena' | 'pago' | 'devolucion';
 
 export interface VentaItem {
   id: number;
-  equipoStockId: number;
-  /** En la moneda de la venta. */
+  equipoStockId: number | null;
+  articuloId: number | null;
+  cantidad: number;
+  /** Por unidad, en la moneda de la venta. */
   precio: Monto;
   equipo: EquipoStock | null;
+  articulo: ArticuloResumen | null;
 }
 
 /** Un equipo que dejó el cliente como parte de pago. */
@@ -651,6 +665,8 @@ export interface VentaEnLista {
     EquipoStock,
     'id' | 'numero' | 'marca' | 'modelo' | 'color' | 'almacenamientoGb' | 'condicion' | 'bateria'
   >[];
+  /** Accesorios y repuestos sueltos, con cuántos se llevó. */
+  articulos: (ArticuloResumen & { cantidad: number })[];
 }
 
 export interface InformeVentas {
@@ -677,9 +693,257 @@ export interface InformeVentas {
     total: number;
     cotizacion: number | null;
     equipos: { numero: number | null; marca: string; modelo: string; almacenamientoGb: number | null }[];
+    articulos: { codigo: string; nombre: string; cantidad: number }[];
     brutoUsd: number;
     costoUsd: number;
     gananciaUsd: number;
     partePagoUsd: number;
+  }[];
+}
+
+// ── Inventario ───────────────────────────────────────────────────────────────
+
+/** Repuesto y accesorio son productos (tienen stock); el servicio es lo que se cobra y puede llevar repuestos. */
+export type TipoArticulo = 'repuesto' | 'accesorio' | 'servicio';
+
+export interface ArticuloResumen {
+  id: number;
+  tipo: TipoArticulo;
+  codigo: string;
+  nombre: string;
+}
+
+export interface PrecioArticulo {
+  posicion: 1 | 2 | 3;
+  /** El nombre que le puso el taller: Lista, Efectivo, Tarjeta… */
+  nombre: string;
+  monto: number | null;
+  moneda: Moneda | null;
+}
+
+export interface CostoAgrupado {
+  moneda: Moneda;
+  costo: number;
+  costoUsd: number;
+  cantidad: number;
+}
+
+export interface RepuestoDeServicio {
+  repuesto: ArticuloResumen;
+  cantidad: number;
+  /** Lo que costaría usarlo hoy, de lo más viejo (solo admin). */
+  costoHoyUsd: number | null;
+}
+
+/** Un artículo en el listado. Los costos solo le llegan a un admin. */
+export interface Articulo extends ArticuloResumen {
+  codigoBarras: string | null;
+  categoria: { id: number; nombre: string } | null;
+  stockMinimo: number;
+  activo: boolean;
+  precios: PrecioArticulo[];
+  /** Lo que hay en la sucursal mirada. null para un servicio. */
+  cantidad: number | null;
+  bajoMinimo: boolean;
+  costos: CostoAgrupado[] | null;
+  costoStockUsd: number | null;
+  ultimoCosto: { moneda: Moneda; costo: number; costoUsd: number } | null;
+  /** Solo para un servicio. */
+  repuestos?: RepuestoDeServicio[];
+  costoHoyUsd?: number | null;
+}
+
+export interface EntradaInventario {
+  id: number;
+  numero: number;
+  /** E-0041 */
+  etiqueta: string;
+  origen: 'compra' | 'pase' | 'ajuste';
+  /** YYYY-MM-DD */
+  fecha: string;
+  cantidad: number;
+  disponible: number;
+  proveedor: string | null;
+  nota: string | null;
+  moneda: Moneda | null;
+  costo: number | null;
+  cotizacion: number | null;
+  costoUsd: number | null;
+}
+
+export type TipoMovimientoInventario =
+  | 'entrada'
+  | 'orden'
+  | 'orden_devolucion'
+  | 'perdida'
+  | 'venta'
+  | 'venta_devolucion'
+  | 'equipo_stock'
+  | 'equipo_stock_devolucion'
+  | 'pase_salida'
+  | 'pase_entrada'
+  | 'pase_cancelado'
+  | 'baja'
+  | 'ajuste';
+
+export interface MovimientoInventario {
+  id: number;
+  tipo: TipoMovimientoInventario;
+  cantidad: number;
+  fecha: string;
+  nota: string | null;
+  usuario: UsuarioResumen | null;
+  entrada: { id: number; etiqueta: string; costoUsd: number | null } | null;
+  orden: { id: number; numero: string } | null;
+  venta: { id: number; etiqueta: string } | null;
+  pase: { id: number; etiqueta: string } | null;
+  equipoStock: { id: number; numero: number; marca: string; modelo: string } | null;
+}
+
+/** El artículo con sus entradas, movimientos y lo que hay en cada sucursal. */
+export interface ArticuloDetalle extends Articulo {
+  sucursalId: number;
+  /** Los nombres de las tres posiciones de precio (null: el taller no la usa). */
+  precioPosiciones: (string | null)[];
+  /** Los montos guardados de las tres posiciones, para el formulario. */
+  preciosGuardados: ({ monto: number; moneda: Moneda } | null)[];
+  porSucursal: { id: number; nombre: string; cantidad: number }[];
+  entradas: EntradaInventario[];
+  agotadas: EntradaInventario[];
+  movimientos: MovimientoInventario[];
+  usadoEnServicios: { id: number; codigo: string; nombre: string; cantidad: number }[];
+}
+
+export interface ConfigInventario {
+  precios: (string | null)[];
+  stockMinimoPorDefecto: number;
+  avisoApp: boolean;
+  avisoEmail: boolean;
+  prefijos: Record<TipoArticulo, string>;
+}
+
+export interface CategoriaInventario {
+  id: number;
+  grupo: TipoArticulo;
+  nombre: string;
+  /** Cuántos artículos la usan. */
+  articulos: number;
+}
+
+export type EstadoConsumo = 'usado' | 'devuelto' | 'perdido';
+
+/** Unidades de un repuesto puestas en una orden, de una entrada. */
+export interface RepuestoEnOrden {
+  id: number;
+  articulo: ArticuloResumen;
+  cantidad: number;
+  estado: EstadoConsumo;
+  motivo: string | null;
+  ordenServicioId: number | null;
+  usuario: UsuarioResumen | null;
+  createdAt: string;
+  entrada: {
+    id: number;
+    etiqueta: string;
+    fecha: string;
+    moneda: Moneda | null;
+    costo: number | null;
+    cotizacion: number | null;
+  } | null;
+  costoUsd: number | null;
+}
+
+export interface InventarioDeOrden {
+  servicios: {
+    id: number;
+    servicioId: number;
+    nombre: string;
+    usuario: UsuarioResumen | null;
+    createdAt: string;
+    repuestos: RepuestoEnOrden[];
+  }[];
+  repuestos: RepuestoEnOrden[];
+}
+
+export interface CostosDeOrden {
+  /** Hasta entregar se compara contra el presupuesto; después, contra lo cobrado. */
+  base: 'presupuesto' | 'cobrado';
+  monto: number | null;
+  moneda: Moneda;
+  cotizacion: number | null;
+  /** La cotización es la última que usó el taller, no la del cobro. */
+  cotizacionEstimada: boolean;
+  faltaCotizacion: boolean;
+  baseUsd: number | null;
+  repuestosUsd: number;
+  perdidosUsd: number;
+  externoUsd: number;
+  gananciaUsd: number | null;
+  margen: number | null;
+}
+
+export type EstadoPase = 'en_camino' | 'recibido' | 'cancelado';
+
+export interface Pase {
+  id: number;
+  numero: number;
+  /** P-0005 */
+  etiqueta: string;
+  estado: EstadoPase;
+  nota: string | null;
+  sucursalOrigen: { id: number; nombre: string };
+  sucursalDestino: { id: number; nombre: string };
+  enviadoPor: UsuarioResumen | null;
+  recibidoPor: UsuarioResumen | null;
+  canceladoPor: UsuarioResumen | null;
+  createdAt: string;
+  recibidoEn: string | null;
+  canceladoEn: string | null;
+  items: {
+    id: number;
+    cantidad: number;
+    articulo: ArticuloResumen | null;
+    entrada: { id: number; etiqueta: string; costoUsd: number | null } | null;
+    equipo: {
+      id: number;
+      numero: number;
+      etiqueta: string;
+      marca: string;
+      modelo: string;
+      color: string | null;
+      almacenamientoGb: number | null;
+    } | null;
+  }[];
+}
+
+export interface InformeReparaciones {
+  rango: { desde: string; hasta: string };
+  alcance: 'sucursal' | 'taller';
+  resumen: {
+    entregadas: number;
+    cobradoUsd: number;
+    repuestosUsd: number;
+    perdidosUsd: number;
+    externoUsd: number;
+    gananciaUsd: number;
+    margen: number | null;
+    sinCotizacion: number;
+  };
+  ordenes: {
+    id: number;
+    numeroOrden: string;
+    fechaEntrega: string;
+    cliente: string;
+    equipo: string | null;
+    trabajo: string | null;
+    moneda: Moneda;
+    cobrado: number;
+    cotizacion: number | null;
+    cobradoUsd: number | null;
+    repuestosUsd: number;
+    perdidosUsd: number;
+    externoUsd: number;
+    gananciaUsd: number | null;
+    margen: number | null;
   }[];
 }

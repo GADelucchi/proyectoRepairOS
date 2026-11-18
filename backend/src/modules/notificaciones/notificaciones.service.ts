@@ -1,4 +1,5 @@
-import { Cliente, Notificacion, Orden, User } from '../../models';
+import { Op } from 'sequelize';
+import { Cliente, Notificacion, Orden, User, UsuarioSucursal } from '../../models';
 import type { TipoNotificacion } from '../../models/Notificacion';
 import { getEmailProvider } from '../../integrations/email';
 import { getWhatsAppProvider } from '../../integrations/whatsapp';
@@ -123,6 +124,49 @@ export async function notificarEnLaApp(usuarioIds: number[], datos: DatosNotific
   } catch (err) {
     console.error('[notificacion] app:', err);
   }
+}
+
+/** Los usuarios activos que trabajan en la sucursal: los que tienen permiso en ella y los admins. */
+export async function usuariosDeSucursal(tallerId: number, sucursalId: number): Promise<User[]> {
+  const conPermiso = await UsuarioSucursal.findAll({ where: { sucursalId }, attributes: ['usuarioId'] });
+  return User.findAll({
+    where: {
+      tallerId,
+      activo: true,
+      [Op.or]: [{ rol: 'admin' }, { id: conPermiso.map((p) => p.usuarioId) }]
+    },
+    attributes: ['id', 'email', 'rol']
+  });
+}
+
+/**
+ * Aviso a la gente de una sucursal: en la campanita a todos, y por correo (si
+ * se pasa y hay email configurado) solo a los admins. Best-effort: lo que lo
+ * originó ya quedó hecho.
+ */
+export async function avisarASucursal(
+  tipo: TipoNotificacion,
+  tallerId: number,
+  sucursalId: number,
+  aviso: { titulo: string; mensaje: string; link: string } | null,
+  email?: { asunto: string; parrafos: string[] }
+): Promise<void> {
+  const usuarios = await usuariosDeSucursal(tallerId, sucursalId);
+  if (aviso) {
+    await notificarEnLaApp(
+      usuarios.map((u) => u.id),
+      { tipo, ...aviso }
+    );
+  }
+
+  const proveedor = getEmailProvider();
+  if (!email || !proveedor.estaConfigurado()) return;
+  const html = email.parrafos.map((p) => `<p>${escaparHtml(p)}</p>`).join('');
+  await Promise.allSettled(
+    usuarios
+      .filter((u) => u.rol === 'admin')
+      .map((u) => proveedor.send({ to: u.email, subject: email.asunto, html }))
+  );
 }
 
 /**

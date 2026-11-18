@@ -41,6 +41,10 @@ import {
 import { saldoDeCliente, saldosDeCliente } from '../cuentas/cuenta-corriente.service';
 import { notificarCambioEstadoOrden, ResultadoNotificacion } from '../notificaciones/notificaciones.service';
 import { envioActivo, sincronizarTercerizacion } from './tercerizacion.service';
+import { resolverRepuestos } from '../inventario/orden-repuestos.service';
+
+/** Al pasar a estos estados, los repuestos que la orden tenía puestos vuelven al stock o se perdieron. */
+export const ESTADOS_QUE_LIBERAN_REPUESTOS: EstadoOrden[] = ['cancelado', 'no_reparado'];
 import type { z } from 'zod';
 
 const USUARIO_RESUMIDO = ['id', 'nombre', 'apellido'];
@@ -372,7 +376,7 @@ export async function avisarSiCambio(
 /** Cambio de estado manual. La orden tiene que venir con su cliente (`CON_CLIENTE`) para avisarle. */
 export async function cambiarEstado(
   orden: Orden,
-  { estado: nuevoEstado, comentario, notaInterna, forzar }: z.infer<typeof cambiarEstadoSchema>,
+  { estado: nuevoEstado, comentario, notaInterna, forzar, repuestos }: z.infer<typeof cambiarEstadoSchema>,
   quien: { usuarioId: number; esAdmin: boolean }
 ) {
   const estadoAnterior = orden.estado;
@@ -418,6 +422,20 @@ export async function cambiarEstado(
   }
 
   const despues = await sequelize.transaction(async (transaction) => {
+    // Sin reparar o cancelada: cada repuesto que tenía puesto vuelve al stock o se perdió.
+    if (ESTADOS_QUE_LIBERAN_REPUESTOS.includes(nuevoEstado)) {
+      await resolverRepuestos(
+        {
+          tallerId: orden.tallerId,
+          sucursalId: orden.sucursalId,
+          usuarioId: quien.usuarioId,
+          esAdmin: quien.esAdmin
+        },
+        orden,
+        repuestos,
+        transaction
+      );
+    }
     await orden.update({ estado: nuevoEstado }, { transaction });
     await registrarCambioDeEstado(
       {

@@ -19,3 +19,5 @@ stockRoutes.post('/:id/baja', requireRole('admin'), stock.darDeBajaEquipoStock);
 // Lo que se le agrega después de comprarlo (reparaciones, repuestos): es costo, así que es de admin.
 stockRoutes.post('/:id/costos', requireRole('admin'), stock.agregarCosto);
 stockRoutes.post('/:id/costos/:costoId/anular', requireRole('admin'), stock.anularCosto);
+// Un repuesto del inventario puesto en el equipo: sale del stock y suma a su costo.
+stockRoutes.post('/:id/repuestos', requireRole('admin'), stock.usarRepuesto);

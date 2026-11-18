@@ -1,5 +1,6 @@
 import {
   Banknote,
+  Boxes,
   Building2,
   ChartColumn,
   ClipboardList,
@@ -41,6 +42,13 @@ export const ITEMS_MENU: ItemMenu[] = [
     tono: 'orange',
     tour: 'nav-stock',
     title: 'Stock de equipos para la venta'
+  },
+  {
+    to: '/inventario',
+    etiqueta: 'Inventario',
+    icono: Boxes,
+    tono: 'cyan',
+    title: 'Repuestos, accesorios y servicios'
   },
   {
     to: '/ventas',

@@ -15,6 +15,10 @@ import {
 import { clienteSchema } from '../clientes/clientes.schemas';
 import { datosEquipoSchema } from '../equipos/equipos.schemas';
 import { opcionChequeoSchema } from '../configuracion/configuracion.schemas';
+import { destinoRepuestosSchema } from '../inventario/inventario.schemas';
+
+/** 1 US$ en la moneda del cobro: el informe de reparaciones es en dólares. */
+const cotizacionCobro = z.number().positive().max(99_999_999).optional().nullable();
 
 const chequeoSchema = z.object({
   item: z.string().trim().min(1).max(150),
@@ -94,7 +98,9 @@ export const cambiarEstadoSchema = z.object({
    * Solo admin: saltea la validación de transiciones cuando la realidad del
    * taller no entra en el diagrama. Exige comentario para dejar el motivo.
    */
-  forzar: z.boolean().optional()
+  forzar: z.boolean().optional(),
+  /** Al cancelar o dejar sin reparar: qué pasa con cada repuesto que tenía puesto. */
+  repuestos: destinoRepuestosSchema.optional()
 });
 
 export const presupuestoSchema = z.object({
@@ -117,6 +123,7 @@ export const entregaSchema = z
     montoAbonado: monto,
     moneda: moneda.optional(),
     medioPago: z.enum(MEDIOS_PAGO).optional().nullable(),
+    cotizacion: cotizacionCobro,
     comentario: z.string().trim().max(255).optional().nullable(),
     notaInterna,
     /** Solo admin: entregar desde un estado fuera del circuito. */
@@ -134,6 +141,7 @@ export const solicitarFiadoSchema = z
     montoAbonado: monto,
     moneda: moneda.optional(),
     medioPago: z.enum(MEDIOS_PAGO).optional().nullable(),
+    cotizacion: cotizacionCobro,
     motivo: z.string().trim().min(1, 'Hay que explicar el motivo del pedido').max(500)
   })
   .refine((d) => d.montoAbonado <= d.montoTotal, {

@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import { informeReparaciones } from '../inventario/informe-reparaciones.service';
 import { esAdmin, sucursalIdDe, tallerIdDe } from '../../shared/http/request-context';
 import {
   armarFiltroCaja,
@@ -24,4 +25,9 @@ export async function caja(req: Request, res: Response): Promise<void> {
 /** Los cobros del período, uno por uno, para cuadrar la caja contra el cajón. */
 export async function movimientosDeCaja(req: Request, res: Response): Promise<void> {
   res.json(await cobrosDeCaja(filtroDeCaja(req)));
+}
+
+/** Cobrado, repuestos, externos y ganancia de las órdenes entregadas en el período, en US$. */
+export async function informeDeReparaciones(req: Request, res: Response): Promise<void> {
+  res.json(await informeReparaciones(filtroDeCaja(req)));
 }

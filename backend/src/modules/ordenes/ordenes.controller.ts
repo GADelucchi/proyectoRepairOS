@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import type { Orden } from '../../models';
 import { errores } from '../../shared/http/http-error';
 import { esAdmin, paramId, sucursalIdDe, tallerIdDe, usuarioDe } from '../../shared/http/request-context';
 import { decryptBuffer } from '../../shared/security/encryption';
@@ -22,6 +23,16 @@ import {
 } from './ordenes.schemas';
 import * as ordenes from './ordenes.service';
 import * as tercerizacion from './tercerizacion.service';
+import { ultimaCotizacion } from '../inventario/articulos.service';
+import { contextoInventario } from '../inventario/inventario.controller';
+import {
+  agregarAOrdenSchema,
+  cambiarEntradaSchema,
+  costoExternoSchema,
+  cotizacionOrdenSchema,
+  perdidoSchema
+} from '../inventario/inventario.schemas';
+import * as repuestos from '../inventario/orden-repuestos.service';
 
 /** La orden de la URL, dentro de la sucursal activa. */
 const ordenDe = (req: Request, opciones?: Parameters<typeof ordenes.buscarOrdenDeSucursal>[2]) =>
@@ -38,11 +49,87 @@ export async function listarOrdenes(req: Request, res: Response): Promise<void> 
  */
 export async function obtenerOrden(req: Request, res: Response): Promise<void> {
   const orden = await ordenDe(req, { include: ordenes.INCLUDES_DETALLE });
-  const [conSaldo, tercerizada] = await Promise.all([
+  const [conSaldo, tercerizada, inventario, cotizacionSugerida] = await Promise.all([
     ordenes.conSaldoCliente(orden),
-    tercerizacion.tercerizacionDeOrden(orden)
+    tercerizacion.tercerizacionDeOrden(orden, esAdmin(req)),
+    inventarioDeOrden(orden, esAdmin(req)),
+    ultimaCotizacion(orden.tallerId, orden.moneda === 'USD' ? 'ARS' : orden.moneda)
   ]);
-  res.json({ ...conSaldo, ...tercerizada });
+  res.json({ ...conSaldo, ...tercerizada, ...inventario, cotizacionSugerida });
+}
+
+/** Los servicios y repuestos de la orden y, para un admin, su costo y ganancia. */
+async function inventarioDeOrden(orden: Orden, verCostos: boolean) {
+  const [puestos, costos] = await Promise.all([
+    repuestos.repuestosDeOrden(orden, verCostos),
+    verCostos ? repuestos.costosDeOrden(orden) : Promise.resolve(null)
+  ]);
+  return { inventario: puestos, costos };
+}
+
+/** Agrega un servicio (con sus repuestos) o un repuesto suelto: salen del stock de la sucursal. */
+export async function agregarRepuesto(req: Request, res: Response): Promise<void> {
+  const orden = await ordenDe(req);
+  ordenes.exigirEditable(orden, esAdmin(req));
+  await repuestos.agregarAOrden(contextoInventario(req), orden, agregarAOrdenSchema.parse(req.body));
+  res.status(201).json(await inventarioDeOrden(orden, esAdmin(req)));
+}
+
+export async function quitarRepuesto(req: Request, res: Response): Promise<void> {
+  const orden = await ordenDe(req);
+  ordenes.exigirEditable(orden, esAdmin(req));
+  await repuestos.quitarRepuesto(contextoInventario(req), orden, paramId(req, 'consumoId'));
+  res.json(await inventarioDeOrden(orden, esAdmin(req)));
+}
+
+export async function quitarServicio(req: Request, res: Response): Promise<void> {
+  const orden = await ordenDe(req);
+  ordenes.exigirEditable(orden, esAdmin(req));
+  await repuestos.quitarServicio(contextoInventario(req), orden, paramId(req, 'servicioId'));
+  res.json(await inventarioDeOrden(orden, esAdmin(req)));
+}
+
+/** Se rompió al colocarlo: queda como costo de la orden y no vuelve al stock. */
+export async function repuestoPerdido(req: Request, res: Response): Promise<void> {
+  const orden = await ordenDe(req);
+  ordenes.exigirEditable(orden, esAdmin(req));
+  const { motivo } = perdidoSchema.parse(req.body);
+  await repuestos.repuestoPerdido(contextoInventario(req), orden, paramId(req, 'consumoId'), motivo);
+  res.json(await inventarioDeOrden(orden, esAdmin(req)));
+}
+
+export async function cambiarEntradaRepuesto(req: Request, res: Response): Promise<void> {
+  const orden = await ordenDe(req);
+  ordenes.exigirEditable(orden, esAdmin(req));
+  const { entradaId } = cambiarEntradaSchema.parse(req.body);
+  await repuestos.cambiarEntrada(contextoInventario(req), orden, paramId(req, 'consumoId'), entradaId);
+  res.json(await inventarioDeOrden(orden, esAdmin(req)));
+}
+
+/** La cotización del cobro, si no se cargó al entregar (solo admin): para pasar lo cobrado a dólares. */
+export async function guardarCotizacion(req: Request, res: Response): Promise<void> {
+  const orden = await ordenDe(req);
+  const { cotizacion } = cotizacionOrdenSchema.parse(req.body);
+  if (orden.estado !== 'entregado')
+    throw errores.conflicto('La cotización se carga cuando la orden ya se cobró.');
+  if ((orden.monedaCobro ?? orden.moneda) === 'USD') throw errores.solicitudInvalida('Se cobró en dólares.');
+  await orden.update({ cotizacionCobro: cotizacion.toFixed(4) });
+  res.json(await inventarioDeOrden(orden, true));
+}
+
+/** Lo que cobró el taller externo (solo admin). */
+export async function guardarCostoExterno(req: Request, res: Response): Promise<void> {
+  const orden = await ordenDe(req);
+  await tercerizacion.guardarCostoExterno(
+    orden,
+    paramId(req, 'tercerizacionId'),
+    costoExternoSchema.parse(req.body)
+  );
+  const [tercerizada, inventario] = await Promise.all([
+    tercerizacion.tercerizacionDeOrden(orden, true),
+    inventarioDeOrden(orden, true)
+  ]);
+  res.json({ ...tercerizada, ...inventario });
 }
 
 /** Autocompletar el destino de una tercerización por DNI o CUIT. */

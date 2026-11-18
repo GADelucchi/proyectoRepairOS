@@ -49,6 +49,7 @@ export interface OrdenAttributes {
   presupuestoDetalle?: string | null;
   moneda: Moneda;
   monedaCobro?: Moneda | null;
+  cotizacionCobro?: string | null;
   firmaClienteUrl?: string | null;
   firmaClienteEnc?: string | null;
   firmaClienteAt?: Date | null;
@@ -75,6 +76,7 @@ export type OrdenCreationAttributes = Optional<
   | 'presupuestoDetalle'
   | 'moneda'
   | 'monedaCobro'
+  | 'cotizacionCobro'
   | 'firmaClienteUrl'
   | 'firmaClienteEnc'
   | 'firmaClienteAt'
@@ -110,6 +112,8 @@ export class Orden extends Model<OrdenAttributes, OrdenCreationAttributes> imple
   declare moneda: Moneda;
   /** En qué moneda se cobró al entregar: la del total, lo abonado y los movimientos. */
   declare monedaCobro: Moneda | null;
+  /** 1 US$ en la moneda del cobro ese día: para el informe de reparaciones, que es en dólares. */
+  declare cotizacionCobro: string | null;
   /** URL pública del PNG. Solo para firmas anteriores al cifrado. */
   declare firmaClienteUrl: string | null;
   /** PNG de la firma cifrado con AES-256-GCM. Excluido del scope por defecto. */
@@ -173,6 +177,7 @@ export class Orden extends Model<OrdenAttributes, OrdenCreationAttributes> imple
         presupuestoDetalle: { type: DataTypes.TEXT, allowNull: true, field: 'presupuesto_detalle' },
         moneda: { type: DataTypes.STRING(3), allowNull: false, defaultValue: MONEDA_POR_DEFECTO },
         monedaCobro: { type: DataTypes.STRING(3), allowNull: true, field: 'moneda_cobro' },
+        cotizacionCobro: { type: DataTypes.DECIMAL(14, 4), allowNull: true, field: 'cotizacion_cobro' },
         firmaClienteUrl: { type: DataTypes.STRING(500), allowNull: true, field: 'firma_cliente_url' },
         firmaClienteEnc: { type: DataTypes.TEXT('medium'), allowNull: true, field: 'firma_cliente_enc' },
         firmaClienteAt: { type: DataTypes.DATE, allowNull: true, field: 'firma_cliente_at' },

@@ -11,6 +11,7 @@ import { ChequeosTipoModal } from '../components/ChequeosTipoModal';
 import { DatosFiscalesCard } from '../components/DatosFiscalesCard';
 import { CatalogoPublicoCard } from '../components/CatalogoPublicoCard';
 import { DatosTallerCard } from '../components/DatosTallerCard';
+import { InventarioConfigCard } from '../components/InventarioConfigCard';
 import { PortalClientesCard } from '../components/PortalClientesCard';
 import { StockSucursalesCard } from '../components/StockSucursalesCard';
 import { TerminosVentaCard } from '../components/TerminosVentaCard';
@@ -76,6 +77,7 @@ export function ConfiguracionPage() {
       {esAdmin && <StockSucursalesCard onError={setError} onGuardado={setExito} />}
       {esAdmin && <CatalogoPublicoCard onError={setError} onGuardado={setExito} />}
       {esAdmin && <TerminosVentaCard onError={setError} onGuardado={setExito} />}
+      {esAdmin && <InventarioConfigCard onError={setError} onGuardado={setExito} />}
       <PortalClientesCard />
 
       <Card>

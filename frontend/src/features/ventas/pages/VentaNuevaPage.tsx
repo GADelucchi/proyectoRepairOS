@@ -15,6 +15,7 @@ import { aNumero, formatearMonto } from '@/shared/utils/dinero';
 import { fechaLocalISO } from '@/shared/utils/fechas';
 import * as ventasApi from '../api';
 import type { ModoVenta } from '../api';
+import { ArticulosDeVenta } from '../components/ArticulosDeVenta';
 import { BuscarEnStock } from '../components/BuscarEnStock';
 import { PagosEditor } from '../components/PagosEditor';
 import { PartePagoModal } from '../components/PartePagoModal';
@@ -134,7 +135,7 @@ export function VentaNuevaPage() {
               />
 
               <Card>
-                <Card.Header>2. Equipos que se lleva</Card.Header>
+                <Card.Header>2. Lo que se lleva</Card.Header>
                 <Card.Body>
                   <BuscarEnStock
                     excluir={form.items.map((i) => i.equipo.id)}
@@ -194,6 +195,12 @@ export function VentaNuevaPage() {
                       )}
                     </div>
                   ))}
+                  <ArticulosDeVenta
+                    articulos={form.articulos}
+                    moneda={form.moneda}
+                    cotizacion={aNumero(form.cotizacion)}
+                    onChange={(articulos) => cambiar('articulos', articulos)}
+                  />
                 </Card.Body>
               </Card>
 

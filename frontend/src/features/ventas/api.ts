@@ -39,7 +39,10 @@ export interface PartePagoInput {
 export interface CrearVentaInput {
   clienteId?: number;
   nuevoCliente?: ClienteInput;
-  items: { equipoStockId: number; precio: number }[];
+  /** Un equipo del stock, o unidades de un accesorio o repuesto (precio por unidad). */
+  items: (
+    { equipoStockId: number; precio: number } | { articuloId: number; cantidad: number; precio: number }
+  )[];
   moneda: Moneda;
   cotizacion: number | null;
   descuento: { tipo: TipoDescuento; valor: number } | null;

@@ -7,11 +7,11 @@ export const CONDICIONES_EQUIPO = ['nuevo', 'usado'] as const;
 export type CondicionEquipo = (typeof CONDICIONES_EQUIPO)[number];
 
 /**
- * Disponible se puede vender. Reservado: apartado sin pago hasta una fecha.
+ * Disponible se puede vender. En camino: va en un pase a otra sucursal. Reservado: apartado sin pago hasta una fecha.
  * Señado: el cliente pagó una parte. Vendido: ya no está en el stock. Baja: se
  * sacó del stock (una carga equivocada, un equipo roto); nunca se borra la fila.
  */
-export const ESTADOS_STOCK = ['disponible', 'reservado', 'senado', 'vendido', 'baja'] as const;
+export const ESTADOS_STOCK = ['disponible', 'en_camino', 'reservado', 'senado', 'vendido', 'baja'] as const;
 export type EstadoStock = (typeof ESTADOS_STOCK)[number];
 
 /**
