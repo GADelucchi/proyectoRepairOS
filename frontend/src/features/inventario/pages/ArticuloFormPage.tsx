@@ -78,7 +78,6 @@ export function ArticuloFormPage() {
     [0, 1, 2].map(() => ({ moneda: monedaLocal, monto: '' }))
   );
   const [repuestos, setRepuestos] = useState<RepuestoForm[]>([]);
-  const [conEntrada, setConEntrada] = useState(false);
   const [cantidad, setCantidad] = useState('');
   const [costo, setCosto] = useState('');
   const [compra, setCompra] = useState<ValorCompra>({
@@ -117,6 +116,9 @@ export function ArticuloFormPage() {
   }, [extra, editando]);
 
   const esServicio = tipo === 'servicio';
+  // Si entra stock al crearlo, se carga como su primera entrada (con su costo).
+  const unidades = Math.max(0, Math.round(aNumero(cantidad)));
+  const conEntrada = !esServicio && !editando && unidades > 0;
   const categorias = (extra?.categorias ?? []).filter((c) => c.grupo === tipo);
   const posiciones = extra?.config.precios ?? ['Lista', 'Efectivo', 'Tarjeta'];
 
@@ -152,8 +154,8 @@ export function ArticuloFormPage() {
           }))
         : undefined
     };
-    if (!esServicio && conEntrada && !editando) {
-      if (aNumero(cantidad) <= 0) return setError('Indicá cuántos entraron.');
+    if (conEntrada) {
+      if (costo.trim() === '') return setError('Indicá cuánto costó cada unidad.');
       if (compra.moneda !== 'USD' && aNumero(compra.cotizacion) <= 0) {
         return setError('Indicá la cotización: el costo se informa en dólares.');
       }
@@ -165,17 +167,16 @@ export function ArticuloFormPage() {
         : await inventarioApi.crearArticulo({
             ...datos,
             tipo,
-            entrada:
-              !esServicio && conEntrada
-                ? {
-                    cantidad: Math.round(aNumero(cantidad)),
-                    costo: aNumero(costo),
-                    moneda: compra.moneda,
-                    cotizacion: compra.moneda === 'USD' ? null : aNumero(compra.cotizacion),
-                    proveedor: textoONull(compra.proveedor),
-                    nota: textoONull(compra.nota)
-                  }
-                : null
+            entrada: conEntrada
+              ? {
+                  cantidad: unidades,
+                  costo: aNumero(costo),
+                  moneda: compra.moneda,
+                  cotizacion: compra.moneda === 'USD' ? null : aNumero(compra.cotizacion),
+                  proveedor: textoONull(compra.proveedor),
+                  nota: textoONull(compra.nota)
+                }
+              : null
           });
       navigate(`/inventario/articulos/${guardado.id}`);
     }, 'No se pudo guardar');
@@ -303,7 +304,7 @@ export function ArticuloFormPage() {
                 <Form.Text>{editando ? 'Lo podés cambiar.' : 'Vacío: se genera solo.'}</Form.Text>
               </Form.Group>
             </Col>
-            <Col md={esServicio ? 8 : 4}>
+            <Col md={8}>
               <Form.Group>
                 <Form.Label htmlFor="articulo-barras">
                   Código de barras <span className="text-muted fw-normal">(opcional)</span>
@@ -318,8 +319,45 @@ export function ArticuloFormPage() {
                 />
               </Form.Group>
             </Col>
-            {!esServicio && (
-              <Col md={4}>
+          </Row>
+        </Card.Body>
+      </Card>
+
+      {!esServicio && (
+        <Card className="mb-3">
+          <Card.Header>{editando ? 'Stock' : 'Stock y costo'}</Card.Header>
+          <Card.Body>
+            <Row className="g-3">
+              {!editando && (
+                <>
+                  <Col xs={6} md={4}>
+                    <Form.Group controlId="entrada-cantidad">
+                      <Form.Label>Cantidad que ingresa</Form.Label>
+                      <Form.Control
+                        type="number"
+                        min={0}
+                        placeholder="0"
+                        value={cantidad}
+                        onChange={(e) => setCantidad(e.target.value)}
+                      />
+                      <Form.Text>Vacío: se crea sin stock.</Form.Text>
+                    </Form.Group>
+                  </Col>
+                  <Col xs={6} md={4}>
+                    <Form.Group controlId="entrada-costo">
+                      <Form.Label>Costo por unidad{conEntrada && ` (${compra.moneda})`}</Form.Label>
+                      <Form.Control
+                        inputMode="decimal"
+                        required={conEntrada}
+                        value={costo}
+                        onChange={(e) => setCosto(e.target.value)}
+                      />
+                      <Form.Text>Lo que pagaste por cada uno, no el precio de venta.</Form.Text>
+                    </Form.Group>
+                  </Col>
+                </>
+              )}
+              <Col xs={12} md={4}>
                 <Form.Group controlId="articulo-minimo">
                   <Form.Label>Stock mínimo</Form.Label>
                   <Form.Control
@@ -331,14 +369,33 @@ export function ArticuloFormPage() {
                   <Form.Text>Avisa cuando una sucursal queda por debajo. 0 es sin aviso.</Form.Text>
                 </Form.Group>
               </Col>
+            </Row>
+            {conEntrada && (
+              <div className="mt-3">
+                <DatosCompra id="primera-entrada" valor={compra} onChange={setCompra} />
+              </div>
             )}
-          </Row>
-        </Card.Body>
-      </Card>
+            <Form.Text as="p" className="mt-3 mb-0">
+              {editando ? (
+                <>
+                  Para sumar unidades cargá una{' '}
+                  <Link to={`/inventario/entradas/nueva?articulo=${editando}`}>nueva entrada</Link> con lo que
+                  costaron; para corregir lo que hay, usá el ajuste por conteo desde el producto.
+                </>
+              ) : (
+                <>
+                  Entra en la sucursal en la que estás. Las compras que siguen se cargan como una nueva
+                  entrada, cada una con su costo.
+                </>
+              )}
+            </Form.Text>
+          </Card.Body>
+        </Card>
+      )}
 
       <Card className="mb-3">
         <Card.Header className="d-flex justify-content-between flex-wrap gap-2">
-          <span>Precios</span>
+          <span>Precios de venta</span>
           <Link to="/configuracion#inventario" className="small fw-normal">
             Cambiar los nombres de los precios
           </Link>
@@ -381,53 +438,6 @@ export function ArticuloFormPage() {
       </Card>
 
       {esServicio && <RepuestosDelServicio repuestos={repuestos} onChange={setRepuestos} />}
-
-      {!esServicio && !editando && (
-        <Card className="mb-3">
-          <Card.Header>
-            <Form.Check
-              type="switch"
-              id="con-entrada"
-              label="Cargar la primera entrada"
-              checked={conEntrada}
-              onChange={(e) => setConEntrada(e.target.checked)}
-            />
-          </Card.Header>
-          {conEntrada && (
-            <Card.Body>
-              <Row className="g-3 mb-3">
-                <Col xs={6} md={3}>
-                  <Form.Group controlId="entrada-cantidad">
-                    <Form.Label>Cantidad</Form.Label>
-                    <Form.Control
-                      type="number"
-                      min={1}
-                      required
-                      value={cantidad}
-                      onChange={(e) => setCantidad(e.target.value)}
-                    />
-                  </Form.Group>
-                </Col>
-                <Col xs={6} md={3}>
-                  <Form.Group controlId="entrada-costo">
-                    <Form.Label>Costo por unidad</Form.Label>
-                    <Form.Control
-                      inputMode="decimal"
-                      required
-                      value={costo}
-                      onChange={(e) => setCosto(e.target.value)}
-                    />
-                  </Form.Group>
-                </Col>
-              </Row>
-              <DatosCompra id="primera-entrada" valor={compra} onChange={setCompra} />
-              <Form.Text>
-                Entra en la sucursal en la que estás. Cada compra que sigue se carga como otra entrada.
-              </Form.Text>
-            </Card.Body>
-          )}
-        </Card>
-      )}
 
       {editando && existente && !existente.activo && (
         <Alert variant="secondary">Este artículo está archivado: no aparece para usar ni vender.</Alert>
