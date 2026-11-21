@@ -2,11 +2,12 @@ import { ChangeEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Button, Card, Form, Spinner } from 'react-bootstrap';
 import { useNavigate } from 'react-router';
 import QrScanner from 'qr-scanner';
+import { idDeStockEnQr } from '@/features/stock/etiqueta';
 import * as equiposApi from '../api';
 import { idDeEquipoEnQr } from '../qr';
 
 /**
- * Lector de las etiquetas QR de los equipos.
+ * Lector de las etiquetas QR de los equipos: los de reparación y los del stock.
  *
  * Usa la cámara trasera del dispositivo. Si no hay cámara o se negó el
  * permiso, se puede sacar una foto del QR y leerla desde el archivo. La cámara
@@ -30,6 +31,12 @@ export function EscanearQrPage() {
       const id = idDeEquipoEnQr(texto);
       if (id) {
         navigate(`/equipos/${id}`);
+        return;
+      }
+      // La etiqueta de un equipo del stock (en venta), con la franja "STOCK".
+      const idStock = idDeStockEnQr(texto);
+      if (idStock) {
+        navigate(`/stock/${idStock}`);
         return;
       }
 

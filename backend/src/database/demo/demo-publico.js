@@ -484,7 +484,8 @@ const STOCK = [
     bateria: 86,
     proveedor: 'Importadora Once',
     costo: 380,
-    precio: 520
+    precio: 520,
+    detalles: 'Impecable, sin marcas de uso. Con caja original y cable.'
   },
   {
     clave: 'motoe13-baja',
@@ -513,6 +514,7 @@ const STOCK = [
     proveedor: 'Particular',
     costo: 400,
     precio: 580,
+    detalles: 'Pantalla nueva (cambiada en el taller). Detalle leve en el marco. Sin caja.',
     costos: [
       {
         concepto: 'Módulo de pantalla',
@@ -561,7 +563,8 @@ const STOCK = [
     condicion: 'nuevo',
     proveedor: 'Importadora Once',
     costo: 780,
-    precio: 999
+    precio: 999,
+    detalles: 'Caja sellada. Garantía oficial de 1 año.'
   },
   {
     clave: 'a55-disp',
@@ -643,7 +646,8 @@ const STOCK = [
     bateria: 79,
     proveedor: 'Particular',
     costo: 210,
-    precio: 300
+    precio: 300,
+    detalles: 'Funciona perfecto. Batería al 79%: te ofrecemos el cambio con descuento.'
   }
 ];
 
@@ -958,6 +962,18 @@ const PASES = [
 
 const TERMINOS_VENTA =
   'Garantía de 90 días en equipos usados y la del fabricante en los nuevos. No cubre golpes, humedad ni pantallas rotas. Las señas no son reembolsables pasados 15 días.';
+
+/** Serial de fábrica inventado (10 caracteres, como los de Apple o Samsung), distinto para cada equipo. */
+function serieDemo(indice) {
+  const ALFABETO = 'ABCDEFGHJKLMNPQRSTUVWXYZ0123456789';
+  let n = 7919 * indice + 104729;
+  let serie = '';
+  for (let i = 0; i < 9; i++) {
+    serie += ALFABETO[n % ALFABETO.length];
+    n = Math.floor(n / 3) + 31 * i;
+  }
+  return 'F' + serie;
+}
 
 /** IMEI válido (dígito verificador de Luhn), distinto para cada equipo de la demo. */
 function imeiDemo(indice) {
@@ -1736,7 +1752,7 @@ async function crearStockYVentas(sequelize, { tallerId, sucursalIds, usuarioIds,
       almacenamiento_gb: datos.gb || null,
       condicion: datos.condicion,
       bateria: datos.condicion === 'usado' ? datos.bateria : null,
-      numero_serie: null,
+      numero_serie: serieDemo(indiceImei),
       // Todo el stock de la demo son celulares.
       imei: imeiDemo(indiceImei),
       imei2: null,
@@ -1749,6 +1765,7 @@ async function crearStockYVentas(sequelize, { tallerId, sucursalIds, usuarioIds,
       moneda_precio: 'USD',
       precio: datos.precio,
       estado: datos.estado || 'disponible',
+      detalles: datos.detalles || null,
       observaciones: datos.observaciones || null,
       cargado_por_id: usuarioIds.admin,
       baja_en: datos.baja ? datos.baja.fecha : null,
@@ -1924,7 +1941,7 @@ async function crearStockYVentas(sequelize, { tallerId, sucursalIds, usuarioIds,
         almacenamiento_gb: parte.gb,
         condicion: 'usado',
         bateria: parte.bateria,
-        numero_serie: null,
+        numero_serie: serieDemo(indiceImei),
         imei: imeiDemo(indiceImei),
         imei2: null,
         monto: parte.monto,

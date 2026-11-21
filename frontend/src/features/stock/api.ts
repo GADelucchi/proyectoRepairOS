@@ -20,6 +20,7 @@ export interface EquipoStockInput {
   cotizacionCosto: number | null;
   monedaPrecio: Moneda | null;
   precio: number | null;
+  detalles: string | null;
   observaciones: string | null;
 }
 

@@ -40,7 +40,10 @@ export function filtrarCatalogo(equipos: EquipoCatalogo[], f: FiltrosCatalogo): 
     if (f.condicion !== 'todos' && e.condicion !== f.condicion) return false;
     if (f.marca && e.marca !== f.marca) return false;
     if (f.sucursal && e.sucursal !== f.sucursal) return false;
-    const texto = normalizar([e.marca, e.modelo, e.memoria, e.color, e.codigo].filter(Boolean).join(' '));
+    // También los detalles: "con caja" o "garantía" encuentran los que lo dicen.
+    const texto = normalizar(
+      [e.marca, e.modelo, e.memoria, e.color, e.codigo, e.detalles].filter(Boolean).join(' ')
+    );
     return palabras.every((p) => texto.includes(p));
   });
 

@@ -60,7 +60,7 @@ export const PASOS_GUIA: PasoGuia[] = [
     objetivo: 'nav-stock',
     titulo: 'Stock de equipos',
     texto:
-      'Los equipos que tenés para vender, cada uno con su número (#0042), su costo y su precio. Si es usado, cargá la salud de la batería. El IMEI o el serial se pueden escanear de la caja, y si ya está cargado te avisa. El costo lo ve solo un admin, que también puede publicar el stock con sus precios en un link para tus clientes (Ajustes → Configuración).'
+      'Los equipos que tenés para vender, cada uno con su número (#0042), su costo y su precio. Si es usado, cargá la salud de la batería. El IMEI o el serial se pueden escanear de la caja, y si ya está cargado te avisa. El costo lo ve solo un admin, que también puede publicar el stock con sus precios en un link para tus clientes: lo compartís desde el botón "Compartir catálogo".'
   },
   {
     objetivo: 'nav-inventario',

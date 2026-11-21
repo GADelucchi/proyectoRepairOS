@@ -1,6 +1,6 @@
-import { useState } from 'react';
-import { Badge, ButtonGroup, Card, Col, Form, Row, ToggleButton } from 'react-bootstrap';
-import { Link, useNavigate } from 'react-router';
+import { useEffect, useState } from 'react';
+import { Alert, Badge, ButtonGroup, Card, Col, Form, Row, ToggleButton } from 'react-bootstrap';
+import { Link, useLocation, useNavigate } from 'react-router';
 import { Archive, CircleDollarSign, Clock, PackageCheck } from 'lucide-react';
 import { useAuth } from '@/features/auth/useAuth';
 import { AlertaError } from '@/shared/components/AlertaError';
@@ -14,6 +14,8 @@ import { formatearMonto } from '@/shared/utils/dinero';
 import { formatearFecha } from '@/shared/utils/fechas';
 import { filaClickeable } from '@/shared/utils/filas';
 import * as stockApi from '../api';
+import { BotonEtiqueta } from '../components/BotonEtiqueta';
+import { CompartirCatalogo } from '../components/CompartirCatalogo';
 import {
   ETIQUETA_ESTADO_STOCK,
   VARIANTE_ESTADO_STOCK,
@@ -40,6 +42,16 @@ export function StockPage() {
   const navigate = useNavigate();
   const { usuario } = useAuth();
   const compartido = usuario?.taller?.stockEntreSucursales ?? false;
+  const location = useLocation();
+  // El equipo que se acaba de cargar, para imprimirle la etiqueta sin volver a entrar.
+  const [recienCargado] = useState<EquipoStock | null>(
+    () => (location.state as { cargado?: EquipoStock } | null)?.cargado ?? null
+  );
+  const [verCargado, setVerCargado] = useState(true);
+  useEffect(() => {
+    // Se borra del historial: al recargar o volver atrás no tiene que aparecer de nuevo.
+    if (recienCargado) navigate('.', { replace: true, state: null });
+  }, [recienCargado, navigate]);
 
   const [busqueda, setBusqueda] = useState('');
   const busquedaDebounced = useDebounce(busqueda);
@@ -68,7 +80,8 @@ export function StockPage() {
     <div>
       <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
         <h3 className="mb-0">Stock de equipos</h3>
-        <div className="d-flex gap-2">
+        <div className="d-flex gap-2 flex-wrap">
+          <CompartirCatalogo />
           <Link className="btn btn-outline-primary" to="/ventas/nueva">
             Vender
           </Link>
@@ -77,6 +90,20 @@ export function StockPage() {
           </Link>
         </div>
       </div>
+
+      {recienCargado && verCargado && (
+        <Alert
+          variant="success"
+          dismissible
+          onClose={() => setVerCargado(false)}
+          className="d-flex align-items-center gap-2 flex-wrap"
+        >
+          <span className="me-auto">
+            Se cargó {etiquetaNumero(recienCargado.numero)}: {describirEquipoStock(recienCargado)}.
+          </span>
+          <BotonEtiqueta equipo={recienCargado} onError={setError} size="sm" variant="outline-success" />
+        </Alert>
+      )}
 
       {resumen && (
         <Row className="g-3 mb-3" xs={2} lg={4}>

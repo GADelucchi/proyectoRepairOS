@@ -19,8 +19,14 @@ interface DateInputProps {
  * Avisa cuando la fecha no existe (31/02) en lugar de descartarla en silencio.
  *
  * Se puede tipear o elegir en el almanaque del botón. El almanaque es el del
- * navegador (un `type="date"` escondido): el campo visible sigue en DD/MM/AAAA
- * aunque el sistema operativo esté en otro idioma.
+ * navegador (un `type="date"` transparente): el campo visible sigue en
+ * DD/MM/AAAA aunque el sistema operativo esté en otro idioma.
+ *
+ * El `type="date"` va encima del botón y recibe el toque él mismo. En el
+ * celular (sobre todo en iPhone) el selector de fecha solo se abre si se toca
+ * el campo nativo: abrirlo desde el botón con `showPicker()` o `focus()` no hace
+ * nada. En la compu, donde tocar el campo no siempre abre el almanaque, se
+ * abre con `showPicker()`.
  */
 export function DateInput({
   value,
@@ -61,15 +67,12 @@ export function DateInput({
     validar(value);
   }
 
+  /** Para la compu y el teclado (el botón de abajo). En el celular lo abre el toque. */
   function abrirAlmanaque() {
-    const input = almanaque.current;
-    if (!input) return;
-    input.value = convertirAFormatoBackend(value) ?? '';
     try {
-      input.showPicker();
+      almanaque.current?.showPicker();
     } catch {
-      // Navegadores sin showPicker: el foco en el campo nativo abre su selector.
-      input.focus();
+      // Sin showPicker (o ya abierto por el toque): el navegador se encarga.
     }
   }
 
@@ -99,6 +102,7 @@ export function DateInput({
             maxLength={10}
             isInvalid={!!error}
           />
+          {/* Lo usa el teclado: con el mouse o el dedo se toca el campo nativo que tiene encima. */}
           <Button
             variant="outline-secondary"
             onClick={abrirAlmanaque}
@@ -110,13 +114,17 @@ export function DateInput({
           </Button>
           <Form.Control.Feedback type="invalid">{error}</Form.Control.Feedback>
         </InputGroup>
-        {/* Invisible pero presente: `showPicker` no abre un campo con display: none. */}
+        {/* Transparente y encima del botón: el toque le llega a él. Arranca en la fecha tipeada. */}
         <input
           ref={almanaque}
           type="date"
           tabIndex={-1}
           aria-hidden="true"
+          title="Elegir en el almanaque"
           className="almanaque-oculto"
+          value={convertirAFormatoBackend(value) ?? ''}
+          disabled={disabled}
+          onClick={abrirAlmanaque}
           onChange={elegirEnAlmanaque}
         />
       </div>

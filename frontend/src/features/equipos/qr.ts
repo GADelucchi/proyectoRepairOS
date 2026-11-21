@@ -1,5 +1,6 @@
 import QRCode from 'qrcode';
 import type { Equipo } from '@/shared/types';
+import { escaparHtml, imprimirHtml } from '@/shared/utils/imprimir';
 import { describirEquipo } from './equipo-form';
 
 /**
@@ -36,12 +37,6 @@ export async function qrComoImagen(texto: string): Promise<string> {
   const svg = await QRCode.toString(texto, { type: 'svg', margin: 1, errorCorrectionLevel: 'M' });
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 }
-
-const escaparHtml = (texto: string) =>
-  texto.replace(
-    /[&<>"']/g,
-    (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!
-  );
 
 /**
  * Etiqueta de 50 × 30 mm para impresoras térmicas (Zebra, Brother, Dymo): el QR
@@ -84,29 +79,8 @@ function htmlDeEtiqueta(equipo: Equipo, qr: string): string {
 </html>`;
 }
 
-/**
- * Abre el diálogo de impresión con la etiqueta sola.
- *
- * Se imprime desde un iframe oculto en vez de una ventana nueva: en la app
- * instalada (PWA) `window.open` saca al usuario al navegador.
- */
+/** Abre el diálogo de impresión con la etiqueta del equipo. */
 export async function imprimirEtiqueta(equipo: Equipo): Promise<void> {
   const qr = await qrComoImagen(urlDeEquipo(equipo.id));
-  const iframe = document.createElement('iframe');
-  iframe.setAttribute('aria-hidden', 'true');
-  iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden;';
-
-  await new Promise<void>((listo) => {
-    iframe.onload = () => listo();
-    iframe.srcdoc = htmlDeEtiqueta(equipo, qr);
-    document.body.appendChild(iframe);
-  });
-
-  const ventana = iframe.contentWindow!;
-  // Se quita después de imprimir; el timeout cubre a los navegadores que no avisan.
-  const quitar = () => setTimeout(() => iframe.remove(), 500);
-  ventana.addEventListener('afterprint', quitar, { once: true });
-  setTimeout(quitar, 60_000);
-  ventana.focus();
-  ventana.print();
+  await imprimirHtml(htmlDeEtiqueta(equipo, qr));
 }

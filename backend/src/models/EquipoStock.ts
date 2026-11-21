@@ -41,6 +41,7 @@ export interface EquipoStockAttributes {
   monedaPrecio?: Moneda | null;
   precio?: string | null;
   estado: EstadoStock;
+  detalles?: string | null;
   observaciones?: string | null;
   cargadoPorId?: number | null;
   bajaEn?: Date | null;
@@ -66,6 +67,7 @@ export type EquipoStockCreationAttributes = Optional<
   | 'monedaPrecio'
   | 'precio'
   | 'estado'
+  | 'detalles'
   | 'observaciones'
   | 'cargadoPorId'
   | 'bajaEn'
@@ -110,6 +112,9 @@ export class EquipoStock
   declare monedaPrecio: Moneda | null;
   declare precio: string | null;
   declare estado: EstadoStock;
+  /** Para el cliente: se ven en el catálogo público. */
+  declare detalles: string | null;
+  /** Notas internas del taller: nunca salen al público. */
   declare observaciones: string | null;
   declare cargadoPorId: number | null;
   declare bajaEn: Date | null;
@@ -158,6 +163,7 @@ export class EquipoStock
           allowNull: false,
           defaultValue: 'disponible'
         },
+        detalles: { type: DataTypes.STRING(500), allowNull: true },
         observaciones: { type: DataTypes.TEXT, allowNull: true },
         cargadoPorId: { type: DataTypes.INTEGER, allowNull: true, field: 'cargado_por_id' },
         bajaEn: { type: DataTypes.DATE, allowNull: true, field: 'baja_en' },

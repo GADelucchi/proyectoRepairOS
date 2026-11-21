@@ -2,7 +2,9 @@ import { useState } from 'react';
 import { Button, ListGroup, Modal } from 'react-bootstrap';
 import * as stockApi from '@/features/stock/api';
 import { FormularioEquipoStock } from '@/features/stock/pages/EquipoStockPage';
+import { idDeStockEnQr } from '@/features/stock/etiqueta';
 import {
+  ETIQUETA_ESTADO_STOCK,
   describirEquipoStock,
   detalleCondicion,
   etiquetaNumero,
@@ -48,6 +50,11 @@ export function BuscarEnStock({ excluir, onElegir, onError }: BuscarEnStockProps
 
   /** Con un código leído (cámara o lector USB), si identifica a un solo equipo, se agrega. */
   async function escaneado(valor: string) {
+    const idEtiqueta = idDeStockEnQr(valor);
+    if (idEtiqueta) {
+      await desdeEtiqueta(idEtiqueta);
+      return;
+    }
     setTexto(valor);
     try {
       const { equipos } = await stockApi.listarStock({ search: valor, estado: 'disponible' });
@@ -64,6 +71,25 @@ export function BuscarEnStock({ excluir, onElegir, onError }: BuscarEnStockProps
     }
   }
 
+  /** La etiqueta del stock trae el equipo exacto: se agrega o se explica por qué no. */
+  async function desdeEtiqueta(id: number) {
+    setTexto('');
+    try {
+      const equipo = await stockApi.obtenerEquipoStock(id);
+      if (excluir.includes(equipo.id)) {
+        onError(`${etiquetaNumero(equipo.numero)} ya está en la venta.`);
+      } else if (equipo.estado !== 'disponible') {
+        onError(
+          `${etiquetaNumero(equipo.numero)} (${describirEquipoStock(equipo)}) no está disponible: está ${ETIQUETA_ESTADO_STOCK[equipo.estado].toLowerCase()}.`
+        );
+      } else {
+        elegir(equipo);
+      }
+    } catch {
+      onError('No se encontró el equipo de esa etiqueta en el stock del taller.');
+    }
+  }
+
   return (
     <>
       <CampoEscaneable
@@ -72,8 +98,8 @@ export function BuscarEnStock({ excluir, onElegir, onError }: BuscarEnStockProps
         onChange={setTexto}
         onEscaneado={escaneado}
         onEnter={() => texto.trim() && escaneado(texto.trim())}
-        tituloEscaner="Escanear IMEI o serial"
-        placeholder="IMEI, serial, #número o modelo"
+        tituloEscaner="Escanear etiqueta, IMEI o serial"
+        placeholder="Etiqueta, IMEI, serial, #número o modelo"
       />
       {resultados.length > 0 && (
         <ListGroup className="mt-2">

@@ -327,4 +327,27 @@ describe('stock de equipos', () => {
     const visto = await api().get(`/api/stock/${cargado.body.id}`).set(taller.auth).expect(200);
     expect(visto.body).toMatchObject({ costo: '900.00', color: 'Rojo', costoUsd: 900 });
   });
+
+  it('los detalles se ven en el catálogo público; las observaciones quedan internas', async () => {
+    const taller = await tallerConSucursal();
+    const creado = await api()
+      .post('/api/stock')
+      .set(taller.auth)
+      .send(
+        iphone({ detalles: 'Rayón leve en el marco. Con caja.', observaciones: 'Lo trajo Juan, revisar' })
+      )
+      .expect(201);
+    expect(creado.body.detalles).toBe('Rayón leve en el marco. Con caja.');
+    await api()
+      .put(`/api/stock/${creado.body.id}`)
+      .set(taller.auth)
+      .send(iphone({ detalles: 'Impecable. Con caja y cargador.', observaciones: 'Lo trajo Juan, revisar' }))
+      .expect(200);
+
+    await api().put('/api/configuracion/taller').set(taller.auth).send({ catalogoPublico: true }).expect(200);
+    const me = await api().get('/api/auth/me').set(taller.auth).expect(200);
+    const catalogo = await api().get(`/api/catalogo/${me.body.taller.codigoPublico}`).expect(200);
+    expect(catalogo.body.equipos[0].detalles).toBe('Impecable. Con caja y cargador.');
+    expect(JSON.stringify(catalogo.body)).not.toContain('Juan');
+  });
 });

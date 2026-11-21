@@ -188,8 +188,8 @@ function BarraDeFiltros({ filtros, marcas, sucursales, onCambiar }: BarraDeFiltr
         </InputGroup.Text>
         <Form.Control
           type="search"
-          placeholder="Buscar marca o modelo"
-          aria-label="Buscar marca o modelo"
+          placeholder="Buscar marca, modelo o detalle"
+          aria-label="Buscar marca, modelo o detalle"
           value={filtros.texto}
           onChange={(ev) => onCambiar('texto', ev.target.value)}
         />
@@ -271,6 +271,8 @@ function TarjetaEquipo({ equipo: e, catalogo }: { equipo: EquipoCatalogo; catalo
           </div>
         )}
 
+        {e.detalles && <DetallesEquipo texto={e.detalles} />}
+
         <div className="mt-auto pt-2">
           <div className="fs-4 fw-semibold">{formatearMonto(e.precio, e.moneda)}</div>
           {catalogo.sucursales.length > 1 && e.sucursal && (
@@ -294,6 +296,31 @@ function TarjetaEquipo({ equipo: e, catalogo }: { equipo: EquipoCatalogo; catalo
         </div>
       </Card.Body>
     </Card>
+  );
+}
+
+/** Más que esto se corta en tres líneas con "Ver más": las tarjetas quedan parejas. */
+const LARGO_DETALLES = 140;
+
+/** Lo que el taller cargó para el cliente: estado, accesorios, garantía. */
+function DetallesEquipo({ texto }: { texto: string }) {
+  const [abierto, setAbierto] = useState(false);
+  const largo = texto.length > LARGO_DETALLES;
+  return (
+    <div className="small mb-2">
+      <p className={`mb-0 detalles-equipo${largo && !abierto ? ' detalles-equipo-corto' : ''}`}>{texto}</p>
+      {largo && (
+        <Button
+          variant="link"
+          size="sm"
+          className="p-0 small"
+          onClick={() => setAbierto(!abierto)}
+          aria-expanded={abierto}
+        >
+          {abierto ? 'Ver menos' : 'Ver más'}
+        </Button>
+      )}
+    </div>
   );
 }
 

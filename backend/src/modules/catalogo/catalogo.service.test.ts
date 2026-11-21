@@ -11,6 +11,7 @@ const usado = {
   bateria: 87,
   monedaPrecio: 'USD' as const,
   precio: '650.00',
+  detalles: 'Rayón leve en el marco. Con caja y cargador.',
   sucursal: { nombre: 'Centro' },
   // Lo interno que nunca tiene que salir.
   costo: '400.00',
@@ -33,15 +34,20 @@ describe('equipoPublico', () => {
       bateria: 87,
       precio: 650,
       moneda: 'USD',
+      detalles: 'Rayón leve en el marco. Con caja y cargador.',
       sucursal: 'Centro'
     });
   });
 
-  it('nunca expone costo, proveedor, IMEI, serie ni observaciones', () => {
+  it('nunca expone costo, proveedor, IMEI, serie ni las observaciones internas', () => {
     const json = JSON.stringify(equipoPublico(usado as never));
     for (const secreto of ['400', 'Mayorista', '356938035643809', 'F2LXK0ABCD', 'Pantalla']) {
       expect(json).not.toContain(secreto);
     }
+  });
+
+  it('sin detalles cargados, van vacíos', () => {
+    expect(equipoPublico({ ...usado, detalles: null } as never).detalles).toBeNull();
   });
 
   it('en un equipo nuevo no muestra batería', () => {

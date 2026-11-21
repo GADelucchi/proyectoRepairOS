@@ -34,11 +34,13 @@ type EquipoDelCatalogo = Pick<
   | 'bateria'
   | 'monedaPrecio'
   | 'precio'
+  | 'detalles'
 > & { sucursal?: Pick<Sucursal, 'nombre'> };
 
 /**
  * Lo que ve el público de un equipo. Lista blanca a propósito: costo,
- * proveedor, IMEI, número de serie y observaciones nunca salen de acá.
+ * proveedor, IMEI, número de serie y observaciones (las notas internas) nunca
+ * salen de acá. Los `detalles` sí: se cargan para el cliente.
  */
 export function equipoPublico(e: EquipoDelCatalogo) {
   return {
@@ -54,6 +56,7 @@ export function equipoPublico(e: EquipoDelCatalogo) {
     bateria: e.condicion === 'usado' ? (e.bateria ?? null) : null,
     precio: aNumero(e.precio),
     moneda: e.monedaPrecio,
+    detalles: e.detalles ?? null,
     sucursal: e.sucursal?.nombre ?? null
   };
 }
@@ -91,7 +94,8 @@ export async function catalogoPublico(codigoTaller: string, filtros: FiltrosCata
       'condicion',
       'bateria',
       'monedaPrecio',
-      'precio'
+      'precio',
+      'detalles'
     ],
     include: [
       {

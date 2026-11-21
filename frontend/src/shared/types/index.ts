@@ -526,6 +526,9 @@ export interface EquipoStock {
   monedaPrecio: Moneda | null;
   precio: Monto | null;
   estado: EstadoStock;
+  /** Para el cliente: se ven en el catálogo público. */
+  detalles: string | null;
+  /** Notas internas del taller: nunca salen al público. */
   observaciones: string | null;
   bajaEn: string | null;
   motivoBaja: string | null;

@@ -50,7 +50,9 @@ export const equipoStockSchema = z
     /** 1 US$ en la moneda del costo, el día de compra. */
     cotizacionCosto: z.number().positive().max(99_999_999).optional().nullable(),
     monedaPrecio: moneda.optional().nullable(),
-    precio: monto.optional().nullable()
+    precio: monto.optional().nullable(),
+    /** Para el cliente: salen en el catálogo público. Las `observaciones` son internas. */
+    detalles: textoOpcional(500)
   })
   .refine(conIdentificacion, { message: MENSAJE_SIN_IDENTIFICACION, path: ['imei'] })
   .refine((e) => e.monedaCosto === 'USD' || e.cotizacionCosto, {

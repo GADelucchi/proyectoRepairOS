@@ -16,6 +16,8 @@ export interface EquipoCatalogo {
   bateria: number | null;
   precio: number;
   moneda: Moneda;
+  /** Lo que el taller cargó para el cliente: estado, accesorios, garantía. */
+  detalles: string | null;
   /** Nombre de la sucursal donde está (ver `sucursales`). */
   sucursal: string | null;
 }

@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button, Card, Form, InputGroup } from 'react-bootstrap';
+import { useLocation } from 'react-router';
 import { useAuth } from '@/features/auth/useAuth';
 import { apiClient } from '@/shared/api/client';
 import { useAccion } from '@/shared/hooks/useAccion';
@@ -25,6 +26,12 @@ export function CatalogoPublicoCard({ onError, onGuardado }: CatalogoPublicoCard
   const { enCurso, ejecutar } = useAccion(onError);
   const [copiado, setCopiado] = useState(false);
   const api = codigo ? urlDelCatalogo(codigo) : null;
+  // Desde el stock ("Publicar catálogo") se llega con #catalogo.
+  const ref = useRef<HTMLDivElement>(null);
+  const { hash } = useLocation();
+  useEffect(() => {
+    if (hash === '#catalogo') ref.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [hash]);
 
   async function alternar(valor: boolean) {
     const ok = await ejecutar(async () => {
@@ -48,7 +55,7 @@ export function CatalogoPublicoCard({ onError, onGuardado }: CatalogoPublicoCard
   }
 
   return (
-    <Card className="mb-4">
+    <Card className="mb-4" ref={ref} id="catalogo">
       <Card.Header>Catálogo público de equipos</Card.Header>
       <Card.Body>
         <Form.Check

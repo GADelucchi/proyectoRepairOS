@@ -33,6 +33,7 @@ import {
 } from '@/shared/utils/fechas';
 import { nombreCompleto } from '@/shared/utils/texto';
 import * as stockApi from '../api';
+import { BotonEtiqueta } from '../components/BotonEtiqueta';
 import { CostosReparacion } from '../components/CostosReparacion';
 import {
   ALMACENAMIENTOS_GB,
@@ -127,7 +128,8 @@ export function FormularioEquipoStock({ equipo, onGuardado, onCancelar }: Formul
     } else if (onGuardado) {
       onGuardado(guardado);
     } else {
-      navigate('/stock');
+      // Recién cargado: el listado ofrece imprimirle la etiqueta.
+      navigate('/stock', equipo ? undefined : { state: { cargado: guardado } });
     }
   }
 
@@ -153,12 +155,25 @@ export function FormularioEquipoStock({ equipo, onGuardado, onCancelar }: Formul
           <Badge bg={VARIANTE_ESTADO_STOCK[equipo.estado]}>{ETIQUETA_ESTADO_STOCK[equipo.estado]}</Badge>
         )}
         {equipo?.sucursal && <span className="text-muted small">Sucursal {equipo.sucursal.nombre}</span>}
+        {equipo && !incrustado && equipo.estado !== 'vendido' && equipo.estado !== 'baja' && (
+          <div className="ms-auto">
+            <BotonEtiqueta equipo={equipo} onError={setError} />
+          </div>
+        )}
       </div>
 
       {cargado && (
-        <Alert variant="success" dismissible onClose={() => setCargado(null)}>
-          Se cargó {etiquetaNumero(cargado.numero)}: {describirEquipoStock(cargado)}. Ahora escaneá el
-          siguiente.
+        <Alert
+          variant="success"
+          dismissible
+          onClose={() => setCargado(null)}
+          className="d-flex align-items-center gap-2 flex-wrap"
+        >
+          <span className="me-auto">
+            Se cargó {etiquetaNumero(cargado.numero)}: {describirEquipoStock(cargado)}. Ahora escaneá el
+            siguiente.
+          </span>
+          <BotonEtiqueta equipo={cargado} onError={setError} size="sm" variant="outline-success" />
         </Alert>
       )}
       {equipo?.estado === 'vendido' && (
@@ -302,6 +317,28 @@ export function FormularioEquipoStock({ equipo, onGuardado, onCancelar }: Formul
                     </InputGroup>
                   </Col>
                 )}
+                <Col xs={12}>
+                  <Form.Group controlId="stock-detalles">
+                    <Form.Label>
+                      Detalles para el cliente <span className="text-muted fw-normal">(opcional)</span>
+                    </Form.Label>
+                    <Form.Control
+                      as="textarea"
+                      rows={2}
+                      maxLength={500}
+                      placeholder={
+                        form.condicion === 'nuevo'
+                          ? 'Ej.: caja sellada, garantía oficial de 1 año'
+                          : 'Ej.: rayón leve en el marco, con caja y cargador'
+                      }
+                      value={form.detalles}
+                      onChange={(e) => cambiar('detalles', e.target.value)}
+                    />
+                    <Form.Text className="text-muted">
+                      Se ven en el catálogo público, debajo del equipo.
+                    </Form.Text>
+                  </Form.Group>
+                </Col>
               </Row>
             </Card.Body>
           </Card>
@@ -450,7 +487,7 @@ export function FormularioEquipoStock({ equipo, onGuardado, onCancelar }: Formul
                 <Col xs={12}>
                   <Form.Group controlId="stock-observaciones">
                     <Form.Label>
-                      Observaciones <span className="text-muted fw-normal">(opcional)</span>
+                      Notas internas <span className="text-muted fw-normal">(opcional)</span>
                     </Form.Label>
                     <Form.Control
                       as="textarea"
@@ -459,6 +496,7 @@ export function FormularioEquipoStock({ equipo, onGuardado, onCancelar }: Formul
                       value={form.observaciones}
                       onChange={(e) => cambiar('observaciones', e.target.value)}
                     />
+                    <Form.Text className="text-muted">Solo las ve el taller.</Form.Text>
                   </Form.Group>
                 </Col>
               </Row>

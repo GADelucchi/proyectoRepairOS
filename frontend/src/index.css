@@ -919,16 +919,34 @@ h6 {
 
 /* Campo de fecha nativo detrás del botón del almanaque (ver DateInput): el
    selector se abre pegado al botón. */
+/* El campo de fecha nativo, transparente sobre el botón del almanaque (DateInput). */
 .almanaque-oculto {
   position: absolute;
   right: 0;
   top: 0;
-  width: 2.5rem;
-  height: calc(1.5em + 0.75rem + 2px);
+  z-index: 5;
+  width: 2.625rem;
+  /* Alto de un form-control (rem y no em: el font-size de acá es otro). */
+  height: calc(1.5rem + 0.75rem + 2px);
   opacity: 0;
-  pointer-events: none;
   border: 0;
   padding: 0;
+  margin: 0;
+  cursor: pointer;
+  /* Con menos de 16px, el iPhone hace zoom en la pantalla al tocarlo. */
+  font-size: 16px;
+  /* Sin esto Safari lo dibuja con su ancho mínimo y se sale del botón. */
+  -webkit-appearance: none;
+  appearance: none;
+}
+.almanaque-oculto:disabled {
+  cursor: default;
+}
+/* Que el botón de abajo se vea "apretable" aunque el puntero esté sobre el campo. */
+.position-relative:has(> .almanaque-oculto:hover:not(:disabled)) .btn-outline-secondary {
+  color: var(--bs-btn-hover-color);
+  background-color: var(--bs-btn-hover-bg);
+  border-color: var(--bs-btn-hover-border-color);
 }
 
 /* ---------- Recuadros que filtran una lista (ficha del cliente) ---------- */
@@ -981,4 +999,21 @@ h6 {
     position: sticky;
     top: 1rem;
   }
+}
+
+/* Una tarjeta a la que se llega por #ancla (Configuración): que la barra de arriba no le tape el título. */
+.card[id] {
+  scroll-margin-top: 5rem;
+}
+
+/* Detalles de un equipo en el catálogo público: respetan los saltos de línea. */
+.detalles-equipo {
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+.detalles-equipo-corto {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }

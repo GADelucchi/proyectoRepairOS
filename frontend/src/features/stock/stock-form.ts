@@ -99,6 +99,7 @@ export interface EquipoStockForm {
   cotizacionCosto: string;
   monedaPrecio: Moneda;
   precio: string;
+  detalles: string;
   observaciones: string;
 }
 
@@ -122,16 +123,27 @@ export function formularioVacio(hoy: string): EquipoStockForm {
     cotizacionCosto: '',
     monedaPrecio: 'USD',
     precio: '',
+    detalles: '',
     observaciones: ''
   };
 }
 
 /**
  * "Guardar y cargar otro igual": queda todo lo que suele repetirse en un lote
- * (modelo, costo, precio, proveedor) y se vacía lo propio de cada unidad.
+ * (modelo, costo, precio, proveedor) y se vacía lo propio de cada unidad. Los
+ * detalles de un nuevo ("caja sellada") se repiten; los de un usado ("rayón en
+ * el marco") son de esa unidad.
  */
 export function otroIgual(f: EquipoStockForm): EquipoStockForm {
-  return { ...f, bateria: '', numeroSerie: '', imei: '', imei2: '', observaciones: '' };
+  return {
+    ...f,
+    bateria: '',
+    numeroSerie: '',
+    imei: '',
+    imei2: '',
+    detalles: f.condicion === 'nuevo' ? f.detalles : '',
+    observaciones: ''
+  };
 }
 
 export function equipoAFormulario(e: EquipoStock): EquipoStockForm {
@@ -154,6 +166,7 @@ export function equipoAFormulario(e: EquipoStock): EquipoStockForm {
     cotizacionCosto: e.cotizacionCosto != null ? String(aNumero(e.cotizacionCosto)) : '',
     monedaPrecio: e.monedaPrecio ?? e.monedaCosto,
     precio: e.precio != null ? String(aNumero(e.precio)) : '',
+    detalles: e.detalles ?? '',
     observaciones: e.observaciones ?? ''
   };
 }
@@ -207,6 +220,7 @@ export function formularioAInput(f: EquipoStockForm): EquipoStockInput {
     cotizacionCosto: f.monedaCosto === 'USD' ? null : aNumero(f.cotizacionCosto),
     monedaPrecio: f.precio.trim() ? f.monedaPrecio : null,
     precio: f.precio.trim() ? aNumero(f.precio) : null,
+    detalles: textoONull(f.detalles),
     observaciones: textoONull(f.observaciones)
   };
 }

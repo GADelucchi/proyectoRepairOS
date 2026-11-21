@@ -70,6 +70,12 @@ describe('formulario de stock', () => {
     });
   });
 
+  it('"otro igual" repite los detalles de un nuevo, pero no los de un usado', () => {
+    const nuevo = { ...iphone, condicion: 'nuevo' as const, detalles: 'Caja sellada' };
+    expect(otroIgual(nuevo).detalles).toBe('Caja sellada');
+    expect(otroIgual({ ...iphone, detalles: 'Rayón en el marco' }).detalles).toBe('');
+  });
+
   it('describe el equipo en una línea', () => {
     expect(
       describirEquipoStock({ marca: 'Apple', modelo: 'iPhone 13', almacenamientoGb: 128, color: 'Azul' })

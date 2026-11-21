@@ -13,12 +13,20 @@ const equipo = (datos: Partial<EquipoCatalogo>): EquipoCatalogo => ({
   bateria: 86,
   precio: 520,
   moneda: 'USD',
+  detalles: null,
   sucursal: 'Casa Central',
   ...datos
 });
 
 const ip13 = equipo({ codigo: '#0004' });
-const ip15 = equipo({ codigo: '#0009', modelo: 'iPhone 15', condicion: 'nuevo', bateria: null, precio: 999 });
+const ip15 = equipo({
+  codigo: '#0009',
+  modelo: 'iPhone 15',
+  condicion: 'nuevo',
+  bateria: null,
+  precio: 999,
+  detalles: 'Caja sellada. Garantía oficial.'
+});
 const s23 = equipo({
   codigo: '#0006',
   marca: 'Samsung',
@@ -39,6 +47,10 @@ const todos = [ip15, s23, ip13, edge];
 const codigos = (lista: EquipoCatalogo[]) => lista.map((e) => e.codigo);
 
 describe('filtrarCatalogo', () => {
+  it('el buscador también mira los detalles, sin importar tildes', () => {
+    expect(codigos(filtrarCatalogo(todos, { ...FILTROS_INICIALES, texto: 'garantia' }))).toEqual(['#0009']);
+  });
+
   it('sin filtros ordena por precio, de menor a mayor', () => {
     expect(codigos(filtrarCatalogo(todos, FILTROS_INICIALES))).toEqual(['#0014', '#0004', '#0006', '#0009']);
   });
